@@ -6,7 +6,8 @@ PASS: Player#getCurrentInput, org.bukkit.Input, PlayerToggleFlightEvent and Enti
 PASS: built JAR contains AirSwim.class and AirSwim$Tuning.class; contains no JUnit classes and no test classes.
 PASS: plugin.yml in the JAR is byte-identical to the supplied plugin.yml (commands, permissions, version unchanged).
 PASS: bundled config.yml parses; the only differences from the supplied config are inside mythics.relay.temporal.divinity.
-PASS: Relay-Temporal-Pack.zip is byte-identical to the supplied pack (sha256 d52131bb...36e6). No resource-pack asset, palette or model changed.
+PASS: the movement rework changed no resource-pack asset (the pack was byte-identical to the supplied one, sha256 d52131bb...36e6, at that commit).
+LATER: a separate pack fix moved the three temporal_*.png textures from textures/effect/ to textures/item/ and updated the two model texture paths, because Minecraft does not load textures/effect/ for models. Pixels, colours, geometry and model IDs are unchanged. See resource-pack/README.md.
 PASS: recovery journal format (TemporalDomain.Saved read/write) is unchanged; journals written by the previous build still load.
 BUILD: Maven clean package SUCCESS, real Paper 1.21.11 API, Java 21. See SWIM_BUILD.log.
 TESTS: 9 JUnit tests of the AirSwim maths, 0 failures. These test arithmetic, not Minecraft.
