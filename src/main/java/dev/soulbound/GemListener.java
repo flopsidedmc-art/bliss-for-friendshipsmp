@@ -91,8 +91,8 @@ public class GemListener implements Listener {
     /** Explosion power carried by each launched Fireball, set from its charge level. */
     private final Map<UUID, Float> fireballPower = new HashMap<>();
     private final Map<UUID, net.kyori.adventure.bossbar.BossBar> fireballBars = new HashMap<>();
-    /** Set only while a Fireball's own explosion is being resolved, so its owner takes no blast damage. */
-    private UUID fireballBlastOwner;
+    /** True only while a Fireball's own explosion is being resolved; its damage is dealt by fireballBlastDamage instead. */
+    private boolean fireballBlasting;
 
     /** Which player launched a tracked fireball, or null. */
     UUID fireballOwnerOf(UUID projectileId) {
@@ -1378,18 +1378,60 @@ public class GemListener implements Listener {
         if (power == null || power <= 0f) return;
         boolean setFire = plugin.getConfig().getBoolean("fire.fireball.set-fire", true);
         boolean breakBlocks = plugin.getConfig().getBoolean("fire.fireball.break-blocks", true);
-        fireballBlastOwner = owner;
+        Location center = e.getEntity().getLocation();
+        // Damage first, while cover is still standing, then the explosion for blocks, fire, knockback and effects.
+        fireballBlastDamage(e.getEntity(), center, power, owner);
+        fireballBlasting = true;
         try {
-            e.getEntity().getWorld().createExplosion(e.getEntity().getLocation(), power, setFire, breakBlocks, e.getEntity());
+            center.getWorld().createExplosion(center, power, setFire, breakBlocks, e.getEntity());
         } finally {
-            fireballBlastOwner = null;
+            fireballBlasting = false;
         }
     }
 
-    /** Fireball keeps its "no self damage" rule for the blast as well as the direct hit. */
+    /**
+     * Blast damage for a Fireball, using the vanilla explosion curve but dealt by the plugin, because
+     * vanilla explosion damage to players scales with difficulty (halved on Easy, zero on Peaceful).
+     * The owner is never hurt, matching the Fireball's no-self-damage rule.
+     */
+    private void fireballBlastDamage(Entity fireball, Location center, float power, UUID owner) {
+        double multiplier = plugin.getConfig().getDouble("fire.fireball.damage-multiplier", 1.0);
+        if (multiplier <= 0) return;
+        double reach = power * 2.0;
+        Player caster = owner == null ? null : Bukkit.getPlayer(owner);
+        var source = org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MOB_PROJECTILE)
+                .withDirectEntity(fireball).withDamageLocation(center);
+        if (caster != null) source.withCausingEntity(caster);
+        var built = source.build();
+        for (Entity near : center.getWorld().getNearbyEntities(center, reach, reach, reach)) {
+            if (!(near instanceof LivingEntity victim) || near instanceof org.bukkit.entity.ArmorStand || near.isDead()) continue;
+            if (owner != null && owner.equals(near.getUniqueId())) continue;
+            double distance = victim.getLocation().add(0, victim.getHeight() / 2, 0).distance(center);
+            if (distance >= reach) continue;
+            double impact = (1.0 - distance / reach) * fireballExposure(center, victim);
+            if (impact <= 0) continue;
+            victim.damage(((impact * impact + impact) / 2.0 * 7.0 * reach + 1.0) * multiplier, built);
+        }
+    }
+
+    /** Share of the victim (feet, middle, head) with a clear line to the blast: 0, 1/3, 2/3 or 1. */
+    private double fireballExposure(Location center, LivingEntity victim) {
+        if (center.getBlock().getType().isSolid()) return 1.0; // blast point is inside a block: cannot judge cover
+        double height = victim.getHeight();
+        int clear = 0;
+        for (double y : new double[]{0.1, height / 2, Math.max(0.1, height - 0.1)}) {
+            Vector to = victim.getLocation().add(0, y, 0).toVector().subtract(center.toVector());
+            double length = to.length();
+            if (length < 1.0e-3 || center.getWorld().rayTraceBlocks(center, to.multiply(1 / length), length,
+                    org.bukkit.FluidCollisionMode.NEVER, true) == null) clear++;
+        }
+        return clear / 3.0;
+    }
+
+    /** The explosion itself only moves things; living entities take fireballBlastDamage instead (never twice). */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onOwnFireballBlast(EntityDamageEvent e) {
-        if (fireballBlastOwner == null || !fireballBlastOwner.equals(e.getEntity().getUniqueId())) return;
+    public void onFireballBlast(EntityDamageEvent e) {
+        if (!fireballBlasting || !(e.getEntity() instanceof LivingEntity)) return;
         if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
                 || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) e.setCancelled(true);
     }

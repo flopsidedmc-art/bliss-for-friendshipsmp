@@ -225,6 +225,7 @@ fire:
     explode: true # false = old behaviour (direct hit and fire only, no explosion)
     explosion-power-min: 1.0 # at the weakest charge that still fires; a ghast fireball is 1.0
     explosion-power-max: 3.0 # at full charge; TNT is 4.0, hard limit 8.0
+    damage-multiplier: 1.0 # blast damage to everyone but the caster; 1.0 = a vanilla explosion of that power on Normal, 0 = none
     break-blocks: true # false = damage and knockback only, terrain untouched
     set-fire: true # the blast leaves fire behind
 
