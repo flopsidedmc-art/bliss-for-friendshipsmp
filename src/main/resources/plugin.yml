@@ -1,0 +1,48 @@
+name: SoulboundGems
+version: 1.3.0-temporal
+main: dev.soulbound.SoulboundGemsPlugin
+api-version: '1.21.11'
+author: Amon
+description: Original Bliss-inspired gem system with Mythics Auratus and Heretic. Not affiliated with Bliss SMP.
+commands:
+  bliss:
+    description: Bliss-like gem commands
+    usage: /bliss <give|info|setenergy|withdraw|giveitem|track|trust>
+    permission: bliss.player
+    permission-message: You lack permission.
+  progression:
+    description: Set the server progression (1-4).
+    usage: /progression <1|2|3|4>
+    permission: bliss.admin
+    permission-message: You lack permission.
+  mythicconfig:
+    description: In-depth live tuner for Auratus and Heretic numbers.
+    usage: /mythicconfig
+    permission: bliss.admin
+    permission-message: You lack permission.
+  givegem:
+    description: Give a gem by tier choice, e.g. AstraT1.
+    usage: /givegem <player> <AstraT1|AstraT2|FireT1|FireT2|...>
+    permission: bliss.admin
+    permission-message: You lack permission.
+  blissop:
+    description: Admin console — give the Prismatic Edge, set Pristine stages, reload, border growth.
+    usage: /blissop <reload|edge|energy|give|border> ...
+    permission: bliss.admin
+    permission-message: You lack permission.
+  turmoil:
+    description: Manage The Signal world turmoil and Relay finale.
+    usage: /turmoil <start|stop|status|spawn|setspawn|overlay|finale>
+    permission: soulbound.turmoil
+  stalker:
+    description: Shadow Stalker — begin the hunt toward a tracked player.
+    usage: /stalker <player>
+    permission: bliss.player
+    permission-message: You lack permission.
+permissions:
+  soulbound.turmoil:
+    default: op
+  bliss.player:
+    default: true
+  bliss.admin:
+    default: op

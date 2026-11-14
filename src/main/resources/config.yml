@@ -1,0 +1,321 @@
+# BlissLike-Gems config (original, inspired by Bliss SMP S3 mechanics)
+# Energy: 0=BROKEN, 1=RUINED, 2=DAMAGED, 3=CRACKED, 4=SCRATCHED, 5-9=PRISTINE(+1..+4), 10=PRISTINE+5
+
+energy:
+  start: 5
+  max: 10
+  min: 0
+  kill-gain: 1
+  death-loss: 1
+  # if killer is at max (10), victim drops a bottle instead of killer gaining
+  drop-bottle-at-max: true
+
+cooldowns-seconds:
+  # Fallbacks only — real values are per-ability in GemListener#cooldownMs.
+  # Abilities: crisp 15, pockets 10, thunderstep 15, doublejump 5, vortex 60,
+  #   burst 10, drift 15 (flat), bounty 35.
+  # Powers: cozy 180, chad 120, nullify 120, fireball 180, itemlock 120,
+  #   richrush 300, amp 240, storm 120, dash 40, bash 60, daggers 90,
+  #   projection 120, heartdrainer 120, circle 120, beam 120, overdrive 180, void 120.
+  power: 20
+  tier2-ability: 35
+  # energy 3-4 makes cooldowns 1.5x longer (Cracked/Scratched)
+  damaged-multiplier: 1.5
+
+passives:
+  tick-seconds: 2
+  puff-no-fall: true
+  strength-level: 1
+  speed-level: 1
+
+actionbar:
+  update-ticks: 2
+  show-cooldown: true
+  # Bliss-style HUD: glyph + status; the gem name is intentionally omitted.
+  # Ready! = green; cooldowns = cyan; active abilities = red Active...
+  # Defaults below are the Unicode code points assigned by the user-provided Bliss Pack v3.5.
+  glyphs:
+    ASTRA: { power: "\uA43D", ability: "\uA43E" }
+    FIRE: { power: "\uA43F", ability: "\uA440" }
+    FLUX: { power: "\uA441", ability: "\uA442" }
+    LIFE: { power: "\uA443", ability: "\uA444" }
+    PUFF: { power: "\uA445", ability: "\uA446" }
+    SPEED: { power: "\uA447", ability: "\uA448" }
+    STRENGTH: { power: "\uA449", ability: "\uA44A" }
+    WEALTH: { power: "\uA44B", ability: "\uA44C" }
+
+protection:
+  keep-on-death: true
+  prevent-drop: true
+  prevent-chest-store: true
+  single-gem-only: true
+
+# ---------------- Mythic Gems ----------------
+# Mythics intentionally ignore the normal 0-10 energy system and are not soul-kept.
+# Custom pack sounds (assets/blissgems/sounds.json). They layer on top of the vanilla sounds the abilities
+# already play. Without the resource pack players only hear the vanilla ones. Only the events listed below play.
+# Available events (need the matching file in the pack): relay.rewind, relay.dilation, relay.timelock, relay.tag,
+# auratus.chain, auratus.aegis, auratus.parry, auratus.slam, heretic.bloodsaw, heretic.spore, heretic.bloodlink, heretic.slam
+sounds:
+  custom-enabled: true
+  volume: 1.0
+  enabled-events:
+    - auratus.parry
+
+mythics:
+  enabled: true
+  drop-on-death: true
+  glow: true # mythic holders glow; standard gems never do
+
+  heretic:
+    passives:
+      hemorrhage-multiplier: 2.0
+      auto-crit-multiplier: 1.5
+      shield-disable-ticks: 100 # shield jam on hits, wall flips 5s/10s
+      blood-hardening-max-damage: 14.0 # 7 hearts
+    bloodsaws:
+      recharge-ms: 5000 # two independent charges, 5s each
+      speed: 1.65
+      idle-despawn-ms: 5000 # vanishes 5s after last hit: ding + firework burst
+      drag-ticks: 20 # cut victims are dragged along in the wake this long
+      damage: 5.0
+      hit-radius: 0.8
+      spawn-spacing: 0.55
+      max-bounces: -1 # -1 = true reflection, unlimited
+      spore-window-ms: 650
+    spore:
+      radius: 4.0
+      duration-ms: 8000
+      bleed-ms: 8000
+    bloodlinking:
+      cooldown-seconds: 100
+      launch-y: 1.35
+      dive-speed: 1.3
+      radius: 4
+      damage: 6.0
+      max-slams: 3
+      max-victims: 2
+
+  auratus:
+    passives:
+      hauling-strike-reach: 4.0
+      hauling-strike-chance: 0.5 # normal hits trigger Hauling Strike this often
+      hauling-strike-knockback: 0.65
+      hauling-strike-shield-extend-ticks: 100 # shield jam, wall flips 5s/10s
+      feathered-fall-damage-multiplier: 0.10
+      angels-grasp-mode: PULL # PULL, ARMOR_REDUCTION, or BOTH. This passive is an educated guess.
+      angels-grasp-pull-chance: 0.05
+    chain:
+      range: 48.0
+      charges: 2
+      regen-ms: 8000
+      show-models: true # per-link chain + hook head from the pack (echo shard CMDs)
+      fly-speed: 0.3 # 6 blocks/sec terrain pull
+      pull-accel: 0.10 # reel-in acceleration per tick along the chain (higher = snappier haul)
+      pull-max-speed: 1.1 # top reel-in speed in blocks/tick (~22 blocks/sec)
+      max-flight-ticks: 28
+      entity-damage: 4.0 # 2 hearts (wiki: 2 hearts per chain)
+      link-spacing: 1.0 # blocks between chain links
+      link-scale: 1.0 # link model is ~3 blocks long; shrink to fit spacing
+    aegis:
+      cooldown-seconds: 15
+      window-ms: 1250
+      success-heal-hp: 5.0
+      success-speed-ticks: 60
+      weapon-durability-loss: 30
+      anchor-height: 8.0
+      anchor-window-ms: 5000
+    slam:
+      radius: 6.0
+      center-damage: 3.0
+      edge-damage: 3.0
+      launch-y: 1.05
+      steep-degrees: 65.0 # downward aim at/ past this arms the slam, free of charge
+      aim-ticks: 2 # look-around window between landing and the dash
+      dash-speed: 1.9 # ~20 blocks of dash
+      sneak-window-ms: 3000 # how long after touchdown sneaking still starts the aim
+      min-height: 4.0 # fall height required for the slam to go off (wiki: 4 blocks)
+      dive-speed: 1.6 # slam dive pull (separate from the 6 b/s travel pull)
+
+  # Relay Gem: prize for "The Signal" ARG. One of a kind, ignores energy, drops on death.
+  relay:
+    passives:
+      tag-duration-ms: 30000 # retained damage-tag passive, independent from the charge meter
+      tag-damage-bonus: 0.05 # +5% damage from the holder against tagged players
+      attack-speed-multiplier: 1.2 # Quickened: holding the gem swings 1.2x faster
+
+    rewind:
+      charges: 2 # independent charges, like Auratus' chains
+      regen-ms: 20000 # per charge
+      window-ms: 5000 # how far back Rewind snaps (position + health, clears debuffs)
+    # Temporal v2 keys avoid accidentally inheriting the old Time Lock/Tuned In settings.
+    # These balance defaults are proposals: tune after multiplayer testing.
+    temporal:
+      charge:
+        maximum: 100
+        hit: 8
+        received: 4
+        minimum-damage: 0.5 # final damage in HP, after cancellation/protection
+        minimum-spacing-ms: 400 # shared per recipient for dealt/received gains
+        afk-timeout-seconds: 30 # requires recent look/input; knockback alone does not qualify
+        allow-mobs: false
+        decay-grace-seconds: 15
+        decay-per-second: 0 # disabled; set >0 to enable
+        persist-death: false
+        persist-logout: true
+        persist-restart: true # PDC saved by normal player saves; hard crash may lose recent gains
+        dilate-cost: 0
+        rewind-cost: 0
+      dilate:
+        cooldown-seconds: 65
+        duration-seconds: 8 # server ticks; hard safety maximum 120 seconds
+        radius: 10.0 # hard limit 48 blocks
+        scale: 0.10 # approximate movement/attack/gravity; not a per-entity simulation tick rate
+        max-fields: 8
+        max-entities-per-field: 256
+        horizontal-speed-cap: 0.6 # blocks/tick at 1x; caps retained knockback/momentum at the field scale
+        melee-base-interval-ticks: 10 # scaled by 1/time-scale; applies to accepted melee damage
+        display-models: true # use supplied overlay; false enables bounded particle fallback
+        particle-interval-ticks: 4
+      divinity:
+        required-charge: 100
+        cooldown-seconds: 90
+        duration-seconds: 5 # server ticks; hard safety maximum 20 seconds
+        capture-radius: 10.0
+        max-opponents: 8
+        max-sessions: 4 # hard limit 8; spatially isolated cells 1024 blocks apart
+        world: soulbound_temporal_void # must be new, or marked as owned by this plugin
+        fallback-world: '' # empty = first non-domain world; used if original world/position is unavailable
+        altitude: 160 # clamped to legal world height
+        boundary-radius: 48.0 # ends the session if a participant leaves this sphere
+        enemy-scale: 0.15
+        downward-drift: 0.06 # blocks/tick; downward, never levitation/hover
+        flight-speed: 0.10 # native caster flight, clamped 0.02..0.50
+        attack-speed-multiplier: 5.0
+        minimum-hit-interval-ticks: 4
+        hurt-window-ticks: 2 # restored to each target's original value on exit
+        damage-multiplier: 0.50
+        maximum-hit-damage: 6.0 # HP before armor, applied to caster's domain damage
+        return-fall-grace-ticks: 100
+      hud:
+        use-glyphs: true # false uses text labels; no client pack detection is attempted
+    hud:
+      # Pack font glyphs. Without the overlay pack use plain text instead (for example "<<", "(*)", "(o)").
+      rewind-glyph: "\uE040"
+      tuned-glyph: "\uE042" # compass, empty bar (fallback)
+      # Tuned In charging, 6 frames: compass with the bar empty .. full
+      tuned-charge-glyphs: ["\uE042", "\uE058", "\uE059", "\uE05A", "\uE05B", "\uE05C"]
+      dilation-glyph: "\uE041"
+      # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
+      tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
+
+# Astra Daggers (T2) — hovering semi-circle, fire on left-click
+astra:
+  dagger-speed: 3.0 # blocks per tick
+  dagger-damage: 5.0 # 2.5 hearts
+
+# Crafting recipes. min-progression gates by era (1-4).
+# Edit shapes/ingredients freely, then /progression <1-4> to reload.
+recipes:
+  upgrader:
+    min-progression: 3
+    type: shaped
+    shape: [DGD, GSG, DGD]
+    ingredients: {D: DIAMOND_BLOCK, G: AMETHYST_SHARD, S: NETHER_STAR}
+    result-kind: upgrader
+  trader:
+    min-progression: 3
+    type: shaped
+    shape: ["D D", " S ", "D D"]
+    ingredients: {D: DIAMOND_BLOCK, S: SCULK_CATALYST}
+    result-kind: trader
+  repairkit:
+    min-progression: 3
+    type: shaped
+    shape: [IAI, ANA, IAI]
+    ingredients: {I: IRON_BLOCK, A: AMETHYST_SHARD, N: NETHERITE_INGOT}
+    result-kind: repairkit
+
+# Server progression (1-4 via /progression).
+# P1-3: border 6000, P4: border 30000.
+# P1: no enchants, no potions, no obsidian pickup.
+# P2-3: Prot III, Sharp III, chorus cap 16.
+# P4: Prot IV, Sharp V, chorus unlimited, Dragon Egg +40 hearts.
+progression:
+  level: 1
+
+# Standard-gem ability cooldowns in seconds (Energy-stage multiplier still applies).
+# Tune live via /config instead of editing this file.
+cooldowns:
+  crisp: 15
+  thunderstep: 15
+  pockets: 10
+  burst: 10
+  doublejump: 5
+  vortex: 60
+  bash: 60
+  dash: 40
+  daggers: 90
+  chad: 120
+  nullify: 120
+  itemlock: 120
+  storm: 120
+  heartdrainer: 120
+  circle: 120
+  beam: 120
+  void: 120
+  fireball: 180
+  overdrive: 180
+  cozy: 180
+  amp: 240
+  richrush: 300
+  bounty: 35
+
+# The Signal / Relay finale — adjustable defaults.
+turmoil:
+  redsky:
+    enabled: true
+    time: 12800
+    rain: false
+    overlay: false
+  passive:
+    range: 24.0
+    speed: 1.25
+    damage: 4.0
+    cooldown-ticks: 20
+  night:
+    armor: true
+    damage-multiplier: 2.0
+  broadcast:
+    message: "Spawn."
+
+finale:
+  gather-radius: 80.0
+  pedestal:
+    distance: 6.0
+    reach: 4.0
+    timeout-seconds: 0 # 0 = voluntary drops only; never auto-take gems
+  dome:
+    enabled: true
+    radius: 8.0
+  web:
+    radius: 3.2
+  sky:
+    time: 12600
+    rain: true
+    during-battle: false
+  overlay:
+    enabled: true
+    style: gold
+    frame-ticks: 4
+  sparkles: true
+  flash:
+    enabled: false # requires matching resource-pack glyph
+    glyph: "\uE120"
+    color: "#5A3A1C"
+    hold-ticks: 2
+    fade-ticks: 10
+  kit:
+    enabled: true
+    protection: 3
+    sharpness: 3

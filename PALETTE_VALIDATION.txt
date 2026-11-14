@@ -1,0 +1,7 @@
+PASS: all 572 model elements, dimensions, faces, UVs and geometry are unchanged; only texture bindings differ.
+PASS: three 16x16 RGBA textures contain the exact requested palette colors.
+PASS: only the fallback dust color section changed in Java; all gameplay, animation and config are byte-identical.
+PASS: original pack assets, item definitions, font registration, shaders and integration paths are unchanged.
+PASS: new model texture references resolve; all JSON parses.
+BUILD: Maven package succeeded with real Paper 1.21.11 dependencies / Java 21.
+UNVERIFIED: Minecraft client rendering, multiplayer testing and server deployment. No gameplay tests were run.

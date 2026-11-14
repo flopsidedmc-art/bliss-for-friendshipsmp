@@ -1,0 +1,8 @@
+PASS: config.yml and plugin.yml parse; charge defaults and original Rewind window present.
+PASS: all resource-pack JSON and pack.mcmeta parse.
+PASS: every supplied resource-pack asset is byte-for-byte unchanged.
+PASS: only the five intended existing Java classes changed; TemporalFlow and TemporalDomain are new.
+PASS: compiled JAR CRCs, version, new classes and bundled config verified.
+PASS: both new flat item models have nonempty geometry and legal element bounds.
+BUILD: Maven clean package SUCCESS, real Paper API and Java 21.
+TESTS: Maven reports No tests to run. No Minecraft server or multiplayer execution.
