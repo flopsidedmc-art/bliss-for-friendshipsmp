@@ -183,6 +183,7 @@ mythics:
         duration-seconds: 8 # server ticks; hard safety maximum 20 seconds
         capture-radius: 10.0
         max-opponents: 8
+        allow-solo: false # TESTING ONLY: true lets the caster open the domain with no opponent nearby
         max-sessions: 4 # hard limit 8; spatially isolated cells 1024 blocks apart
         world: soulbound_temporal_void # must be new, or marked as owned by this plugin
         fallback-world: '' # empty = first non-domain world; used if original world/position is unavailable

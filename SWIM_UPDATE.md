@@ -56,6 +56,18 @@ All under `mythics.relay.temporal.divinity`. Existing live configs get the new k
 | `duration-seconds` | 8 (was 5) | |
 | `flight-speed` | removed | No longer read. A leftover key in an old config is harmless |
 
+## Testing alone
+
+Divinity normally refuses to open without an opponent in range. To try the swimming on your own, set these under `mythics.relay.temporal` in the plugin's `config.yml`, then restart the server or run `/blissop reloadconfig`:
+
+| Key | Test value | Normal value |
+|---|---|---|
+| `divinity.allow-solo` | `true` | `false` |
+| `divinity.required-charge` | `1` | `100` |
+| `charge.allow-mobs` | `true` | `false` |
+
+Give yourself the gem with `/blissop mythic relay`, hold it in your main hand, punch any mob once to gain charge, then sneak + right-click. Set the three values back before real play. A solo domain has nobody to capture, so it tests the caster side only.
+
 ## Trade-offs and known limits
 
 - **Input lag equals ping.** The caster's movement is server-driven, so each key press takes one round trip to take effect. This is inherent to swimming without native flight on a vanilla client. It should feel fine at normal pings and floaty at high ping; raising `swim-acceleration` makes it snappier.

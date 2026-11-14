@@ -116,7 +116,8 @@ final class TemporalDomain implements Listener {
                 && (p.getGameMode()==GameMode.SURVIVAL||p.getGameMode()==GameMode.ADVENTURE))
             .sorted(Comparator.comparingDouble(p->p.getLocation().distanceSquared(owner.getLocation())))
             .limit(Math.max(1,Math.min(16,(int)cfg("max-opponents",8)))).forEach(players::add);
-        if(players.size()<2) { owner.sendMessage("§dTemporal Divinity needs a nearby opponent.");return false; }
+        // allow-solo is a testing aid (default off): lets one player open an empty domain to try the swimming.
+        if(players.size()<2 && !plugin.getConfig().getBoolean("mythics.relay.temporal.divinity.allow-solo",false)) { owner.sendMessage("§dTemporal Divinity needs a nearby opponent.");return false; }
         Session session=new Session();session.owner=owner.getUniqueId();session.slot=slot;
         try {
             World w=getSky();
