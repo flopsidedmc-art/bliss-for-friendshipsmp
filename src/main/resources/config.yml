@@ -218,6 +218,16 @@ mythics:
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 
+# Fire gem Fireball (T2 power): left-click to start charging, left-click again to launch.
+fire:
+  fireball:
+    charge-bossbar: true # show the charge as a bossbar while charging
+    explode: true # false = old behaviour (direct hit and fire only, no explosion)
+    explosion-power-min: 1.0 # at the weakest charge that still fires; a ghast fireball is 1.0
+    explosion-power-max: 3.0 # at full charge; TNT is 4.0, hard limit 8.0
+    break-blocks: true # false = damage and knockback only, terrain untouched
+    set-fire: true # the blast leaves fire behind
+
 # Astra Daggers (T2) — hovering semi-circle, fire on left-click
 astra:
   dagger-speed: 3.0 # blocks per tick

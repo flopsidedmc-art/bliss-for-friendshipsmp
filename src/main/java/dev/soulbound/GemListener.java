@@ -88,6 +88,11 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> cozyCooldown = new HashMap<>();
     private final Map<UUID, FireCamp> campfires = new HashMap<>();
     private final Map<UUID, UUID> fireballOwner = new HashMap<>();
+    /** Explosion power carried by each launched Fireball, set from its charge level. */
+    private final Map<UUID, Float> fireballPower = new HashMap<>();
+    private final Map<UUID, net.kyori.adventure.bossbar.BossBar> fireballBars = new HashMap<>();
+    /** Set only while a Fireball's own explosion is being resolved, so its owner takes no blast damage. */
+    private UUID fireballBlastOwner;
 
     /** Which player launched a tracked fireball, or null. */
     UUID fireballOwnerOf(UUID projectileId) {
@@ -1279,17 +1284,13 @@ public class GemListener implements Listener {
             fireballChargeStart.put(id, System.currentTimeMillis());
             p.sendMessage(ChatColor.GOLD + "Fireball charging... left-click again to unleash.");
             p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_AMBIENT, 1, 1);
+            showFireballBar(p);
             return;
         }
         long elapsed = System.currentTimeMillis() - started;
         fireballChargeStart.remove(id);
-        boolean onFireBlock = isOnFireThemedBlock(p);
-        double fullMs = onFireBlock ? 1500.0 : 3000.0;
-        double level = Math.min(1.0, elapsed / fullMs);
-        if (!onFireBlock && elapsed > 8000) {
-            // overcharge decay when not on fire blocks
-            level = Math.max(0.3, 1.0 - ((elapsed - 8000) / 5000.0));
-        }
+        hideFireballBar(p);
+        double level = fireballLevel(p, elapsed);
         if (level < 0.15) {
             p.sendMessage(ChatColor.GRAY + "Fireball fizzled (too quick). Hold the charge a little longer.");
             return;
@@ -1298,10 +1299,111 @@ public class GemListener implements Listener {
         fb.setYield((float) (1.0 + level * 2.0));
         fb.setIsIncendiary(true);
         fireballOwner.put(fb.getUniqueId(), id);
+        if (plugin.getConfig().getBoolean("fire.fireball.explode", true)) {
+            double min = Math.max(0.0, plugin.getConfig().getDouble("fire.fireball.explosion-power-min", 1.0));
+            double max = Math.max(min, Math.min(8.0, plugin.getConfig().getDouble("fire.fireball.explosion-power-max", 3.0)));
+            fireballPower.put(fb.getUniqueId(), (float) (min + (max - min) * level));
+        }
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1, 1);
         used(p, "Fireball");
         long rem = remain(powerCooldown, id);
         if (rem <= 0) powerCooldown.put(id, System.currentTimeMillis() + cooldownMs("fireball", energy));
+    }
+
+    /** Charge level 0..1 after holding for {@code elapsed} ms. Shared by the bossbar and the release. */
+    private double fireballLevel(Player p, long elapsed) {
+        boolean onFireBlock = isOnFireThemedBlock(p);
+        double fullMs = onFireBlock ? 1500.0 : 3000.0;
+        double level = Math.min(1.0, elapsed / fullMs);
+        if (!onFireBlock && elapsed > 8000) {
+            // overcharge decay when not on fire blocks
+            level = Math.max(0.3, 1.0 - ((elapsed - 8000) / 5000.0));
+        }
+        return level;
+    }
+
+    /** Bossbar that tracks the Fireball charge until it is released, or the player quits or dies. */
+    private void showFireballBar(Player p) {
+        if (!plugin.getConfig().getBoolean("fire.fireball.charge-bossbar", true)) return;
+        UUID id = p.getUniqueId();
+        hideFireballBar(p);
+        var bar = net.kyori.adventure.bossbar.BossBar.bossBar(Component.empty(), 0f,
+                net.kyori.adventure.bossbar.BossBar.Color.YELLOW, net.kyori.adventure.bossbar.BossBar.Overlay.PROGRESS);
+        fireballBars.put(id, bar);
+        p.showBossBar(bar);
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override public void run() {
+                Long started = fireballChargeStart.get(id);
+                if (started == null || !p.isOnline() || fireballBars.get(id) != bar) {
+                    p.hideBossBar(bar);
+                    fireballBars.remove(id, bar);
+                    cancel();
+                    return;
+                }
+                long elapsed = System.currentTimeMillis() - started;
+                double level = fireballLevel(p, elapsed);
+                int percent = (int) Math.round(level * 100);
+                boolean fading = level < 1.0 && elapsed > 8000;
+                bar.progress((float) Math.max(0.0, Math.min(1.0, level)));
+                if (level < 0.15) {
+                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.WHITE);
+                    bar.name(Component.text("Fireball charging " + percent + "% (too weak to fire)",
+                            net.kyori.adventure.text.format.NamedTextColor.GRAY));
+                } else if (level >= 1.0) {
+                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.RED);
+                    bar.name(Component.text("Fireball FULLY CHARGED - left-click to unleash",
+                            net.kyori.adventure.text.format.NamedTextColor.RED));
+                } else {
+                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW);
+                    bar.name(Component.text((fading ? "Fireball fading " : "Fireball charging ") + percent + "%",
+                            net.kyori.adventure.text.format.NamedTextColor.GOLD));
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void hideFireballBar(Player p) {
+        var bar = fireballBars.remove(p.getUniqueId());
+        if (bar != null) p.hideBossBar(bar);
+    }
+
+    /** A charged Fireball explodes where it lands; power was fixed at launch from the charge level. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFireballImpact(org.bukkit.event.entity.ProjectileHitEvent e) {
+        UUID projectileId = e.getEntity().getUniqueId();
+        Float power = fireballPower.remove(projectileId);
+        UUID owner = fireballOwner.get(projectileId);
+        // Forget the projectile once this tick's direct-hit damage has been handled.
+        if (owner != null) Bukkit.getScheduler().runTask(plugin, () -> fireballOwner.remove(projectileId));
+        if (power == null || power <= 0f) return;
+        boolean setFire = plugin.getConfig().getBoolean("fire.fireball.set-fire", true);
+        boolean breakBlocks = plugin.getConfig().getBoolean("fire.fireball.break-blocks", true);
+        fireballBlastOwner = owner;
+        try {
+            e.getEntity().getWorld().createExplosion(e.getEntity().getLocation(), power, setFire, breakBlocks, e.getEntity());
+        } finally {
+            fireballBlastOwner = null;
+        }
+    }
+
+    /** Fireball keeps its "no self damage" rule for the blast as well as the direct hit. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onOwnFireballBlast(EntityDamageEvent e) {
+        if (fireballBlastOwner == null || !fireballBlastOwner.equals(e.getEntity().getUniqueId())) return;
+        if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onFireballChargeQuit(PlayerQuitEvent e) {
+        fireballChargeStart.remove(e.getPlayer().getUniqueId());
+        hideFireballBar(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onFireballChargeDeath(PlayerDeathEvent e) {
+        fireballChargeStart.remove(e.getEntity().getUniqueId());
+        hideFireballBar(e.getEntity());
     }
 
     private boolean isOnFireThemedBlock(Material m) {
