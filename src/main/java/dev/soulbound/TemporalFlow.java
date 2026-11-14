@@ -47,6 +47,9 @@ final class TemporalFlow implements org.bukkit.event.Listener {
         if(fields.size()>=Math.max(1,(int)cfg("dilate.max-fields",8))) return false;
         removeOwner(p.getUniqueId());
         Field f=new Field(); f.owner=p.getUniqueId(); f.center=p.getLocation().clone();
+        // Display entities take their rotation from the spawn location, so the caster's look
+        // direction would tilt the clock. Zero it: the ring always lies flat.
+        f.center.setYaw(0); f.center.setPitch(0);
         f.radius=Math.max(1,Math.min(48,cfg("dilate.radius",10)));
         f.duration=Math.max(1,Math.min(2400,(long)(cfg("dilate.duration-seconds",8)*20)));
         fields.add(f);
