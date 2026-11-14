@@ -180,7 +180,7 @@ mythics:
       divinity:
         required-charge: 100
         cooldown-seconds: 90
-        duration-seconds: 5 # server ticks; hard safety maximum 20 seconds
+        duration-seconds: 8 # server ticks; hard safety maximum 20 seconds
         capture-radius: 10.0
         max-opponents: 8
         max-sessions: 4 # hard limit 8; spatially isolated cells 1024 blocks apart
@@ -189,8 +189,16 @@ mythics:
         altitude: 160 # clamped to legal world height
         boundary-radius: 48.0 # ends the session if a participant leaves this sphere
         enemy-scale: 0.15
-        downward-drift: 0.06 # blocks/tick; downward, never levitation/hover
-        flight-speed: 0.10 # native caster flight, clamped 0.02..0.50
+        # Captured opponents: suspended, no controller. They sink at this rate and cannot rise or steer.
+        downward-drift: 0.06 # blocks/tick, clamped 0.005..0.5; at least 0.035 while server.properties allow-flight=false (vanilla hover kick)
+        enemy-horizontal-damping: 0.5 # 0..1 share of an opponent's sideways momentum (knockback) removed every tick
+        # Caster only: air-swimming (replaces native flight). W/S follow where you look, A/D strafe,
+        # jump rises, sneak dives (after sneak is released once from casting), sprint surges forward.
+        swim-speed: 0.38 # blocks/tick top speed (7.6 blocks/s), clamped 0.05..1.0
+        swim-sprint-multiplier: 1.5 # forward sprint, clamped 1..2
+        swim-acceleration: 0.14 # 0.02..1 share of the gap to the wanted velocity closed per tick; lower = heavier, 1 = instant
+        swim-drag: 0.86 # 0..0.98 speed kept per tick with no input; lower stops sooner
+        swim-stroke: 0.10 # 0..0.4 rhythmic surge while swimming; 0 = perfectly even speed
         attack-speed-multiplier: 5.0
         minimum-hit-interval-ticks: 4
         hurt-window-ticks: 2 # restored to each target's original value on exit

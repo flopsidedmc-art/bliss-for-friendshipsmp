@@ -17,7 +17,11 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-/** Journaled, all-or-rollback domain entry. Duration advances only on server ticks. */
+/**
+ * Journaled, all-or-rollback domain entry. Duration advances only on server ticks.
+ * Movement: only the session owner gets the AirSwim controller (free 3D air-swimming); every
+ * captured opponent is suspended with gravity off and is re-pinned to a slow downward drift each tick.
+ */
 final class TemporalDomain implements Listener {
     private final SoulboundGemsPlugin plugin;
     private final TemporalFlow flow;
@@ -34,6 +38,7 @@ final class TemporalDomain implements Listener {
     private static final class Session {
         UUID owner; Set<UUID> ids=new HashSet<>(); Location center; int remaining; int slot;
         Set<org.bukkit.Chunk> chunks=new HashSet<>();
+        final AirSwim swim=new AirSwim(); // caster only; opponents never get a controller
     }
     private static final class Saved {
         String world; double x,y,z; float yaw,pitch,fall,flySpeed; Vector velocity;
@@ -65,6 +70,12 @@ final class TemporalDomain implements Listener {
         }
     }
     private double cfg(String k,double d) { return plugin.getConfig().getDouble("mythics.relay.temporal.divinity."+k,d); }
+    private double boundary() { return Math.max(8,Math.min(64,cfg("boundary-radius",48))); }
+    private AirSwim.Tuning swimTuning() {
+        return new AirSwim.Tuning(cfg("swim-speed",0.38),cfg("swim-sprint-multiplier",1.5),cfg("swim-acceleration",0.14),cfg("swim-drag",0.86),cfg("swim-stroke",0.10));
+    }
+    /** Vanilla kicks a non-flying player who hovers for 80 ticks unless the server allows flight, so the drift must stay a real descent. */
+    private double drift() { return Math.max(Bukkit.getAllowFlight()?0.005:0.035,Math.min(0.5,cfg("downward-drift",0.06))); }
     boolean contains(UUID id) { return members.containsKey(id)||pending.containsKey(id); }
     private String worldName() { return plugin.getConfig().getString("mythics.relay.temporal.divinity.world","soulbound_temporal_void"); }
     private World getSky() throws IOException {
@@ -111,7 +122,7 @@ final class TemporalDomain implements Listener {
             World w=getSky();
             double y=Math.max(w.getMinHeight()+64,Math.min(w.getMaxHeight()-48,cfg("altitude",160)));
             session.center=new Location(w,slot*1024.0,y,0);
-            session.remaining=Math.max(1,Math.min(400,(int)(cfg("duration-seconds",5)*20)));
+            session.remaining=Math.max(1,Math.min(400,(int)(cfg("duration-seconds",8)*20)));
             for(int cx=-2;cx<=2;cx++)for(int cz=-2;cz<=2;cz++) {
                 var c=w.getChunkAt((session.center.getBlockX()>>4)+cx,cz);
                 if(!c.load())throw new IOException("Domain chunk failed to load");
@@ -126,10 +137,13 @@ final class TemporalDomain implements Listener {
                 Location destination=session.center.clone().add(offset);destination.setYaw(p.getLocation().getYaw());destination.setPitch(p.getLocation().getPitch());
                 if(!teleport(p,destination))throw new IOException("Entry teleport cancelled for "+p.getName());
                 p.setFallDistance(0);p.setVelocity(new Vector());p.setCollidable(false);
+                if(p.isGliding())p.setGliding(false);
                 p.playSound(p.getLocation(),Sound.BLOCK_PORTAL_TRAVEL,0.35f,1.7f);
                 p.getWorld().spawnParticle(Particle.REVERSE_PORTAL,p.getLocation().add(0,1,0),18,0.3,0.5,0.3,0.02);
                 if(p.equals(owner)) {
-                    p.setAllowFlight(true);p.setFlying(true);p.setFlySpeed((float)Math.max(0.02,Math.min(0.5,cfg("flight-speed",0.1))));
+                    // Air-swimming, not native flight: gravity off, AirSwim drives velocity every tick (see tick()).
+                    // allowFlight only stops vanilla's anti-hover kick; actually toggling flight is cancelled in flight().
+                    p.setFlying(false);p.setAllowFlight(true);p.setGravity(false);
                     AttributeInstance a=p.getAttribute(Attribute.ATTACK_SPEED);
                     if(a!=null) { if(a.getModifier(attackKey)!=null)a.removeModifier(attackKey);
                         a.addTransientModifier(new AttributeModifier(attackKey,Math.max(0,cfg("attack-speed-multiplier",5)-1),AttributeModifier.Operation.MULTIPLY_SCALAR_1)); }
@@ -139,7 +153,7 @@ final class TemporalDomain implements Listener {
                     p.setMaximumNoDamageTicks(Math.max(0,Math.min(20,(int)cfg("hurt-window-ticks",2))));p.setNoDamageTicks(0);
                 }
             }
-            flow.domain(session.owner,session.center,Math.max(8,Math.min(64,cfg("boundary-radius",48))),cfg("enemy-scale",0.15));
+            flow.domain(session.owner,session.center,boundary(),cfg("enemy-scale",0.15));
             return true;
         } catch(Exception ex) {
             plugin.getLogger().warning("Temporal Divinity entry rolled back: "+ex.getMessage());
@@ -158,11 +172,23 @@ final class TemporalDomain implements Listener {
             for(UUID id:s.ids) {
                 Player p=Bukkit.getPlayer(id);
                 if(p==null || p.isDead() || !p.getWorld().equals(s.center.getWorld()) || p.getGameMode()==GameMode.SPECTATOR
-                    || p.getLocation().distanceSquared(s.center)>cfg("boundary-radius",48)*cfg("boundary-radius",48)) {invalid=true;break;}
+                    || p.getLocation().distanceSquared(s.center)>boundary()*boundary()) {invalid=true;break;}
                 p.setFallDistance(0);
-                if(!id.equals(s.owner)) {
-                    Vector v=p.getVelocity();
-                    v.setY(-Math.max(0.005,Math.min(0.5,cfg("downward-drift",0.06))));p.setVelocity(v);
+                // Re-assert the movement state every tick: other abilities (Puff double jump, Astral Projection) and
+                // other plugins can flip these flags mid-session, and an opponent must never end up able to fly.
+                if(p.isFlying())p.setFlying(false);
+                if(p.getAllowFlight()!=id.equals(s.owner))p.setAllowFlight(id.equals(s.owner));
+                if(p.hasGravity())p.setGravity(false);
+                if(p.isGliding())p.setGliding(false);
+                if(id.equals(s.owner)) {
+                    Input in=p.getCurrentInput();Location at=p.getLocation();
+                    p.setVelocity(s.swim.step(swimTuning(),at.getYaw(),at.getPitch(),in.isForward(),in.isBackward(),in.isLeft(),in.isRight(),
+                        in.isJump(),in.isSneak(),in.isSprint()||p.isSprinting(),at.toVector().subtract(s.center.toVector()),boundary()));
+                } else {
+                    // No controller and no input is read: sideways momentum (knockback) is bled off and the fall is
+                    // re-pinned every tick, so jumping, sprinting or strafing cannot build speed or gain height.
+                    Vector v=p.getVelocity();double keep=1-AirSwim.bound(cfg("enemy-horizontal-damping",0.5),0,1);
+                    v.setX(v.getX()*keep);v.setZ(v.getZ()*keep);v.setY(-drift());p.setVelocity(v);
                 }
             }
             if(invalid)finish(s);
@@ -287,6 +313,14 @@ final class TemporalDomain implements Listener {
     @EventHandler(ignoreCancelled=true) public void place(BlockPlaceEvent e) {if(e.getBlock().getWorld().getName().equals(worldName()))e.setCancelled(true);}
     @EventHandler(ignoreCancelled=true) public void bucket(PlayerBucketEmptyEvent e) {if(e.getPlayer().getWorld().getName().equals(worldName()))e.setCancelled(true);}
     @EventHandler(ignoreCancelled=true) public void spawn(CreatureSpawnEvent e) {if(e.getLocation().getWorld().getName().equals(worldName()))e.setCancelled(true);}
+    /** Nobody in a domain uses native flight: the caster air-swims instead, opponents stay suspended. */
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void flight(PlayerToggleFlightEvent e) {
+        if(e.isFlying() && members.containsKey(e.getPlayer().getUniqueId()))e.setCancelled(true);
+    }
+    /** An elytra would otherwise let a captured player glide out of the boundary and end the session. */
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void glide(EntityToggleGlideEvent e) {
+        if(e.isGliding() && members.containsKey(e.getEntity().getUniqueId()))e.setCancelled(true);
+    }
     @EventHandler(ignoreCancelled=true) public void mode(PlayerGameModeChangeEvent e) {Session s=members.get(e.getPlayer().getUniqueId());if(s!=null)finish(s);}
     void shutdown() {for(Session s:new HashSet<>(members.values()))finish(s);for(UUID id:new HashSet<>(pending.keySet())){Player p=Bukkit.getPlayer(id);if(p!=null&&!p.isDead())restore(p);}saveJournal();}
 }

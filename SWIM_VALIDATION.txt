@@ -1,0 +1,13 @@
+Temporal Divinity air-swimming rework — validation
+
+PASS: baseline (supplied source, untouched) builds with mvn clean package before any edit.
+PASS: only TemporalDomain.java changed among existing Java classes; AirSwim.java is new; no other main class differs from the supplied source.
+PASS: Player#getCurrentInput, org.bukkit.Input, PlayerToggleFlightEvent and EntityToggleGlideEvent confirmed present by javap in paper-api 1.21.11-R0.1-SNAPSHOT. No API method was assumed.
+PASS: built JAR contains AirSwim.class and AirSwim$Tuning.class; contains no JUnit classes and no test classes.
+PASS: plugin.yml in the JAR is byte-identical to the supplied plugin.yml (commands, permissions, version unchanged).
+PASS: bundled config.yml parses; the only differences from the supplied config are inside mythics.relay.temporal.divinity.
+PASS: Relay-Temporal-Pack.zip is byte-identical to the supplied pack (sha256 d52131bb...36e6). No resource-pack asset, palette or model changed.
+PASS: recovery journal format (TemporalDomain.Saved read/write) is unchanged; journals written by the previous build still load.
+BUILD: Maven clean package SUCCESS, real Paper 1.21.11 API, Java 21. See SWIM_BUILD.log.
+TESTS: 9 JUnit tests of the AirSwim maths, 0 failures. These test arithmetic, not Minecraft.
+UNVERIFIED: everything that needs a running game. No Minecraft server was started and no client connected. Movement feel, opponent suspension, kick safety, return/recovery, multiplayer and anti-cheat behaviour are untested. See SWIM_UPDATE.md for the full list.
