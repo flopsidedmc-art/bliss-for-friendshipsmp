@@ -964,7 +964,7 @@ public class GemListener implements Listener {
             useNullify(p, energy);
             return;
         }
-        if (left && type != GemType.FIRE && type != GemType.WEALTH && type != GemType.PUFF && type != GemType.ASTRA && type != GemType.LIFE && type != GemType.FLUX && type != GemType.SPEED) return;
+        if (left && type != GemType.FIRE && type != GemType.WEALTH && type != GemType.PUFF && type != GemType.ASTRA && type != GemType.LIFE && type != GemType.FLUX) return;
 
         // Strength routing on RIGHT click: abilities are offhand-only, so main-hand
         // gem + head only hints. Chad Strength (power) works from the main hand.
@@ -1035,17 +1035,11 @@ public class GemListener implements Listener {
             return;
         }
 
-        // Speed routing: Blur [Left-click] + Speedy Storm [Right-click] (T2 powers). Thunderstep is offhand-only.
+        // Speed routing: Speedy Storm [Right-click] (T2 power). Blur is a melee hit with the gem (see onHit);
+        // Thunderstep is offhand-only.
         if (type == GemType.SPEED) {
             if (tier < 2) {
                 // Silenced — no chat spam
-                return;
-            }
-            if (left) {
-                // A left-click that lands on someone is a hit and reaches Blur through the hit handler;
-                // this covers a left-click in the open, aimed at an untrusted player in range.
-                Player aimed = aimPlayerWithin(p, 10);
-                if (aimed != null && !isTrusted(p, aimed)) useBlur(p, aimed, energy);
                 return;
             }
             if (!right) return;
@@ -2005,7 +1999,7 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Blur [Left-click, or any hit]: clones of self appear around the victim and attack. */
+    /** Blur [melee hit with the gem]: clones of self appear around the victim and attack. */
     private void useBlur(Player p, LivingEntity victim, int energy) {
         if (cdRemain(p, "blur") > 0) return;
         cdStart(p, "blur", cooldownMs("blur", energy));
@@ -2874,10 +2868,15 @@ public class GemListener implements Listener {
             return;
         }
         if (gtype == GemType.SPEED) {
-            // Blur [Left-click / Hit] T2: clones appear around the victim and attack
-            if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
+            // Blur T2: melee only, and only when the hit is made with the Speed gem itself in the main hand
+            // (a sword hit with the gem in the offhand does not count). Clones appear around the victim.
+            ItemStack striking = p.getInventory().getItemInMainHand();
+            boolean melee = e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK
+                    || e.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK;
+            if (melee && gems.isGem(striking) && gems.getType(striking) == GemType.SPEED
+                    && gems.getTier(striking) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(striking))
                     && e.getEntity() instanceof LivingEntity le) {
-                useBlur(p, le, gems.getEnergy(gem));
+                useBlur(p, le, gems.getEnergy(striking));
             }
             return;
         }

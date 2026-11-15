@@ -5,7 +5,7 @@
 - `GemListener.java`: Fireball's cooldown is now enforced. It was displayed but never checked, so the Fireball could be fired again immediately.
 - `GemListener.java`: a Kinetic Burst that fails for lack of charge no longer costs its cooldown (the code cleared the wrong timer).
 - Speed gem: Speedy Storm now holds 3 charges, each recharging on its own (`abilities.storm.charges`, recharge time from `cooldowns.storm`); Thunderstep has an ordinary cooldown (`cooldowns.thunderstep`). These were the other way round.
-- Speed gem: Blur is now the left-click power, shown on the bar with the injection icon and its own cooldown (`cooldowns.blur`, 15s as before). Hitting someone still triggers it; a left-click in the open triggers it on an untrusted player you are aiming at within 10 blocks. Added to `/config`.
+- Speed gem: Blur is now the left-click power, shown on the bar with the injection icon and its own cooldown (`cooldowns.blur`, 15s as before). It is melee only: it triggers when you hit something with the Speed gem itself in your main hand. A sword hit with the gem in the offhand no longer triggers it. Added to `/config`.
 - `ChargePools.java`: reading a pool for a player who had never used the ability threw a NullPointerException; fixed.
 - `config.yml`: `actionbar.glyphs` replaced by `actionbar.icons` (`left`, `right`, `ability` per gem). The old `glyphs` keys in an existing config are ignored.
 - Compiled only; not run in a game.
