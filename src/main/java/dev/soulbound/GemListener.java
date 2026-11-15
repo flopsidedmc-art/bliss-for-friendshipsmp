@@ -487,8 +487,8 @@ public class GemListener implements Listener {
                 bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "crisp"), false));
             }
             case SPEED -> {
-                if (t2) bar.add(hudEntry(icon(type, "right"), cdRemain(p, "storm"), isLiveStorm(id, now)));
-                bar.add("§f" + icon(type, "ability") + " " + ChargePools.hud(plugin, p, "thunderstep"));
+                if (t2) bar.add("§f" + icon(type, "right") + " " + ChargePools.hud(plugin, p, "storm"));
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "thunderstep"), false));
             }
             case WEALTH -> {
                 if (t2) {
@@ -1040,9 +1040,8 @@ public class GemListener implements Listener {
                 return;
             }
             if (!right) return;
-            long rem = cdRemain(p, "storm");
-            if (rem > 0) { /* Silenced */ return; }
-            cdStart(p, "storm", cooldownMs("storm", energy));
+            // Speedy Storm holds several charges, each recharging on its own.
+            if (!ChargePools.tryUse(plugin, p, "storm")) { /* Silenced */ return; }
             useSpeedyStorm(p, energy);
             return;
         }
@@ -1190,12 +1189,10 @@ public class GemListener implements Listener {
             return;
         }
         if (type == GemType.SPEED) {
-            // Thunderstep uses a 3-charge pool (showcase HUD style) instead of a flat cooldown.
-            if (!ChargePools.tryUse(plugin, p, "thunderstep")) {
-                long in = ChargePools.nextRefillIn(plugin, p, "thunderstep");
-                p.sendActionBar(Component.text("Thunderstep " + (in / 1000) + "s…", net.kyori.adventure.text.format.NamedTextColor.GRAY));
-                return;
-            }
+            // Thunderstep has an ordinary cooldown; the charge pool belongs to Speedy Storm.
+            long rem = cdRemain(p, "thunderstep");
+            if (rem > 0) { /* Silenced */ return; }
+            cdStart(p, "thunderstep", cooldownMs("thunderstep", energy));
             useThunderstep(p, energy);
             return;
         }
@@ -1936,9 +1933,6 @@ public class GemListener implements Listener {
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 1);
         p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 40, 0.5, 1, 0.5, 0.2);
         used(p, "Thunderstep");
-        // charge readout (showcase style: "2/3 · 15s")
-        p.sendActionBar(Component.text("⚡ " + ChargePools.hud(plugin, p, "thunderstep"),
-                net.kyori.adventure.text.format.NamedTextColor.AQUA));
     }
 
     private Player aimPlayerWithin(Player p, double maxDist) {
@@ -1957,13 +1951,13 @@ public class GemListener implements Listener {
 
     /** Speedy Storm [Right Click]: summon up to 3 cloud projectiles that create AoE zones. */
     private void useSpeedyStorm(Player p, int energy) {
-        int cloudsLeft = 3;
         storms.put(p.getUniqueId(), new SpeedStorm(p.getLocation().clone(), System.currentTimeMillis() + 30_000L, 8));
         stormLastStrike.put(p.getUniqueId(), 0L);
         // Store cloud count in a field so subsequent clicks can summon more
         p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 600, 1, true, false, false));
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 1.2f);
-        p.sendMessage(ChatColor.AQUA + "Speedy Storm: 3 clouds ready. Right-click to summon.");
+        p.sendMessage(ChatColor.AQUA + "Speedy Storm unleashed. Charges left: "
+                + ChargePools.available(plugin, p, "storm") + "/" + ChargePools.maxCharges(plugin, "storm") + ".");
         used(p, "Speedy Storm");
     }
 

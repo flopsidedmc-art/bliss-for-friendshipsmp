@@ -9,23 +9,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Charge pools for standard-gem abilities (showcase: Thunderstep slot shows
- * "1/3 16s" — a charge fraction AND the seconds until the next recharge).
+ * Charge pools for standard-gem abilities that hold several uses. Speedy Storm is the one
+ * ability using a pool; its HUD slot shows "2/3 16s": charges left and seconds to the next one.
  *
- * Design mirrors SpeedStormPatch (ring buffer of last-use timestamps):
  *   - tryUse() consumes a charge if one is available
- *   - each charge refills independently, recharge-seconds after use
- *   - hud() renders the segment: "<green>N/3</green> <aqua>16s</aqua>"
+ *   - each charge refills independently, recharge-seconds after it was used
+ *   - hud() renders the HUD segment
  *
- * Wire-up (GemListener):
- *   - at the top of useThunderstep(player):
- *         if (!ChargePools.tryUse(plugin, player, "thunderstep")) {
- *             player.sendMessage(... "No charges, recharging in Xs" ...); return;
- *         }
- *   - in sendActionbar(player, item), when displaying the middle slot for an
- *     ability that has a pool, replace the plain cooldown with:
- *         ChargePools.hud(player, "thunderstep")
- *   - on quit/death: ChargePools.clear(uuid) or leave to expire naturally.
+ * Settings: abilities.<ability>.charges and abilities.<ability>.charge-recharge-seconds.
  */
 public final class ChargePools {
 
@@ -40,11 +31,13 @@ public final class ChargePools {
     }
 
     private static int defaultCharges(String ability) {
-        return "thunderstep".equals(ability) ? 3 : 1;
+        return "storm".equals(ability) ? 3 : 1;
     }
 
     private static long rechargeMs(dev.soulbound.SoulboundGemsPlugin plugin, String ability) {
-        return plugin.getConfig().getInt("abilities." + ability + ".charge-recharge-seconds", 15) * 1000L;
+        // Without an explicit setting, a charge takes as long as that ability's ordinary cooldown.
+        int fallback = plugin.getConfig().getInt("cooldowns." + ability, 15);
+        return Math.max(1, plugin.getConfig().getInt("abilities." + ability + ".charge-recharge-seconds", fallback)) * 1000L;
     }
 
     /** @return true if a charge was consumed. */
@@ -65,7 +58,8 @@ public final class ChargePools {
     }
 
     public static int available(dev.soulbound.SoulboundGemsPlugin plugin, Player player, String ability) {
-        Deque<Long> times = POOLS.get(player.getUniqueId()).get(ability);
+        Map<String, Deque<Long>> mine = POOLS.get(player.getUniqueId());
+        Deque<Long> times = mine == null ? null : mine.get(ability);
         if (times == null) return maxCharges(plugin, ability);
         long now = System.currentTimeMillis();
         long window = rechargeMs(plugin, ability);
@@ -77,7 +71,8 @@ public final class ChargePools {
 
     /** Seconds until the next charge refills, 0 if all are up. */
     public static long nextRefillIn(dev.soulbound.SoulboundGemsPlugin plugin, Player player, String ability) {
-        Deque<Long> times = POOLS.get(player.getUniqueId()).get(ability);
+        Map<String, Deque<Long>> mine = POOLS.get(player.getUniqueId());
+        Deque<Long> times = mine == null ? null : mine.get(ability);
         if (times == null || times.isEmpty()) return 0;
         long window = rechargeMs(plugin, ability);
         return Math.max(0, (times.getFirst() + window - System.currentTimeMillis()) / 1000L);
