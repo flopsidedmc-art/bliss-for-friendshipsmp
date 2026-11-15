@@ -219,6 +219,13 @@ mythics:
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 
+# Flat damage of standard-gem abilities: Crisp, Breezy Bash, Dash, Kinetic Burst and Energy Beam.
+# Their base numbers (4, 6, 5, up to 10, up to 14.5 HP) suit unarmored targets but do under 1 heart
+# through Protection IV diamond, so they are multiplied here. Fireball has its own setting below.
+ability-damage:
+  multiplier: 3.0 # 1.0 = the old damage
+  cap: 40.0 # most one ability hit can deal before armor, bonuses included (about 4 hearts through Prot IV diamond); 0 = no cap
+
 # Fire gem Fireball (T2 power): left-click to start charging, left-click again to launch.
 fire:
   fireball:

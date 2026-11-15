@@ -1,3 +1,9 @@
+# Standard-gem ability damage scaled for armored targets
+
+- `GemListener.java`: the flat damage of Crisp, Breezy Bash (both forms), Dash, Kinetic Burst and Energy Beam is multiplied by `ability-damage.multiplier` (default 3). One ability hit is limited to `ability-damage.cap` (default 40 HP before armor) after the holder's on-hit bonuses such as Overdrive and Ground.
+- Not changed: Fireball (already has `fire.fireball.damage-multiplier`), Astra daggers, Blur clones, Meteor Shower, percentage bonuses (Strength, Frailer, Chad, Overdrive), and all three mythic gems.
+- Compiled only; not run in a game.
+
 # Relay attunement kit — the player's own gear, maxed
 
 - `Finale.java`: the chosen player no longer has their inventory emptied and replaced with a netherite loaner set. They keep everything, and each piece of their own armor, weapons and tools is swapped in place for a temporary copy raised to Protection IV, Sharpness V, Efficiency V, Power V, Unbreaking III and Mending, wherever that enchantment fits the item. Protection and Sharpness replace rival enchantments (Blast Protection, Smite); other clashes are skipped. Gems and the plugin's special items are not touched.

@@ -204,6 +204,33 @@ public class GemListener implements Listener {
         return (long) (base * mult * 1000L);
     }
 
+    /** Above zero only while abilityDamage is dealing its hit, so the cap applies to that hit alone. */
+    private int abilityHits;
+
+    /**
+     * Flat damage from a standard-gem ability (Crisp, Breezy Bash, Dash, Kinetic Burst, Energy Beam).
+     * The base numbers were written for unarmored targets and barely scratch enchanted diamond, so they
+     * are scaled by ability-damage.multiplier; onAbilityDamageCap then limits the total after the
+     * holder's on-hit bonuses (Overdrive, Ground) so no single ability hit can one-shot through armor.
+     */
+    private void abilityDamage(LivingEntity victim, double base, Player source) {
+        double scaled = base * Math.max(0.0, plugin.getConfig().getDouble("ability-damage.multiplier", 3.0));
+        abilityHits++;
+        try {
+            victim.damage(scaled, source);
+        } finally {
+            abilityHits--;
+        }
+    }
+
+    /** Runs after onHit (NORMAL) has applied the holder's bonuses. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onAbilityDamageCap(EntityDamageByEntityEvent e) {
+        if (abilityHits <= 0) return;
+        double cap = plugin.getConfig().getDouble("ability-damage.cap", 40.0);
+        if (cap > 0 && e.getDamage() > cap) e.setDamage(cap);
+    }
+
     /** Milliseconds left on one ability's own cooldown. */
     private long cdRemain(Player p, String ability) {
         Map<String, Long> mine = cooldowns.get(p.getUniqueId());
@@ -1539,11 +1566,11 @@ public class GemListener implements Listener {
         // damage untrusted in area
         for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
             if (e instanceof Player o && !o.getUniqueId().equals(p.getUniqueId()) && !isTrusted(p, o)) {
-                o.damage(4.0, p);
+                abilityDamage(o, 4.0, p);
                 o.setFireTicks(100);
             }
             if (e instanceof LivingEntity le && !(e instanceof Player)) {
-                le.damage(4.0, p);
+                abilityDamage(le, 4.0, p);
                 le.setFireTicks(100);
             }
         }
@@ -2127,7 +2154,7 @@ public class GemListener implements Listener {
             if (!victim.isValid()) return;
             victim.setVelocity(new Vector(0, -2.5, 0));
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (victim.isValid()) victim.damage(6.0, attacker);
+                if (victim.isValid()) abilityDamage(victim, 6.0, attacker);
             }, 10L);
         }, 15L);
         usedOn(attacker, "Breezy Bash", victim.getName());
@@ -2157,7 +2184,7 @@ public class GemListener implements Listener {
             if (!victim.isOnline()) return;
             victim.setVelocity(new Vector(0, -2.5, 0));
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (victim.isOnline()) victim.damage(6.0, p);
+                if (victim.isOnline()) abilityDamage(victim, 6.0, p);
             }, 10L);
         }, 15L);
         p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 40, 2, 1, 2, 0.1);
@@ -2177,7 +2204,7 @@ public class GemListener implements Listener {
                 for (Entity e : p.getNearbyEntities(3, 3, 3)) {
                     if (e.getUniqueId().equals(p.getUniqueId())) continue;
                     if (e instanceof Player o && isTrusted(p, o)) continue;
-                    if (e instanceof LivingEntity le) le.damage(5.0, p);
+                    if (e instanceof LivingEntity le) abilityDamage(le, 5.0, p);
                 }
                 p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 10, 0.3, 0.3, 0.3, 0.05);
             }, i);
@@ -2493,7 +2520,7 @@ public class GemListener implements Listener {
         for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
             if (e instanceof Player o && (o.getUniqueId().equals(p.getUniqueId()) || isTrusted(p, o))) continue;
             if (e instanceof LivingEntity le) {
-                le.damage(dmg, p);
+                abilityDamage(le, dmg, p);
                 Vector away = le.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
                 if (away.lengthSquared() < 0.01) away = p.getLocation().getDirection().setY(0);
                 away.normalize().multiply(1.2 + charge / 60.0);
@@ -2526,7 +2553,7 @@ public class GemListener implements Listener {
             for (Entity e : w.getNearbyEntities(at, 1.5, 1.5, 1.5)) {
                 if (e.getUniqueId().equals(p.getUniqueId())) continue;
                 if (e instanceof Player o && isTrusted(p, o)) continue;
-                if (e instanceof LivingEntity le) le.damage(dmg, p);
+                if (e instanceof LivingEntity le) abilityDamage(le, dmg, p);
             }
         }
         fluxAdd(fluxWatts, p.getUniqueId(), -30);
