@@ -21,7 +21,7 @@
   processing is enabled explicitly (-proc:only, -proc:full).
   Use -Xlint:-options to suppress this message.
   Use -proc:none to disable annotation processing.
-[WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/Finale.java:[954,43] setSize(double,long) in org.bukkit.WorldBorder has been deprecated and marked for removal
+[WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/Finale.java:[1023,43] setSize(double,long) in org.bukkit.WorldBorder has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[101,33] DO_DAYLIGHT_CYCLE in org.bukkit.GameRule has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[101,83] DO_WEATHER_CYCLE in org.bukkit.GameRule has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[102,33] DO_MOB_SPAWNING in org.bukkit.GameRule has been deprecated and marked for removal
@@ -50,7 +50,7 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.192 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.152 s -- in dev.soulbound.AirSwimTest
 [INFO] 
 [INFO] Results:
 [INFO] 
@@ -66,6 +66,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  5.863 s
-[INFO] Finished at: 2026-11-15T13:20:37Z
+[INFO] Total time:  5.166 s
+[INFO] Finished at: 2026-11-15T13:29:34Z
 [INFO] ------------------------------------------------------------------------

@@ -67,7 +67,8 @@ import java.util.UUID;
  *  1. MERGE: once both are placed, the gems rise, orbit faster and collide, a brown spider web closes over
  *     them, and it bursts as the Relay Gem forms (the optional screen flash fires at that exact moment).
  *  2. FLIGHT: the new Relay Gem streaks to the chosen player (the Pantheon leader).
- *  3. BATTLE: that player is loaned a netherite kit (their own inventory is saved to disk and restored after).
+ *  3. BATTLE: that player fights in their own gear, temporarily maxed (Protection IV, Sharpness V, Efficiency V,
+ *     Unbreaking III, Mending). The originals are saved to disk and handed back afterwards.
  *     Everyone fights for the gem. A boss bar "Relay Gem Attunement: N%" fills only while somebody holds the gem,
  *     and a border closes in on the center as it fills. At 100% the border, the kit, and the turmoil all reset.
  */
@@ -756,9 +757,81 @@ public final class Finale implements Listener {
         return it != null && gems.isGem(it) && gems.getType(it) == GemType.RELAY;
     }
 
+    /** What the attunement kit raises each of the player's own pieces to, where the enchantment fits that item. */
+    private static final Map<Enchantment, Integer> MAXED = new java.util.LinkedHashMap<>();
+    static {
+        MAXED.put(Enchantment.PROTECTION, 4);
+        MAXED.put(Enchantment.SHARPNESS, 5);
+        MAXED.put(Enchantment.EFFICIENCY, 5);
+        MAXED.put(Enchantment.POWER, 5);
+        MAXED.put(Enchantment.UNBREAKING, 3);
+        MAXED.put(Enchantment.MENDING, 1);
+    }
+
+    /** Armor, weapons and tools the player owns. Gems and the plugin's special items are never touched. */
+    private boolean isOwnGear(ItemStack it) {
+        return it != null && it.getType() != Material.AIR && it.getType().getMaxDurability() > 0 && it.getAmount() == 1
+                && !gems.isGem(it) && gems.getKind(it) == null && !isKit(it);
+    }
+
+    /** A kit-tagged copy of one of the player's own pieces with everything in MAXED applied. */
+    private ItemStack maxedCopy(ItemStack original) {
+        ItemStack copy = original.clone();
+        ItemMeta m = copy.getItemMeta();
+        for (Map.Entry<Enchantment, Integer> want : MAXED.entrySet()) {
+            Enchantment ench = want.getKey();
+            if (!ench.canEnchantItem(copy)) continue;
+            // Protection and Sharpness replace their rivals (Blast Protection, Smite, ...); anything else
+            // that clashes with what the piece already has (Mending on an Infinity bow) is skipped.
+            boolean replacesRivals = ench.equals(Enchantment.PROTECTION) || ench.equals(Enchantment.SHARPNESS);
+            boolean blocked = false;
+            for (Enchantment had : new ArrayList<>(m.getEnchants().keySet())) {
+                if (had.equals(ench) || !ench.conflictsWith(had)) continue;
+                if (replacesRivals) m.removeEnchant(had);
+                else blocked = true;
+            }
+            if (!blocked && m.getEnchantLevel(ench) < want.getValue()) m.addEnchant(ench, want.getValue(), true);
+        }
+        m.getPersistentDataContainer().set(kitKey, PersistentDataType.BYTE, (byte) 1);
+        copy.setItemMeta(m);
+        return copy;
+    }
+
+    /**
+     * Saves the player's own gear to disk and swaps each piece, in its slot, for a maxed kit copy.
+     * Everything else in the inventory (gems, food, blocks) is left as it is.
+     */
+    private boolean stashGearAndUpgrade(Player p) {
+        PlayerInventory inv = p.getInventory();
+        ItemStack[] contents = inv.getContents();
+        YamlConfiguration y = new YamlConfiguration();
+        y.set("size", contents.length);
+        List<Integer> slots = new ArrayList<>();
+        for (int i = 0; i < contents.length; i++) {
+            if (!isOwnGear(contents[i])) continue;
+            y.set("slot." + i, contents[i]);
+            slots.add(i);
+        }
+        try {
+            y.save(stashFile(p.getUniqueId()));
+        } catch (IOException ex) {
+            plugin.getLogger().warning("Could not stash gear for " + p.getName() + ": " + ex.getMessage());
+            return false;
+        }
+        for (int i : slots) inv.setItem(i, maxedCopy(contents[i]));
+        p.updateInventory();
+        return true;
+    }
+
     private void giveKitAndRelay(Player t, ItemStack relay) {
         PlayerInventory inv = t.getInventory();
-        if (plugin.getConfig().getBoolean("finale.kit.enabled", true) && stashAndClear(t)) {
+        boolean kitEnabled = plugin.getConfig().getBoolean("finale.kit.enabled", true);
+        if (kitEnabled && plugin.getConfig().getBoolean("finale.kit.own-gear", true)) {
+            if (stashGearAndUpgrade(t) && plugin.getConfig().getBoolean("finale.kit.food", true)) {
+                // The inventory is no longer emptied, so the food goes wherever there is room.
+                inv.addItem(kit(Material.GOLDEN_APPLE, 64, null, 0), kit(Material.GOLDEN_CARROT, 64, null, 0));
+            }
+        } else if (kitEnabled && stashAndClear(t)) {
             int prot = cfgI("kit.protection", 3);
             int sharp = cfgI("kit.sharpness", 3);
             inv.setHelmet(kit(Material.NETHERITE_HELMET, 1, Enchantment.PROTECTION, prot));
@@ -806,7 +879,7 @@ public final class Finale implements Listener {
         return true;
     }
 
-    /** Gives a player their saved inventory back. If they already hold other items, the stash is merged in instead. */
+    /** Gives a player their saved items back, each to its original slot if that is free, otherwise wherever fits. */
     private void restoreStash(Player p) {
         File f = stashFile(p.getUniqueId());
         if (!f.exists()) return;
@@ -816,19 +889,14 @@ public final class Finale implements Listener {
         for (int i = 0; i < size; i++) saved[i] = y.getItemStack("slot." + i);
 
         PlayerInventory inv = p.getInventory();
-        boolean empty = true;
-        for (ItemStack it : inv.getContents()) {
-            if (it != null && it.getType() != Material.AIR) {
-                empty = false;
-                break;
-            }
-        }
-        if (empty) {
-            inv.setContents(saved);
-        } else {
-            for (ItemStack it : saved) {
-                if (it == null) continue;
-                for (ItemStack left : inv.addItem(it).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
+        int slots = inv.getContents().length;
+        for (int i = 0; i < size; i++) {
+            if (saved[i] == null) continue;
+            ItemStack there = i < slots ? inv.getItem(i) : null;
+            if (i < slots && (there == null || there.getType() == Material.AIR)) {
+                inv.setItem(i, saved[i]); // back where it was: armor goes straight back on
+            } else {
+                for (ItemStack left : inv.addItem(saved[i]).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
             }
         }
         p.updateInventory();
@@ -842,6 +910,7 @@ public final class Finale implements Listener {
             for (int i = 0; i < contents.length; i++) {
                 if (isKit(contents[i])) inv.setItem(i, null);
             }
+            purgeKit(p.getEnderChest());
             p.updateInventory();
         }
         for (World w : Bukkit.getWorlds()) {
@@ -1101,6 +1170,7 @@ public final class Finale implements Listener {
                 if (p.isOnline() && skyOn) applySky(p);
             }, 10L);
         }
+        if (phase == Phase.IDLE) removeKitFrom(p); // anyone who logged off holding kit copies loses them now
         if (!stashFile(p.getUniqueId()).exists()) return;
         if (phase != Phase.IDLE && p.getUniqueId().equals(target)) return; // still mid-finale: keep the kit
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1117,6 +1187,20 @@ public final class Finale implements Listener {
         for (int i = 0; i < contents.length; i++) {
             if (isKit(contents[i])) inv.setItem(i, null);
         }
+        purgeKit(p.getEnderChest());
+    }
+
+    private void purgeKit(org.bukkit.inventory.Inventory box) {
+        ItemStack[] contents = box.getContents();
+        for (int i = 0; i < contents.length; i++) {
+            if (isKit(contents[i])) box.setItem(i, null);
+        }
+    }
+
+    /** Kit copies hidden in a chest or barrel during the fight vanish the first time it is opened afterwards. */
+    @EventHandler
+    public void onOpenAfterFinale(org.bukkit.event.inventory.InventoryOpenEvent e) {
+        if (phase == Phase.IDLE) purgeKit(e.getInventory());
     }
 
     /** A holder who disconnects drops the Relay where they stand, so the fight goes on. */

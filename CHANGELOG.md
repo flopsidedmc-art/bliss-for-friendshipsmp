@@ -1,3 +1,11 @@
+# Relay attunement kit — the player's own gear, maxed
+
+- `Finale.java`: the chosen player no longer has their inventory emptied and replaced with a netherite loaner set. They keep everything, and each piece of their own armor, weapons and tools is swapped in place for a temporary copy raised to Protection IV, Sharpness V, Efficiency V, Power V, Unbreaking III and Mending, wherever that enchantment fits the item. Protection and Sharpness replace rival enchantments (Blast Protection, Smite); other clashes are skipped. Gems and the plugin's special items are not touched.
+- The originals are saved to disk as before and returned to their own slots when the finale ends, so armor goes straight back on.
+- Temporary copies are removed from ender chests as well as inventories at the end, from anyone who logs back in afterwards, and from any container the first time it is opened after the finale.
+- `config.yml`: `finale.kit.own-gear` (default `true`; `false` restores the old netherite loaner) and `finale.kit.food`.
+- Compiled only; not run in a game.
+
 # Gem action bar icons and separate cooldowns
 
 - `GemListener.java`: the standard-gem action bar now shows one entry per ability, each with that ability's own icon from the Bliss Pack font (fireball, campfire, dagger, projection, heart, rose, fist, arrow, bolt, muscle, giga, clover, money, beam, domain) and the gem's crystal for its offhand ability. It previously showed the same gem crystal twice. Tier 2 gems show left-click power, right-click power and ability; Tier 1 gems show the ability only. The Flux bar no longer repeats the generic tier icon.

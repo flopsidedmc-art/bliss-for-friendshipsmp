@@ -350,5 +350,11 @@ finale:
     fade-ticks: 10
   kit:
     enabled: true
-    protection: 3
-    sharpness: 3
+    # true: the chosen player fights in their own armor, weapons and tools, temporarily raised to
+    #   Protection IV, Sharpness V, Efficiency V, Power V, Unbreaking III and Mending where each fits.
+    #   Their originals are saved and handed back when the finale ends.
+    # false: the old loaner set (unbreakable netherite) with the two levels below; their inventory is emptied for the fight.
+    own-gear: true
+    food: true # also hand out 64 golden apples and 64 golden carrots
+    protection: 3 # loaner set only
+    sharpness: 3 # loaner set only
