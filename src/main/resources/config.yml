@@ -236,6 +236,10 @@ abilities:
     charges: 3
     # Each charge takes cooldowns.storm seconds to come back (also editable in /config).
     # Add "charge-recharge-seconds: <n>" here to override that.
+  blur: # Speed gem, Blur
+    # Blur stays active for as long as you keep landing melee hits on the same target.
+    # It ends if you go this long without hitting them, or as soon as they hit you back.
+    combo-window-seconds: 3.0
 
 # Astra Daggers (T2) — hovering semi-circle, fire on left-click
 astra:
