@@ -18,7 +18,7 @@ public enum GemType {
     SPEED("Speed", "§b", Material.FEATHER, "➶", "☁",
             "Speed 1 + Dolphin's Grace while held. Tools auto-Efficiency, boots Soul Speed.",
             "Thunderstep [offhand right-click]: swap with aimed player (10m) or dash + Speed 4 (5s).",
-            "Powers T2: Blur [Hit] clones attack victim, Speedy Storm [Right-click] lightning zone."),
+            "Powers T2: Blur [Left-click or hit] clones attack victim, Speedy Storm [Right-click] lightning zone, 3 charges."),
     WEALTH("Wealth", "§a", Material.EMERALD, "☘", "$",
             "Luck + Hero of the Village while held. Tools auto-Looting/Fortune/Mending (offhand). Bonus ores, XP, double debris.",
             "Pockets [offhand right-click]: open a 9-slot extra inventory.",

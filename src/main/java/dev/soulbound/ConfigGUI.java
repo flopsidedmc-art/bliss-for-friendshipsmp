@@ -77,6 +77,7 @@ public class ConfigGUI implements Listener {
                     new StdSetting(c + "cozy", Material.CAMPFIRE, "Cozy Campfire", 5, 30, 0, 900),
                     new StdSetting(c + "crisp", Material.NETHERRACK, "Crisp", 5, 30, 0, 900));
             case SPEED -> List.of(
+                    new StdSetting(c + "blur", Material.VEX_SPAWN_EGG, "Blur", 5, 30, 0, 900),
                     new StdSetting(c + "storm", Material.LIGHTNING_ROD, "Speedy Storm", 5, 30, 0, 900),
                     new StdSetting(c + "thunderstep", Material.ENDER_PEARL, "Thunderstep", 5, 30, 0, 900),
                     new StdSetting("passives.speed-level", Material.FEATHER, "Speed Level", 1, 1, 0, 3));

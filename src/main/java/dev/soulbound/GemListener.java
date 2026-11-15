@@ -105,7 +105,6 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> richRushUntil = new HashMap<>();
     private final Map<UUID, Integer> oreCount = new HashMap<>();
     // Speed systems (user-supplied kit). Thunderstep is offhand-right-click only.
-    private final Map<UUID, Long> blurLast = new HashMap<>();
     private final Map<UUID, SpeedStorm> storms = new HashMap<>();
     private final Map<UUID, Long> stormLastStrike = new HashMap<>();
     private final Map<UUID, Long> amplifyCooldown = new HashMap<>();
@@ -177,7 +176,7 @@ public class GemListener implements Listener {
     /** Per-ability base cooldowns (seconds), x1.5 while Cracked/Scratched. */
     private long cooldownMs(String which, int energy) {
         int base = switch (which) {
-            case "crisp", "thunderstep" -> 15;
+            case "crisp", "thunderstep", "blur" -> 15;
             case "pockets", "burst" -> 10;
             case "doublejump" -> 5;
             case "vortex", "bash" -> 60;
@@ -487,7 +486,10 @@ public class GemListener implements Listener {
                 bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "crisp"), false));
             }
             case SPEED -> {
-                if (t2) bar.add("§f" + icon(type, "right") + " " + ChargePools.hud(plugin, p, "storm"));
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "blur"), false));
+                    bar.add("§f" + icon(type, "right") + " " + ChargePools.hud(plugin, p, "storm"));
+                }
                 bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "thunderstep"), false));
             }
             case WEALTH -> {
@@ -962,7 +964,7 @@ public class GemListener implements Listener {
             useNullify(p, energy);
             return;
         }
-        if (left && type != GemType.FIRE && type != GemType.WEALTH && type != GemType.PUFF && type != GemType.ASTRA && type != GemType.LIFE && type != GemType.FLUX) return;
+        if (left && type != GemType.FIRE && type != GemType.WEALTH && type != GemType.PUFF && type != GemType.ASTRA && type != GemType.LIFE && type != GemType.FLUX && type != GemType.SPEED) return;
 
         // Strength routing on RIGHT click: abilities are offhand-only, so main-hand
         // gem + head only hints. Chad Strength (power) works from the main hand.
@@ -1033,10 +1035,17 @@ public class GemListener implements Listener {
             return;
         }
 
-        // Speed routing: Speedy Storm [Right-click] (T2 power). Thunderstep is offhand-only.
+        // Speed routing: Blur [Left-click] + Speedy Storm [Right-click] (T2 powers). Thunderstep is offhand-only.
         if (type == GemType.SPEED) {
             if (tier < 2) {
                 // Silenced — no chat spam
+                return;
+            }
+            if (left) {
+                // A left-click that lands on someone is a hit and reaches Blur through the hit handler;
+                // this covers a left-click in the open, aimed at an untrusted player in range.
+                Player aimed = aimPlayerWithin(p, 10);
+                if (aimed != null && !isTrusted(p, aimed)) useBlur(p, aimed, energy);
                 return;
             }
             if (!right) return;
@@ -1996,12 +2005,10 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Blur [Hit]: clones of self appear around the victim and attack. */
-    private void useBlur(Player p, LivingEntity victim) {
-        long now = System.currentTimeMillis();
-        Long last = blurLast.get(p.getUniqueId());
-        if (last != null && now - last < 15_000) return;
-        blurLast.put(p.getUniqueId(), now);
+    /** Blur [Left-click, or any hit]: clones of self appear around the victim and attack. */
+    private void useBlur(Player p, LivingEntity victim, int energy) {
+        if (cdRemain(p, "blur") > 0) return;
+        cdStart(p, "blur", cooldownMs("blur", energy));
         for (int i = 0; i < 3; i++) {
             Location at = victim.getLocation().clone().add((Math.random() - 0.5) * 4, 1, (Math.random() - 0.5) * 4);
             org.bukkit.entity.Vex vex;
@@ -2867,10 +2874,10 @@ public class GemListener implements Listener {
             return;
         }
         if (gtype == GemType.SPEED) {
-            // Blur [Hit] T2: clones appear around the victim and attack
+            // Blur [Left-click / Hit] T2: clones appear around the victim and attack
             if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
                     && e.getEntity() instanceof LivingEntity le) {
-                useBlur(p, le);
+                useBlur(p, le, gems.getEnergy(gem));
             }
             return;
         }

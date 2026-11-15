@@ -41,7 +41,7 @@ actionbar:
     FLUX: { left: "\uA427", right: "\uA428", ability: "\uA441" } # energy beam, overdrive, kinetic burst
     LIFE: { left: "\uA42A", right: "\uA42B", ability: "\uA443" } # heart drainer, circle of life, vortex
     PUFF: { left: "\uA430", right: "\uA42F", ability: "\uA445" } # breezy bash, dash, double jump
-    SPEED: { left: "\uA433", right: "\uA432", ability: "\uA447" } # injection (no left-click power yet), speedy storm, thunderstep
+    SPEED: { left: "\uA433", right: "\uA432", ability: "\uA447" } # blur (injection), speedy storm, thunderstep
     STRENGTH: { left: "\uA437", right: "\uA436", ability: "\uA449" } # nullify, chad strength, bounty hunter
     WEALTH: { left: "\uA43B", right: "\uA43C", ability: "\uA44B" } # item lock, rich rush, pockets
 
@@ -277,6 +277,7 @@ progression:
 cooldowns:
   crisp: 15
   thunderstep: 15
+  blur: 15
   pockets: 10
   burst: 10
   doublejump: 5
