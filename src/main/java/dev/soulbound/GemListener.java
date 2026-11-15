@@ -65,8 +65,8 @@ public class GemListener implements Listener {
     private final SoulboundGemsPlugin plugin;
     private final GemManager gems;
 
-    private final Map<UUID, Long> powerCooldown = new HashMap<>();
-    private final Map<UUID, Long> abilityCooldown = new HashMap<>();
+    /** Cooldown end times per player, per ability key ("nullify", "chad", "crisp", ...). Nothing is shared. */
+    private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
     // Flux has four HUD entries with independent status: beam/ground, burst charge, wattage, overdrive.
     private final Map<UUID, Long> fluxBeamCooldown = new HashMap<>();
     private final Map<UUID, Long> fluxBurstCooldown = new HashMap<>();
@@ -194,6 +194,22 @@ public class GemListener implements Listener {
         base = plugin.getConfig().getInt("cooldowns." + which, base);
         double mult = EnergyStage.cooldownMultiplier(energy);
         return (long) (base * mult * 1000L);
+    }
+
+    /** Milliseconds left on one ability's own cooldown. */
+    private long cdRemain(Player p, String ability) {
+        Map<String, Long> mine = cooldowns.get(p.getUniqueId());
+        Long until = mine == null ? null : mine.get(ability);
+        return until == null ? 0 : Math.max(0, until - System.currentTimeMillis());
+    }
+
+    private void cdStart(Player p, String ability, long durationMs) {
+        cooldowns.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>()).put(ability, System.currentTimeMillis() + durationMs);
+    }
+
+    private void cdClear(Player p, String ability) {
+        Map<String, Long> mine = cooldowns.get(p.getUniqueId());
+        if (mine != null) mine.remove(ability);
     }
 
     private long remain(Map<UUID, Long> map, UUID id) {
@@ -451,23 +467,71 @@ public class GemListener implements Listener {
         UUID id = p.getUniqueId();
         long now = System.currentTimeMillis();
 
-        // The real Bliss-style HUD does not show the gem name; the custom glyph is the label.
-        if (type == GemType.FLUX) {
-            sendFluxActionbar(p, now);
-            return;
+        // Bliss-style HUD: no gem name. Each entry is one ability's own icon followed by that
+        // ability's own status, so nothing on the bar repeats and no two entries share a timer.
+        boolean t2 = tier >= 2;
+        List<String> bar = new ArrayList<>();
+        switch (type) {
+            case STRENGTH -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "nullify"), false));
+                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "chad"), chadUntil.getOrDefault(id, 0L) > now));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "bounty"), false));
+            }
+            case FIRE -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "fireball"), fireballChargeStart.containsKey(id)));
+                    bar.add(hudEntry(icon(type, "right"), remain(cozyCooldown, id), isLiveCampfire(id, now)));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "crisp"), false));
+            }
+            case SPEED -> {
+                if (t2) bar.add(hudEntry(icon(type, "right"), cdRemain(p, "storm"), isLiveStorm(id, now)));
+                bar.add("§f" + icon(type, "ability") + " " + ChargePools.hud(plugin, p, "thunderstep"));
+            }
+            case WEALTH -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "itemlock"), false));
+                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "richrush"), richRushUntil.getOrDefault(id, 0L) > now));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "pockets"), pockets.containsKey(id)
+                        && p.getOpenInventory() != null && p.getOpenInventory().getTopInventory().equals(pockets.get(id))));
+            }
+            case PUFF -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "bash"), false));
+                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "dash"), false));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "doublejump"), false));
+            }
+            case ASTRA -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "daggers"), false));
+                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "projection"), projectionBody.containsKey(id)));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "drift"), unboundedHost.containsKey(id)));
+            }
+            case LIFE -> {
+                if (t2) {
+                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "heartdrainer"), false));
+                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "circle"), false));
+                }
+                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "vortex"), false));
+            }
+            case FLUX -> {
+                sendFluxActionbar(p, now);
+                return;
+            }
+            default -> {
+                return;
+            }
         }
+        p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(String.join("  ", bar)));
+    }
 
-        String powerIcon = glyph(type, true);
-        String abilityIcon = glyph(type, false);
-        String powerStatus = hudStatus(remain(powerCooldown, id), isPrimaryAbilityActive(p, type, now));
-        String msg = "§f" + powerIcon + " " + powerStatus;
-
-        if (tier >= 2) {
-            String abilityStatus = hudStatus(remain(abilityCooldown, id), isSecondaryAbilityActive(p, type, now));
-            msg += "  §f" + abilityIcon + " " + abilityStatus;
-        }
-
-        p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
+    private String hudEntry(String icon, long remainMs, boolean active) {
+        return "§f" + icon + " " + hudStatus(remainMs, active);
     }
 
     private void sendFluxActionbar(Player p, long now) {
@@ -480,10 +544,10 @@ public class GemListener implements Listener {
         String watts = "§3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
         String overdrive = hudStatus(remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
 
-        String msg = "§f" + glyph(GemType.FLUX, true) + " " + beam
-                + "  §f" + glyph(GemType.FLUX, false) + " " + burst
+        String msg = "§f" + icon(GemType.FLUX, "left") + " " + beam
+                + "  §f" + icon(GemType.FLUX, "ability") + " " + burst
                 + "  §f" + tier2Glyph() + " " + watts
-                + "  §f" + tier2Glyph() + " " + overdrive;
+                + "  §f" + icon(GemType.FLUX, "right") + " " + overdrive;
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
     }
 
@@ -510,31 +574,6 @@ public class GemListener implements Listener {
         return "\uA43A"; // pack icon: blissgems:gems/icons/tier2.png
     }
 
-    private boolean isPrimaryAbilityActive(Player p, GemType type, long now) {
-        UUID id = p.getUniqueId();
-        return switch (type) {
-            case STRENGTH -> chadUntil.getOrDefault(id, 0L) > now;
-            case FIRE -> fireballChargeStart.containsKey(id) || isLiveCampfire(id, now);
-            case SPEED -> isLiveStorm(id, now);
-            case WEALTH -> richRushUntil.getOrDefault(id, 0L) > now;
-            case FLUX -> overdriveUntil.getOrDefault(id, 0L) > now;
-            case ASTRA -> projectionBody.containsKey(id);
-            case LIFE, PUFF -> false;
-            default -> false;
-        };
-    }
-
-    private boolean isSecondaryAbilityActive(Player p, GemType type, long now) {
-        UUID id = p.getUniqueId();
-        return switch (type) {
-            case WEALTH -> pockets.containsKey(id) && p.getOpenInventory() != null
-                    && p.getOpenInventory().getTopInventory().equals(pockets.get(id));
-            case ASTRA -> unboundedHost.containsKey(id);
-            case FIRE -> fireballChargeStart.containsKey(id);
-            default -> false;
-        };
-    }
-
     private boolean isLiveStorm(UUID ownerId, long now) {
         SpeedStorm storm = storms.get(ownerId);
         return storm != null && storm.until > now;
@@ -546,26 +585,28 @@ public class GemListener implements Listener {
     }
 
     /** Uses the real glyph code points from the user-provided Bliss Pack, unless overridden in config. */
-    private String glyph(GemType type, boolean power) {
-        String path = "actionbar.glyphs." + type.name() + "." + (power ? "power" : "ability");
-        String custom = plugin.getConfig().getString(path, "");
+    /**
+     * HUD icon for one of a gem's three slots: "left" (left-click power), "right" (right-click
+     * power) or "ability" (offhand ability). Defaults are the Bliss Pack v3.5 font glyphs: the
+     * pack's own per-ability icons for the powers and the gem's crystal for its ability.
+     * Override per gem under actionbar.icons.
+     */
+    private String icon(GemType type, String slot) {
+        String custom = plugin.getConfig().getString("actionbar.icons." + type.name() + "." + slot, "");
         if (custom != null && !custom.isEmpty()) return custom;
-        // Tier icons from the pack's font (tier1_<gem> / tier2_<gem>), private-use code points.
-        int base = switch (type) {
-            case ASTRA -> 0xA43D;
-            case FIRE -> 0xA43F;
-            case FLUX -> 0xA441;
-            case LIFE -> 0xA443;
-            case PUFF -> 0xA445;
-            case SPEED -> 0xA447;
-            case STRENGTH -> 0xA449;
-            case WEALTH -> 0xA44B;
-            default -> -1;
+        int index = "left".equals(slot) ? 0 : "right".equals(slot) ? 1 : 2;
+        String[] icons = switch (type) {
+            case STRENGTH -> new String[]{"\uA437", "\uA436", "\uA449"}; // muscle, giga, crystal
+            case FIRE -> new String[]{"\uA425", "\uA426", "\uA43F"};     // fireball, campfire, crystal
+            case SPEED -> new String[]{"\uA433", "\uA432", "\uA447"};    // injection, bolt, crystal
+            case WEALTH -> new String[]{"\uA43B", "\uA43C", "\uA44B"};   // clover, money, crystal
+            case PUFF -> new String[]{"\uA430", "\uA42F", "\uA445"};     // fist, arrow, crystal
+            case ASTRA -> new String[]{"\uA41F", "\uA420", "\uA43D"};    // dagger, projection, crystal
+            case LIFE -> new String[]{"\uA42A", "\uA42B", "\uA443"};     // heart, rose, crystal
+            case FLUX -> new String[]{"\uA427", "\uA428", "\uA441"};     // beam, domain, crystal
+            default -> new String[]{type.powerIcon, type.abilityIcon, type.abilityIcon};
         };
-        if (base >= 0) return String.valueOf((char) (power ? base : base + 1));
-        return switch (type) {
-            default -> power ? type.powerIcon : type.abilityIcon;
-        };
+        return icons[index];
     }
 
     /** Chad dots: 3 black dots ahead of the player; each crit turns one red. */
@@ -803,7 +844,7 @@ public class GemListener implements Listener {
         }
         ItemStack bountyGem = findGem(p);
         int bountyEnergy = bountyGem == null ? 5 : gems.getEnergy(bountyGem);
-        abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("bounty", bountyEnergy));
+        cdStart(p, "bounty", cooldownMs("bounty", bountyEnergy));
         setBounty(p, target);
         usedOn(p, "Bounty Hunter", target.getName());
         p.playSound(p.getLocation(), Sound.ENTITY_ENDER_EYE_DEATH, 1, 1);
@@ -912,13 +953,12 @@ public class GemListener implements Listener {
         // Strength Nullify on LEFT click (T2 power)
         if (left && type == GemType.STRENGTH) {
             if (tier < 2) return;
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "nullify");
             if (rem > 0) {
                 // Silenced — no chat spam
                 return;
             }
-            powerCooldown.put(p.getUniqueId(),
-                    System.currentTimeMillis() + cooldownMs("nullify", energy));
+            cdStart(p, "nullify", cooldownMs("nullify", energy));
             useNullify(p, energy);
             return;
         }
@@ -936,13 +976,12 @@ public class GemListener implements Listener {
                 // Silenced — no chat spam
                 return;
             }
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "chad");
             if (rem > 0) {
                 // Silenced — no chat spam
                 return;
             }
-            powerCooldown.put(p.getUniqueId(),
-                    System.currentTimeMillis() + cooldownMs("chad", energy));
+            cdStart(p, "chad", cooldownMs("chad", energy));
             useChadStrength(p, energy);
             return;
         }
@@ -976,9 +1015,9 @@ public class GemListener implements Listener {
                 return;
             }
             if (left) {
-                long rem = remain(powerCooldown, p.getUniqueId());
+                long rem = cdRemain(p, "itemlock");
                 if (rem > 0) { /* Silenced */ return; }
-                powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("itemlock", energy));
+                cdStart(p, "itemlock", cooldownMs("itemlock", energy));
                 useItemLock(p, energy);
                 return;
             }
@@ -987,9 +1026,9 @@ public class GemListener implements Listener {
             } else if (targetedEntity(p, 5) != null) {
                 return;
             }
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "richrush");
             if (rem > 0) { /* Silenced */ return; }
-            powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("richrush", energy));
+            cdStart(p, "richrush", cooldownMs("richrush", energy));
             useRichRush(p, energy);
             return;
         }
@@ -1001,9 +1040,9 @@ public class GemListener implements Listener {
                 return;
             }
             if (!right) return;
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "storm");
             if (rem > 0) { /* Silenced */ return; }
-            powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("storm", energy));
+            cdStart(p, "storm", cooldownMs("storm", energy));
             useSpeedyStorm(p, energy);
             return;
         }
@@ -1016,16 +1055,16 @@ public class GemListener implements Listener {
                 return;
             }
             if (left) {
-                long rem = remain(powerCooldown, p.getUniqueId());
+                long rem = cdRemain(p, "bash");
                 if (rem > 0) { /* Silenced */ return; }
-                powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("bash", energy));
+                cdStart(p, "bash", cooldownMs("bash", energy));
                 useBreezySlam(p, energy);
                 return;
             }
             if (!right) return;
-            long rem2 = remain(powerCooldown, p.getUniqueId());
+            long rem2 = cdRemain(p, "dash");
             if (rem2 > 0) { /* Silenced */ return; }
-            powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("dash", energy));
+            cdStart(p, "dash", cooldownMs("dash", energy));
             useDash(p, energy);
             return;
         }
@@ -1038,16 +1077,16 @@ public class GemListener implements Listener {
                 return;
             }
             if (left) {
-                long rem = remain(powerCooldown, p.getUniqueId());
+                long rem = cdRemain(p, "daggers");
                 if (rem > 0) { /* Silenced */ return; }
-                powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("daggers", energy));
+                cdStart(p, "daggers", cooldownMs("daggers", energy));
                 handleAstraDaggers(p, energy);
                 return;
             }
             if (targetedEntity(p, 5) != null) return;
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "projection");
             if (rem > 0) { /* Silenced */ return; }
-            powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("projection", energy));
+            cdStart(p, "projection", cooldownMs("projection", energy));
             useProjection(p, energy);
             return;
         }
@@ -1060,15 +1099,15 @@ public class GemListener implements Listener {
                 return;
             }
             if (left) {
-                long rem = remain(powerCooldown, p.getUniqueId());
+                long rem = cdRemain(p, "heartdrainer");
                 if (rem > 0) { /* Silenced */ return; }
-                powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("heartdrainer", energy));
+                cdStart(p, "heartdrainer", cooldownMs("heartdrainer", energy));
                 useHeartDrainer(p, energy);
                 return;
             }
-            long rem = remain(powerCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "circle");
             if (rem > 0) { /* Silenced */ return; }
-            powerCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("circle", energy));
+            cdStart(p, "circle", cooldownMs("circle", energy));
             useCircleOfLife(p, energy);
             return;
         }
@@ -1100,24 +1139,22 @@ public class GemListener implements Listener {
             return;
         }
         if (sneak && tier >= 2) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "ability:" + type.name());
             if (rem > 0) {
                 // Silenced — no chat spam
                 return;
             }
-            abilityCooldown.put(p.getUniqueId(),
-                    System.currentTimeMillis() + cooldownMs("ability", energy));
+            cdStart(p, "ability:" + type.name(), cooldownMs("ability", energy));
             useTier2(p, type, energy);
             return;
         }
 
-        long rem = remain(powerCooldown, p.getUniqueId());
+        long rem = cdRemain(p, "power:" + type.name());
         if (rem > 0) {
             // Silenced — no chat spam
             return;
         }
-        powerCooldown.put(p.getUniqueId(),
-                System.currentTimeMillis() + cooldownMs("power", energy));
+        cdStart(p, "power:" + type.name(), cooldownMs("power", energy));
         usePower(p, type, tier, energy);
     }
 
@@ -1133,22 +1170,22 @@ public class GemListener implements Listener {
             return;
         }
         if (type == GemType.FIRE) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "crisp");
             if (rem > 0) { /* Silenced */ return; }
-            abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("crisp", energy));
+            cdStart(p, "crisp", cooldownMs("crisp", energy));
             useCrisp(p, tier, energy);
             return;
         }
         if (type == GemType.STRENGTH) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "bounty");
             if (rem > 0) { /* Silenced */ return; }
             openBountyBoard(p);
             return;
         }
         if (type == GemType.WEALTH) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "pockets");
             if (rem > 0) { /* Silenced */ return; }
-            abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("pockets", energy));
+            cdStart(p, "pockets", cooldownMs("pockets", energy));
             openPockets(p);
             return;
         }
@@ -1163,24 +1200,24 @@ public class GemListener implements Listener {
             return;
         }
         if (type == GemType.PUFF) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "doublejump");
             if (rem > 0) { /* Silenced */ return; }
-            abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("doublejump", energy));
+            cdStart(p, "doublejump", cooldownMs("doublejump", energy));
             useDoubleJump(p);
             return;
         }
         if (type == GemType.ASTRA) {
             if (isGemDisabled(p)) { /* Silenced */ return; }
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "drift");
             if (rem > 0) { /* Silenced */ return; }
-            abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + 15_000L);
+            cdStart(p, "drift", 15_000L);
             useDimensionalDrift(p, tier, energy);
             return;
         }
         if (type == GemType.LIFE) {
-            long rem = remain(abilityCooldown, p.getUniqueId());
+            long rem = cdRemain(p, "vortex");
             if (rem > 0) { /* Silenced */ return; }
-            abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("vortex", energy));
+            cdStart(p, "vortex", cooldownMs("vortex", energy));
             useVitalityVortex(p, tier, energy);
             return;
         }
@@ -1281,6 +1318,7 @@ public class GemListener implements Listener {
         UUID id = p.getUniqueId();
         Long started = fireballChargeStart.get(id);
         if (started == null) {
+            if (cdRemain(p, "fireball") > 0) return; // still cooling down: cannot start a new charge
             fireballChargeStart.put(id, System.currentTimeMillis());
             p.sendMessage(ChatColor.GOLD + "Fireball charging... left-click again to unleash.");
             p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_AMBIENT, 1, 1);
@@ -1306,8 +1344,7 @@ public class GemListener implements Listener {
         }
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1, 1);
         used(p, "Fireball");
-        long rem = remain(powerCooldown, id);
-        if (rem <= 0) powerCooldown.put(id, System.currentTimeMillis() + cooldownMs("fireball", energy));
+        cdStart(p, "fireball", cooldownMs("fireball", energy));
     }
 
     /** Charge level 0..1 after holding for {@code elapsed} ms. Shared by the bossbar and the release. */
@@ -2283,7 +2320,7 @@ public class GemListener implements Listener {
         }
         if (absorbed < 5) {
             p.sendMessage(ChatColor.GRAY + "Vitality Vortex: not enough nature nearby (need logs, leaves, flowers).");
-            abilityCooldown.remove(p.getUniqueId());
+            cdClear(p, "vortex");
             return;
         }
         int dur = Math.min(60, 20 + absorbed / 2);
@@ -2381,7 +2418,7 @@ public class GemListener implements Listener {
         int charge = fluxOf(fluxCharge, p.getUniqueId());
         if (charge < 10) {
             p.sendMessage(ChatColor.GRAY + "Kinetic Burst: not charged yet (take hits to charge: " + charge + "/100).");
-            abilityCooldown.remove(p.getUniqueId());
+            fluxBurstCooldown.remove(p.getUniqueId()); // a failed burst costs no cooldown (this used to clear the wrong timer)
             return;
         }
         int radius = 6 + charge / 20;
@@ -3187,9 +3224,9 @@ public class GemListener implements Listener {
         e.setCancelled(true);
         p.setAllowFlight(false);
         p.setFlying(false);
-        long rem = remain(abilityCooldown, p.getUniqueId());
+        long rem = cdRemain(p, "doublejump");
         if (rem > 0) return;
-        abilityCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("doublejump", gems.getEnergy(gem)));
+        cdStart(p, "doublejump", cooldownMs("doublejump", gems.getEnergy(gem)));
         useDoubleJump(p);
     }
 

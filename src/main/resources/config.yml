@@ -31,18 +31,19 @@ passives:
 actionbar:
   update-ticks: 2
   show-cooldown: true
-  # Bliss-style HUD: glyph + status; the gem name is intentionally omitted.
+  # Bliss-style HUD: one entry per ability, each with its own icon and its own timer.
   # Ready! = green; cooldowns = cyan; active abilities = red Active...
-  # Defaults below are the Unicode code points assigned by the user-provided Bliss Pack v3.5.
-  glyphs:
-    ASTRA: { power: "\uA43D", ability: "\uA43E" }
-    FIRE: { power: "\uA43F", ability: "\uA440" }
-    FLUX: { power: "\uA441", ability: "\uA442" }
-    LIFE: { power: "\uA443", ability: "\uA444" }
-    PUFF: { power: "\uA445", ability: "\uA446" }
-    SPEED: { power: "\uA447", ability: "\uA448" }
-    STRENGTH: { power: "\uA449", ability: "\uA44A" }
-    WEALTH: { power: "\uA44B", ability: "\uA44C" }
+  # Tier 2 gems show left-click power, right-click power, then the offhand ability. Tier 1 gems show the ability only.
+  # Defaults are Bliss Pack v3.5 font glyphs: the pack's per-ability icons, and the gem's crystal for its ability.
+  icons:
+    ASTRA: { left: "\uA41F", right: "\uA420", ability: "\uA43D" } # daggers, projection, drift
+    FIRE: { left: "\uA425", right: "\uA426", ability: "\uA43F" } # fireball, cozy campfire, crisp
+    FLUX: { left: "\uA427", right: "\uA428", ability: "\uA441" } # energy beam, overdrive, kinetic burst
+    LIFE: { left: "\uA42A", right: "\uA42B", ability: "\uA443" } # heart drainer, circle of life, vortex
+    PUFF: { left: "\uA430", right: "\uA42F", ability: "\uA445" } # breezy bash, dash, double jump
+    SPEED: { left: "\uA433", right: "\uA432", ability: "\uA447" } # (unused), speedy storm, thunderstep
+    STRENGTH: { left: "\uA437", right: "\uA436", ability: "\uA449" } # nullify, chad strength, bounty hunter
+    WEALTH: { left: "\uA43B", right: "\uA43C", ability: "\uA44B" } # item lock, rich rush, pockets
 
 protection:
   keep-on-death: true
