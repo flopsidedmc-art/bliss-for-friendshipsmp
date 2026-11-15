@@ -38,7 +38,7 @@ public enum GemType {
     PUFF("Puff", "§f", Material.WIND_CHARGE, "☘", "≋",
             "No fall damage while held. Bows auto-Power/Punch. Hits may levitate or slow-fall victims.",
             "Double Jump [offhand right-click]: jump again mid-air.",
-            "Powers T2: Breezy Bash [Hit] launch up + slam, Breezy Bash [Left-click] radial launch, Dash [Right-click] 40-block dash, 2.5 hearts/tick x3 ticks."),
+            "Powers T2: Breezy Bash [Hit] launch up + slam, Breezy Bash [Left-click] radial launch, Dash [Right-click] 40-block dash, hurts anyone you pass every second for 3s."),
     HERETIC("Heretic", "§d", Material.REPEATING_COMMAND_BLOCK, "☠", "✹",
             "Mythic: ignores the energy system. Hemorrhage doubles damage to bleeding targets; Strength lasts longer; hits auto-crit; incoming hits are capped.",
             "Bloodsaws [Right-click]: fire two fast, piercing saws that reflect off terrain.",

@@ -1,6 +1,7 @@
 # Standard-gem ability damage scaled for armored targets
 
 - `GemListener.java`: the flat damage of Crisp, Breezy Bash (both forms), Dash, Kinetic Burst and Energy Beam is multiplied by `ability-damage.multiplier` (default 3). One ability hit is limited to `ability-damage.cap` (default 40 HP before armor) after the holder's on-hit bonuses such as Overdrive and Ground.
+- Puff Dash: anyone the caster passes is now hurt once a second, 3 HP a second for 3 seconds (`abilities.dash.damage-per-second`, `damage-seconds`), scaled by the multiplier like the others. It used to deal 5 on three consecutive ticks, of which only the first ever landed, and only checked the first three ticks of the dash; it now sweeps the whole dash.
 - Not changed: Fireball (already has `fire.fireball.damage-multiplier`), Astra daggers, Blur clones, Meteor Shower, percentage bonuses (Strength, Frailer, Chad, Overdrive), and all three mythic gems.
 - Compiled only; not run in a game.
 

@@ -2191,25 +2191,41 @@ public class GemListener implements Listener {
         usedOn(p, "Breezy Bash", target.getName());
     }
 
-    /** Dash [Right Click]: 40-block dash, 2.5 hearts per tick for 3 ticks to anything in the way. */
+    /**
+     * Dash [Right Click]: 40-block dash. Anyone the caster passes is caught once, then hurt once a
+     * second: abilities.dash.damage-per-second for abilities.dash.damage-seconds.
+     */
     private void useDash(Player p, int energy) {
         Vector dir = p.getLocation().getDirection().normalize().multiply(6.0);
         dir.setY(Math.max(dir.getY(), 0.2));
         p.setVelocity(dir);
         p.setFallDistance(0);
         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_SHOOT, 1, 1);
-        for (int i = 1; i <= 3; i++) {
+        double perSecond = Math.max(0.0, plugin.getConfig().getDouble("abilities.dash.damage-per-second", 3.0));
+        int seconds = Math.max(1, plugin.getConfig().getInt("abilities.dash.damage-seconds", 3));
+        Set<UUID> caught = new HashSet<>();
+        // The dash covers its 40 blocks in about half a second: sweep around the caster on every one of those ticks.
+        for (int i = 1; i <= 10; i++) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (!p.isOnline()) return;
                 for (Entity e : p.getNearbyEntities(3, 3, 3)) {
                     if (e.getUniqueId().equals(p.getUniqueId())) continue;
                     if (e instanceof Player o && isTrusted(p, o)) continue;
-                    if (e instanceof LivingEntity le) abilityDamage(le, 5.0, p);
+                    if (e instanceof LivingEntity le && caught.add(le.getUniqueId())) dashHurt(p, le, perSecond, seconds);
                 }
                 p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 10, 0.3, 0.3, 0.3, 0.05);
             }, i);
         }
         used(p, "Dash");
+    }
+
+    /** One hit now and one each following second. A second apart, every hit lands (no hurt-immunity overlap). */
+    private void dashHurt(Player p, LivingEntity victim, double perSecond, int seconds) {
+        for (int second = 0; second < seconds; second++) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline() && victim.isValid() && !victim.isDead()) abilityDamage(victim, perSecond, p);
+            }, second * 20L);
+        }
     }
 
     // ================= ASTRA (user kit, Drift offhand-only) =================

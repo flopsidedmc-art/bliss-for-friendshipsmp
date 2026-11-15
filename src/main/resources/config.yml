@@ -220,7 +220,7 @@ mythics:
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 
 # Flat damage of standard-gem abilities: Crisp, Breezy Bash, Dash, Kinetic Burst and Energy Beam.
-# Their base numbers (4, 6, 5, up to 10, up to 14.5 HP) suit unarmored targets but do under 1 heart
+# Their base numbers (4, 6, 3 a second, up to 10, up to 14.5 HP) suit unarmored targets but do under 1 heart
 # through Protection IV diamond, so they are multiplied here. Fireball has its own setting below.
 ability-damage:
   multiplier: 3.0 # 1.0 = the old damage
@@ -243,6 +243,9 @@ abilities:
     charges: 3
     # Each charge takes cooldowns.storm seconds to come back (also editable in /config).
     # Add "charge-recharge-seconds: <n>" here to override that.
+  dash: # Puff gem, Dash: anyone you dash past is hurt once a second
+    damage-per-second: 3.0 # before ability-damage.multiplier
+    damage-seconds: 3
   blur: # Speed gem, Blur
     # Blur stays active for as long as you keep hitting the same target with the gem in your main hand.
     # It ends if you go this long without hitting them, or as soon as they hit you back.
