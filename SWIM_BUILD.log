@@ -50,7 +50,7 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.135 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.192 s -- in dev.soulbound.AirSwimTest
 [INFO] 
 [INFO] Results:
 [INFO] 
@@ -66,6 +66,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  5.304 s
-[INFO] Finished at: 2026-11-15T13:16:54Z
+[INFO] Total time:  5.863 s
+[INFO] Finished at: 2026-11-15T13:20:37Z
 [INFO] ------------------------------------------------------------------------

@@ -2073,7 +2073,7 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Keeps a Blur alive on each new melee hit by its caster, and ends it when the target hits back. */
+    /** Keeps a Blur alive on each new melee hit its caster lands with the gem, and ends it when the target hits back. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlurCombat(EntityDamageByEntityEvent e) {
         if (blurRuns.isEmpty() || e.getFinalDamage() <= 0) return;
@@ -2085,9 +2085,12 @@ public class GemListener implements Listener {
             return;
         }
         BlurRun mine = blurRuns.get(e.getDamager().getUniqueId());
+        if (mine == null || !(e.getDamager() instanceof Player caster) || !mine.victim.equals(e.getEntity().getUniqueId())) return;
         boolean melee = e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK
                 || e.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK;
-        if (mine != null && melee && mine.victim.equals(e.getEntity().getUniqueId())) mine.lastHit = System.currentTimeMillis();
+        // Only a hit made with the Speed gem itself keeps Blur going; switching to a weapon lets it lapse.
+        ItemStack striking = caster.getInventory().getItemInMainHand();
+        if (melee && gems.isGem(striking) && gems.getType(striking) == GemType.SPEED) mine.lastHit = System.currentTimeMillis();
     }
 
     /** Blur clones are real vexes; stop them from hurting or chasing anyone but the Blur target. */
