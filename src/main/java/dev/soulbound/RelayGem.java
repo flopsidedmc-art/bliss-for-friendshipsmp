@@ -117,7 +117,7 @@ public final class RelayGem implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             UUID id = p.getUniqueId();
             for (ItemStack item : new ItemStack[]{p.getInventory().getItemInMainHand(), p.getInventory().getItemInOffHand()})
-                if (isRelay(item)) GemManager.prepareRelayItem(item);
+                if (isRelay(item)) { GemManager.prepareRelayItem(item); plugin.gems().styleLore(item); }
             if (!p.isDead() && holds(p) && !domain.contains(id)) {
                 Deque<Snap> h = history.computeIfAbsent(id, k -> new ArrayDeque<>());
                 h.addLast(new Snap(n, p.getLocation().clone(), p.getHealth()));
@@ -326,37 +326,45 @@ public final class RelayGem implements Listener {
         String dg=glyphs?plugin.getConfig().getString("mythics.relay.hud.dilation-glyph","\uE041"):"Dilate";
         String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):"Rift";
         String dvg=glyphs?plugin.getConfig().getString("mythics.relay.hud.divinity-glyph","\uE044"):"Divinity";
+        String meter=glyphs?tunedGlyph(id):null;
+        String inlineRift=rs==null||byHotbar("rift")?"":"  §f"+rfg+" "+rs;
+        // With the pack's icons the bar shows icons and timers only: no ability names, and Tuned In is just its meter.
+        String tuned=meter!=null?(byHotbar("tuned")?"":"  §f"+meter):"  §fTuned In §b"+charge(id)+"/"+maxCharge();
+        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §f"+dvg+" "+dv+tuned;
+    }
+    /** Rift and Tuned In sit beside the hotbar unless glyphs are off (no pack) or their *-position is "inline". */
+    private boolean byHotbar(String slot) {
+        return cfgB("temporal.hud.use-glyphs",true)
+            && "hotbar".equalsIgnoreCase(plugin.getConfig().getString("mythics.relay.hud."+slot+"-position","hotbar"));
+    }
+    /** The Tuned In meter frame for this charge, or null if no frames are configured. */
+    private String tunedGlyph(UUID id) {
         List<String> frames=plugin.getConfig().getStringList("mythics.relay.hud.tuned-charge-glyphs");
         int frame=Math.min(5,charge(id)*5/maxCharge());
-        String meter=glyphs&&frames.size()>frame?frames.get(frame)+" ":"";
-        String inlineRift=rs==null||riftByHotbar()?"":"  §f"+rfg+" "+rs;
-        // With the pack's icons the bar shows icons and timers only: no ability names, and Tuned In is just its meter.
-        String tuned=glyphs&&!meter.isEmpty()?meter.trim():"Tuned In §b"+charge(id)+"/"+maxCharge();
-        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §f"+dvg+" "+dv+"  §f"+tuned;
-    }
-    /** The Rift slot sits beside the hotbar unless glyphs are off (no pack) or rift-position is "inline". */
-    private boolean riftByHotbar() {
-        return cfgB("temporal.hud.use-glyphs",true)
-            && "hotbar".equalsIgnoreCase(plugin.getConfig().getString("mythics.relay.hud.rift-position","hotbar"));
+        return frames.size()>frame?frames.get(frame):null;
     }
     /**
-     * The Relay action bar: the usual centred line, plus the Rift icon and status drawn just right of
-     * the hotbar. That part uses the pack's blissgems:hud_low font (the same glyphs drawn lower) and
-     * moves the pen there and back, so it adds no width and the centred line stays exactly where it was.
+     * The Relay action bar: the usual centred line, plus the Rift slot and the Tuned In meter drawn just
+     * right of the hotbar. That part uses the pack's blissgems:hud_low font (the same glyphs drawn lower)
+     * and moves the pen there and back, so it adds no width and the centred line stays where it was.
      */
     public net.kyori.adventure.text.Component hudComponent(Player p) {
         String main=hud(p);
         var legacy=net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection();
         var bar=legacy.deserialize(main);
+        List<String> parts=new ArrayList<>();
         String rs=rift.hudStatus(p);
-        if(rs==null||!riftByHotbar())return bar;
-        String status=rs.replace("\u2026","...");
+        // Beside the hotbar the in-combat status is just its orange timer, to stay on narrow screens.
+        if(rs!=null&&byHotbar("rift"))parts.add("§f\uE043 "+rs.replace("\u2026","...").replace("Unstable ",""));
+        String meter=tunedGlyph(p.getUniqueId());
+        if(meter!=null&&byHotbar("tuned"))parts.add("§f"+meter);
+        if(parts.isEmpty())return bar;
+        String slots=String.join("  ",parts);
         int w=HudText.width(main);
         // The client starts the line at -(w/2) from screen centre, so it ends at +ceil(w/2). The hotbar's right
         // edge is +91 and the icon's frame starts 5px into its glyph, so the glyph goes at +90: a 4px gap.
         int toIcon=90+plugin.getConfig().getInt("mythics.relay.hud.rift-hotbar-offset",0)-(w-w/2);
-        int slot=HudText.advance('\uE043')+HudText.advance(' ')+HudText.width(status);
-        String s=HudText.shift(toIcon)+"\uE043 "+status+HudText.shift(-(toIcon+slot));
+        String s=HudText.shift(toIcon)+slots+HudText.shift(-(toIcon+HudText.width(slots)));
         return bar.append(legacy.deserialize(s).font(net.kyori.adventure.key.Key.key("blissgems","hud_low")));
     }
     private String status(long ms) { return ms>0?"§b"+fmt(ms):"§aReady"; }

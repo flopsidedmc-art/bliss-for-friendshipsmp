@@ -95,9 +95,14 @@ spaces = {" ": 4}
 for i in range(9):
     spaces[chr(0xE400 + i)] = 1 << i
     spaces[chr(0xE410 + i)] = -(1 << i)
+# The Tuned In meter frames (U+E042, U+E058-E05C) sit next to the Rift slot, so copy their providers lowered.
+tuned_chars = ["\ue042"] + [chr(c) for c in range(0xE058, 0xE05D)]
+tuned = [dict(p, ascent=-44) for p in font["providers"] if p.get("type") == "bitmap" and p.get("chars") and p["chars"][0] in tuned_chars]
+assert len(tuned) == 6, tuned
 hud_low = {"providers": [
     {"type": "space", "advances": spaces},
     {"type": "bitmap", "file": "blissgems:icons/relay_rift.png", "height": 20, "ascent": -44, "chars": ["\ue043"]},
+    *tuned,
     {"type": "bitmap", "file": "minecraft:font/ascii.png", "height": 8, "ascent": -50, "chars": ascii_rows},
 ]}
 os.makedirs(os.path.join(A, "blissgems/font"), exist_ok=True)

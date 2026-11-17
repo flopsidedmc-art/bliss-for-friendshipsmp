@@ -286,9 +286,11 @@ public class GemListener implements Listener {
         for (int i = 0; i < p.getInventory().getStorageContents().length; i++) {
             ItemStack item = p.getInventory().getStorageContents()[i];
             if (gems.isGem(item) && !gems.isMythic(item)) gems.refreshVisuals(item);
+            gems.styleLore(item);
         }
         ItemStack off = p.getInventory().getItemInOffHand();
         if (gems.isGem(off) && !gems.isMythic(off)) gems.refreshVisuals(off);
+        gems.styleLore(off);
     }
 
 
@@ -301,6 +303,7 @@ public class GemListener implements Listener {
             drawChadDots(p, now);
             ItemStack gem = findGem(p);
             if (gem == null) continue;
+            gems.styleLore(gem); // gems made before small-caps lore switch over when held
             GemType type = gems.getType(gem);
             int tier = gems.getTier(gem);
             int energy = gems.getEnergy(gem);

@@ -108,6 +108,25 @@ public class GemManager {
         return item;
     }
 
+    /** Gem lore in small caps when lore.small-caps is on (item-history lines are left alone). */
+    private List<String> styled(List<String> lore) {
+        return plugin.getConfig().getBoolean("lore.small-caps", true) ? SmallCaps.lore(lore) : lore;
+    }
+
+    /**
+     * Brings an existing gem's lore to small caps in place, keeping any item-history lines. Does nothing
+     * (and writes nothing) when it already is, so it is cheap to call on held gems every tick.
+     */
+    public void styleLore(ItemStack item) {
+        if (!isGem(item) || !plugin.getConfig().getBoolean("lore.small-caps", true)) return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasLore()) return;
+        List<String> lore = meta.getLore(), next = SmallCaps.lore(lore);
+        if (next.equals(lore)) return;
+        meta.setLore(next);
+        item.setItemMeta(meta);
+    }
+
     /** Lore text. Strength layout matches user-provided screenshots; wording is user-supplied. */
     public void refreshLore(ItemStack item) {
         if (!isGem(item)) return;
@@ -147,7 +166,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -177,7 +196,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -213,7 +232,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -243,7 +262,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -274,7 +293,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -304,7 +323,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -336,7 +355,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -367,7 +386,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(lore);
+            m.setLore(styled(lore));
             item.setItemMeta(m);
             return;
         }
@@ -394,7 +413,7 @@ public class GemManager {
             lore.add(ChatColor.GREEN + "Hold in hand/offhand for live status above hotbar.");
         }
         lore.add(ChatColor.DARK_GRAY + "Keep in offhand for passives, main hand to use.");
-        m.setLore(lore);
+        m.setLore(styled(lore));
         // T2 glow hint via enchant glint handled by listener (Glowing potion on player instead for simplicity)
         item.setItemMeta(m);
     }
@@ -432,7 +451,8 @@ public class GemManager {
             if(changed) lore.add("§7— §dTEMPORAL DIVINITY §8[Sneak + right-click gem]");
             // Relay items made before Rift existed get its line, once, right after Temporal Divinity.
             int divinity=-1;boolean hasRift=false;
-            for(int i=0;i<lore.size();i++) {String l=lore.get(i);if(l.contains("✦ RIFT"))hasRift=true;if(l.contains("TEMPORAL DIVINITY"))divinity=i;}
+            // Compared in plain capitals, because the lore may already be in small caps.
+            for(int i=0;i<lore.size();i++) {String l=SmallCaps.plain(lore.get(i));if(l.contains("✦ RIFT"))hasRift=true;if(l.contains("TEMPORAL DIVINITY"))divinity=i;}
             if(!hasRift && divinity>=0){lore.add(divinity+1,RIFT_LORE);changed=true;}
             if(changed) {meta.setLore(lore);item.setItemMeta(meta);}
         }
@@ -514,7 +534,7 @@ public class GemManager {
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         }
-        m.setLore(lore);
+        m.setLore(styled(lore));
         item.setItemMeta(m);
     }
 

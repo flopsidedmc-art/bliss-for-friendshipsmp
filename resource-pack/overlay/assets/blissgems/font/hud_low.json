@@ -35,6 +35,60 @@
     },
     {
       "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue042"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c1.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue058"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c2.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue059"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c3.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue05a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c4.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue05b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c5.png",
+      "ascent": -44,
+      "height": 20,
+      "chars": [
+        "\ue05c"
+      ]
+    },
+    {
+      "type": "bitmap",
       "file": "minecraft:font/ascii.png",
       "height": 8,
       "ascent": -50,

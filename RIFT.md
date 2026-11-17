@@ -43,13 +43,14 @@ Sneak + left-click never fires Rewind or Dilate: the click goes to the menu, and
 
 ## Rift HUD slot
 
-The Rift icon and its status (Ready, a countdown, Unstable, Active, Sealed) are drawn just right of the hotbar, vertically centred on it, at any screen size and GUI scale.
+The Rift icon and its status (Ready, a countdown, Active, Sealed, or an orange timer while you're in combat), then the Tuned In meter, are drawn just right of the hotbar, vertically centred on it, at any GUI scale. The rest of the Relay HUD is icons and timers only.
 
 - **How:** it is still part of the action bar. That part uses the pack font `blissgems:hud_low`, which draws the same icon and letters lower, and invisible spacing characters move the pen there and back. So the action bar keeps its width and the rest of the Relay HUD doesn't move.
 - **Widths:** placing it needs the pixel width of the text before it. The plugin uses vanilla's letter widths, measured from Minecraft's own font sheet (your pack doesn't replace it), and your Relay icons' widths (`HudText.java`).
   - If you change the icons, or a pack replaces the default font, the slot can drift by a few pixels. Fix that with `rift-hotbar-offset`.
 - **Can overlap:** the offhand slot of left-handed players (it sits on the right for them), and the attack indicator when it is set to "Hotbar". Nudge it with `rift-hotbar-offset`, or set `rift-position: inline` to put it back on the action bar.
-- **Without the pack**, or with `temporal.hud.use-glyphs: false`, it falls back to an inline "Rift" text slot.
+- **Narrow windows:** the slots reach about 200 GUI pixels right of centre. In a small window at a large GUI scale (for example 1024×768 at GUI scale 3) the end can run off the screen; a smaller GUI scale or `inline` fixes it.
+- **Without the pack**, or with `temporal.hud.use-glyphs: false`, both fall back to inline text ("Rift", "Tuned In 60/100").
 
 ## Time Dilate restyle
 
@@ -93,8 +94,8 @@ All under `mythics.relay.rift`. Existing configs get them added on startup.
 Elsewhere:
 - `mythics.relay.hud.rift-glyph`: `\uE043`. The text fallback is "Rift" when `temporal.hud.use-glyphs` is false.
 - `mythics.relay.hud.divinity-glyph`: `\uE044`. The text fallback is "Divinity".
-- `mythics.relay.hud.rift-position`: `hotbar` (default) or `inline`.
-- `mythics.relay.hud.rift-hotbar-offset`: `0`. Nudges the hotbar slot left (negative) or right (positive), in GUI pixels.
+- `mythics.relay.hud.rift-position` and `tuned-position`: `hotbar` (default) or `inline`.
+- `mythics.relay.hud.rift-hotbar-offset`: `0`. Nudges the hotbar slots left (negative) or right (positive), in GUI pixels.
 - `mythics.relay.temporal.dilate.glow` (true) and `glow-color`.
 
 **The abyss and the Pantheon arenas** don't exist in this plugin, so they can't be detected automatically. Add them under `blocked-areas` (or their worlds under `blocked-worlds`). Blocked spots can't be set as anchors or travelled to.
@@ -107,7 +108,7 @@ Elsewhere:
 | Light spill | `assets/blissgems/textures/item/rift_light.png` (32×32) | item model `blissgems:rift_light` |
 | HUD icon | `assets/blissgems/textures/icons/relay_rift.png` (33×20) | font glyph `U+E043` |
 | Divinity HUD icon | `assets/blissgems/textures/icons/relay_divinity.png` (33×20) | font glyph `U+E044` |
-| Hotbar HUD font | `assets/blissgems/font/hud_low.json` | `U+E043` icon at ascent -44, vanilla letters at ascent -50, spacing `U+E400`–`U+E408` (+1…+256) and `U+E410`–`U+E418` (−1…−256) |
+| Hotbar HUD font | `assets/blissgems/font/hud_low.json` | `U+E043` and the Tuned In frames (`U+E042`, `U+E058`–`U+E05C`) at ascent -44, vanilla letters at ascent -50, spacing `U+E400`–`U+E408` (+1…+256) and `U+E410`–`U+E418` (−1…−256) |
 | Dilate clock | `models/item/temporal_clock.json`, `temporal_hand.json` | thicker lines |
 | Dilate colours | `textures/item/temporal_brown/bronze/gold.png` | new palette |
 

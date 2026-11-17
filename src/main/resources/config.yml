@@ -250,7 +250,8 @@ mythics:
       rift-glyph: "\uE043" # text fallback "Rift" when temporal.hud.use-glyphs is false
       divinity-glyph: "\uE044" # text fallback "Divinity" when temporal.hud.use-glyphs is false
       rift-position: hotbar # hotbar: Rift icon + timer just right of the hotbar. inline: in the action bar with the others
-      rift-hotbar-offset: 0 # nudge the hotbar Rift slot left (negative) or right (positive), in GUI pixels
+      tuned-position: hotbar # hotbar: Tuned In meter just after the Rift slot, right of the hotbar. inline: in the action bar
+      rift-hotbar-offset: 0 # nudge the Rift / Tuned In slots left (negative) or right (positive), in GUI pixels
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 
@@ -320,6 +321,11 @@ recipes:
 # P4: Prot IV, Sharp V, chorus unlimited, Dragon Egg +40 hearts.
 progression:
   level: 1
+
+# Gem lore lettering. true: every letter in small caps ("ᴛᴜɴᴇᴅ ɪɴ"); item-history lines (STOLEN by ...) stay as they are.
+# Existing gems switch over when held or when their owner joins. false only affects lore written from then on.
+lore:
+  small-caps: true
 
 # Standard-gem ability cooldowns in seconds (Energy-stage multiplier still applies).
 # Tune live via /config instead of editing this file.

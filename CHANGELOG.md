@@ -1,3 +1,10 @@
+# Small-caps gem lore; Tuned In beside the hotbar
+
+- Gem lore (every standard and mythic gem) is written in small caps: every letter, e.g. "ᴛᴜɴᴇᴅ ɪɴ". Colour codes, symbols and digits are kept, and so are item-history lines ("STOLEN by Name"), which bounty tracking and item history read back. Existing gems switch over when held or when their owner joins. `lore.small-caps` (true).
+- The Relay migration that adds the Rift line now matches words in either lettering, so converted lore never gets the line twice.
+- The Tuned In meter moved from the action bar to just after the Rift slot, right of the hotbar (`mythics.relay.hud.tuned-position`). There, the Rift's in-combat status is just its orange timer, to stay on screen.
+- New `SmallCaps.java` and `SmallCapsTest`. 24 unit tests pass. Not run in a game.
+
 # Icons-only Relay HUD, Divinity icon, Dilate mini domain
 
 - Relay action bar: with the pack, no ability names and no Tuned In numbers, just each icon and its timer. Temporal Divinity gets its own icon (`U+E044`, an eye in a triangle) and Tuned In shows only its meter. Text labels come back when `temporal.hud.use-glyphs` is false.
