@@ -1440,7 +1440,7 @@ public final class MythicListener implements Listener {
             String aegis = mythicStatus(cooldown(auratusAegisCooldown, id), isAegisActive(p), GLYPH_AEGIS);
             msg = "§f" + GLYPH_PERFORATORS + " §bAuratus " + chains + " §7➜ §f" + GLYPH_AEGIS + " " + aegis;
         } else if (type == GemType.RELAY) {
-            msg = plugin.relay().hud(p);
+            return plugin.relay().hudComponent(p); // carries the Rift slot beside the hotbar
         } else {
             return net.kyori.adventure.text.Component.empty();
         }

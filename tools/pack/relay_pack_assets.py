@@ -69,6 +69,27 @@ if not any(p.get("chars") == [""] for p in font["providers"]):
         json.dump(font, f, indent=2, ensure_ascii=True)
         f.write("\n")
 
+# ---- blissgems:hud_low: the Rift slot drawn beside the hotbar instead of on the action-bar line.
+# The action bar's text top is 72 GUI px above the screen bottom; a glyph's top is (7 - ascent) below
+# that. Ascent -44 centres the 20px icon on the 22px hotbar; -50 centres 8px text on it.
+# U+E400+i / U+E410+i move the pen by +2^i / -2^i so the plugin can place the slot exactly.
+NUL = "\u0000" * 16
+ascii_rows = [NUL, NUL] + ["".join(chr(c) for c in range(r * 16, r * 16 + 16)) for r in range(2, 8)] + [NUL] * 8
+ascii_rows[7] = ascii_rows[7][:-1] + "\u0000"  # U+007F is not a glyph
+spaces = {" ": 4}
+for i in range(9):
+    spaces[chr(0xE400 + i)] = 1 << i
+    spaces[chr(0xE410 + i)] = -(1 << i)
+hud_low = {"providers": [
+    {"type": "space", "advances": spaces},
+    {"type": "bitmap", "file": "blissgems:icons/relay_rift.png", "height": 20, "ascent": -44, "chars": ["\ue043"]},
+    {"type": "bitmap", "file": "minecraft:font/ascii.png", "height": 8, "ascent": -50, "chars": ascii_rows},
+]}
+os.makedirs(os.path.join(A, "blissgems/font"), exist_ok=True)
+with open(os.path.join(A, "blissgems/font/hud_low.json"), "w", encoding="utf-8") as f:
+    json.dump(hud_low, f, indent=2, ensure_ascii=True)
+    f.write("\n")
+
 # ---- Time Dilate: glowing-brown palette
 for name, col in (("temporal_brown", RIM), ("temporal_bronze", DEEP), ("temporal_gold", PALE)):
     Image.new("RGBA", (16, 16), col + (255,)).save(os.path.join(tex, name + ".png"))

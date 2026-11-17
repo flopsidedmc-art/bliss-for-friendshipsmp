@@ -245,6 +245,8 @@ mythics:
       tuned-charge-glyphs: ["\uE042", "\uE058", "\uE059", "\uE05A", "\uE05B", "\uE05C"]
       dilation-glyph: "\uE041"
       rift-glyph: "\uE043" # text fallback "Rift" when temporal.hud.use-glyphs is false
+      rift-position: hotbar # hotbar: Rift icon + timer just right of the hotbar. inline: in the action bar with the others
+      rift-hotbar-offset: 0 # nudge the hotbar Rift slot left (negative) or right (positive), in GUI pixels
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 

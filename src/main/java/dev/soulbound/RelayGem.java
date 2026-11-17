@@ -328,7 +328,33 @@ public final class RelayGem implements Listener {
         List<String> frames=plugin.getConfig().getStringList("mythics.relay.hud.tuned-charge-glyphs");
         int frame=Math.min(5,charge(id)*5/maxCharge());
         String meter=glyphs&&frames.size()>frame?frames.get(frame)+" ":"";
-        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+(rs==null?"":"  §f"+rfg+" "+rs)+"  §fDivinity "+dv+"  §f"+meter+"Tuned In §b"+charge(id)+"/"+maxCharge();
+        String inlineRift=rs==null||riftByHotbar()?"":"  §f"+rfg+" "+rs;
+        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §fDivinity "+dv+"  §f"+meter+"Tuned In §b"+charge(id)+"/"+maxCharge();
+    }
+    /** The Rift slot sits beside the hotbar unless glyphs are off (no pack) or rift-position is "inline". */
+    private boolean riftByHotbar() {
+        return cfgB("temporal.hud.use-glyphs",true)
+            && "hotbar".equalsIgnoreCase(plugin.getConfig().getString("mythics.relay.hud.rift-position","hotbar"));
+    }
+    /**
+     * The Relay action bar: the usual centred line, plus the Rift icon and status drawn just right of
+     * the hotbar. That part uses the pack's blissgems:hud_low font (the same glyphs drawn lower) and
+     * moves the pen there and back, so it adds no width and the centred line stays exactly where it was.
+     */
+    public net.kyori.adventure.text.Component hudComponent(Player p) {
+        String main=hud(p);
+        var legacy=net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection();
+        var bar=legacy.deserialize(main);
+        String rs=rift.hudStatus(p);
+        if(rs==null||!riftByHotbar())return bar;
+        String status=rs.replace("\u2026","...");
+        int w=HudText.width(main);
+        // The client starts the line at -(w/2) from screen centre, so it ends at +ceil(w/2). The hotbar's right
+        // edge is +91 and the icon's frame starts 5px into its glyph, so the glyph goes at +90: a 4px gap.
+        int toIcon=90+plugin.getConfig().getInt("mythics.relay.hud.rift-hotbar-offset",0)-(w-w/2);
+        int slot=HudText.advance('\uE043')+HudText.advance(' ')+HudText.width(status);
+        String s=HudText.shift(toIcon)+"\uE043 "+status+HudText.shift(-(toIcon+slot));
+        return bar.append(legacy.deserialize(s).font(net.kyori.adventure.key.Key.key("blissgems","hud_low")));
     }
     private String status(long ms) { return ms>0?"§b"+fmt(ms):"§aReady"; }
 }
