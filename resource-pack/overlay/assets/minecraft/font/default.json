@@ -227,6 +227,15 @@
     },
     {
       "type": "bitmap",
+      "file": "blissgems:font/lore_eye.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue045"
+      ]
+    },
+    {
+      "type": "bitmap",
       "file": "blissgems:icons/aegis_bg.png",
       "ascent": 8,
       "height": 8,

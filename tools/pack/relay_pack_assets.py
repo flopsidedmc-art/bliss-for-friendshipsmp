@@ -84,6 +84,25 @@ with open(font_path, "w", encoding="utf-8") as f:
     json.dump(font, f, indent=2, ensure_ascii=True)
     f.write("\n")
 
+# ---- U+E045: an eye for Temporal Divinity's lore line. White and greys, so the lore colour tints it like
+# the other symbols; 11x7 on an 8px cell with ascent 7, so it lines up with capital letters.
+EYE_GLYPH = ["....WWW....", "..WW...WW..", ".W..GGG..W.", "W..GHDDG..W", ".W..GGG..W.", "..WW...WW..", "....WWW....", "..........."]
+SHADE = {".": (0, 0, 0, 0), "W": (255, 255, 255, 255), "G": (176, 176, 176, 255), "D": (72, 72, 72, 255), "H": (255, 255, 255, 255)}
+eye_glyph = Image.new("RGBA", (11, 8), (0, 0, 0, 0))
+for y, row in enumerate(EYE_GLYPH):
+    assert len(row) == 11
+    for x, ch in enumerate(row):
+        eye_glyph.putpixel((x, y), SHADE[ch])
+os.makedirs(os.path.join(A, "blissgems/textures/font"), exist_ok=True)
+eye_glyph.save(os.path.join(A, "blissgems/textures/font/lore_eye.png"))
+font = json.load(open(font_path, encoding="utf-8"))
+if not any(p.get("chars") == ["\ue045"] for p in font["providers"]):
+    at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == ["\ue044"]) + 1
+    font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:font/lore_eye.png", "ascent": 7, "height": 8, "chars": ["\ue045"]})
+    with open(font_path, "w", encoding="utf-8") as f:
+        json.dump(font, f, indent=2, ensure_ascii=True)
+        f.write("\n")
+
 # ---- blissgems:hud_low: the Rift slot drawn beside the hotbar instead of on the action-bar line.
 # The action bar's text top is 72 GUI px above the screen bottom; a glyph's top is (7 - ascent) below
 # that. Ascent -44 centres the 20px icon on the 22px hotbar; -50 centres 8px text on it.

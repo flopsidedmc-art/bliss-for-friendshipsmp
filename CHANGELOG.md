@@ -1,7 +1,7 @@
 # Temporal Divinity in the Relay colour
 
 - Temporal Divinity's lore line and its "needs a nearby opponent" message use the Relay's antique gold (#B89358) like Rewind, Time Dilate and Rift, instead of pink.
-- Temporal Divinity's lore line gets the ◬ symbol (an eye in a triangle, like its HUD icon), so all four Relay powers have one. Lore version 3.
+- Temporal Divinity's lore line gets an eye symbol, so all four Relay powers have one. It is a pack glyph, `U+E045` (`assets/blissgems/textures/font/lore_eye.png`, 11x7), drawn in white and greys so the lore colour tints it. Lore version 4. (Briefly `◬`, which rendered smaller than the other symbols.)
 - Gem lore now carries a version; bumping it (now 2) makes existing gems rebuild their lore once, so lore text changes reach gems people already have.
 
 # Lore: small caps for capital letters only
