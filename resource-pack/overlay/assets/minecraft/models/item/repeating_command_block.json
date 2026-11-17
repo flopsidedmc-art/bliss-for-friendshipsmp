@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "minecraft:item/repeating_command_block"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "custom_model_data": 12360
+      },
+      "model": "blissgems:item/heretic_gem"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 12361
+      },
+      "model": "blissgems:item/auratus_gem"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 12362
+      },
+      "model": "blissgems:item/gold_gem"
+    },
+    {
+      "predicate": {
+        "custom_model_data": 12365
+      },
+      "model": "blissgems:item/relay_gem"
+    }
+  ]
+}

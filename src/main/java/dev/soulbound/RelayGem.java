@@ -12,7 +12,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 import java.util.*;
 
-/** Three active powers; Tuned In is exclusively a server-accounted combat meter. */
+/** Four active powers (Rewind, Time Dilate, Temporal Divinity, Rift); Tuned In is exclusively a server-accounted combat meter. */
 public final class RelayGem implements Listener {
     private static final PotionEffectType[] CLEANSE = {
         PotionEffectType.POISON, PotionEffectType.WITHER, PotionEffectType.SLOWNESS,
@@ -31,6 +31,7 @@ public final class RelayGem implements Listener {
     private final Map<UUID, Map<UUID, Long>> tags = new HashMap<>();
     private final TemporalFlow flow;
     private final TemporalDomain domain;
+    private final RelayRift rift;
     private long ticks;
 
     public RelayGem(SoulboundGemsPlugin plugin) {
@@ -38,6 +39,8 @@ public final class RelayGem implements Listener {
         flow = new TemporalFlow(plugin);
         domain = new TemporalDomain(plugin, flow);
         Bukkit.getPluginManager().registerEvents(domain, plugin);
+        rift = new RelayRift(plugin, this);
+        Bukkit.getPluginManager().registerEvents(rift, plugin);
         for (Player p : Bukkit.getOnlinePlayers()) load(p);
     }
     private long now() { return System.currentTimeMillis(); }
@@ -73,7 +76,11 @@ public final class RelayGem implements Listener {
         e.setCancelled(true);
         Player p = e.getPlayer();
         if (p.isDead() || !cfgB("enabled", true) || !plugin.getConfig().getBoolean("mythics.enabled", true)) return;
-        if (e.getAction().isLeftClick()) { useRewind(p); return; }
+        if (e.getAction().isLeftClick()) {
+            // Sneak + left-click is Rift. useRewind ignores sneaking, so the swing listener cannot also Rewind.
+            if (p.isSneaking()) rift.openMenu(p); else useRewind(p);
+            return;
+        }
         long n = now();
         if (n - lastInput.getOrDefault(p.getUniqueId(), 0L) < 250) return;
         lastInput.put(p.getUniqueId(), n);
@@ -104,6 +111,7 @@ public final class RelayGem implements Listener {
         ticks++;
         domain.tick();
         flow.tick();
+        rift.tick();
         if (ticks % 2 != 0) return;
         long n = now();
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -302,7 +310,7 @@ public final class RelayGem implements Listener {
         rewindSlots.remove(id); dilationReady.remove(id); divinityReady.remove(id);
     }
     public void shutdown() {
-        domain.shutdown(); flow.shutdown();
+        rift.shutdown(); domain.shutdown(); flow.shutdown();
         for(Player p:Bukkit.getOnlinePlayers()) { persist(p); applyQuickened(p,false); }
     }
     public String hud(Player p) {
@@ -312,13 +320,15 @@ public final class RelayGem implements Listener {
         String rw=ready>0?"§b"+ready+"/"+max:"§b"+fmt(next);
         String dl=flow.active(id)?"§cActive…":status(dilationReady.getOrDefault(id,0L)-n);
         String dv=domain.contains(id)?"§cActive…":status(divinityReady.getOrDefault(id,0L)-n);
+        String rs=rift.hudStatus(p);
         boolean glyphs=cfgB("temporal.hud.use-glyphs",true);
         String rg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rewind-glyph","\uE040"):"Rewind";
         String dg=glyphs?plugin.getConfig().getString("mythics.relay.hud.dilation-glyph","\uE041"):"Dilate";
+        String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):"Rift";
         List<String> frames=plugin.getConfig().getStringList("mythics.relay.hud.tuned-charge-glyphs");
         int frame=Math.min(5,charge(id)*5/maxCharge());
         String meter=glyphs&&frames.size()>frame?frames.get(frame)+" ":"";
-        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+"  §fDivinity "+dv+"  §f"+meter+"Tuned In §b"+charge(id)+"/"+maxCharge();
+        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+(rs==null?"":"  §f"+rfg+" "+rs)+"  §fDivinity "+dv+"  §f"+meter+"Tuned In §b"+charge(id)+"/"+maxCharge();
     }
     private String status(long ms) { return ms>0?"§b"+fmt(ms):"§aReady"; }
 }

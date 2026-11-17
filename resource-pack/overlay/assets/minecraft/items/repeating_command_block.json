@@ -1,0 +1,75 @@
+{
+  "model": {
+    "type": "range_dispatch",
+    "property": "custom_model_data",
+    "entries": [
+      {
+        "threshold": 0,
+        "model": {
+          "type": "model",
+          "model": "minecraft:item/repeating_command_block"
+        }
+      },
+      {
+        "threshold": 1,
+        "model": {
+          "type": "model",
+          "model": "minecraft:item/repeating_command_block"
+        }
+      },
+      {
+        "threshold": 12360,
+        "model": {
+          "type": "model",
+          "model": "blissgems:item/heretic_gem"
+        }
+      },
+      {
+        "threshold": 12361,
+        "model": {
+          "type": "model",
+          "model": "blissgems:item/auratus_gem"
+        }
+      },
+      {
+        "threshold": 12362,
+        "model": {
+          "type": "model",
+          "model": "blissgems:item/gold_gem"
+        }
+      },
+      {
+        "threshold": 12363,
+        "model": {
+          "type": "model",
+          "model": "minecraft:item/repeating_command_block"
+        }
+      },
+      {
+        "threshold": 12364,
+        "model": {
+          "type": "model",
+          "model": "minecraft:item/repeating_command_block"
+        }
+      },
+      {
+        "threshold": 12365,
+        "model": {
+          "type": "model",
+          "model": "blissgems:item/relay_gem"
+        }
+      },
+      {
+        "threshold": 12366,
+        "model": {
+          "type": "model",
+          "model": "minecraft:item/repeating_command_block"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "model",
+      "model": "minecraft:item/repeating_command_block"
+    }
+  }
+}

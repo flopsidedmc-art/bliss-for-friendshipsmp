@@ -13,6 +13,18 @@ The three clock material textures (`temporal_brown.png`, `temporal_bronze.png`, 
 
 Not verified in a Minecraft client.
 
+## Rift and Time Dilate restyle
+
+| Asset | Path | Used as |
+|---|---|---|
+| Rift frames | `assets/blissgems/textures/item/rift_0.png` to `rift_5.png` (40x96) | item models `blissgems:rift_0` to `blissgems:rift_5`, flat vertical planes |
+| Rift light spill | `assets/blissgems/textures/item/rift_light.png` (32x32) | item model `blissgems:rift_light`, flat on the ground |
+| Rift HUD icon | `assets/blissgems/textures/icons/relay_rift.png` (33x20) | font glyph `U+E043` (`mythics.relay.hud.rift-glyph`) |
+| Time Dilate clock | `temporal_clock.json`, `temporal_hand.json` | lines 1.5x thicker, rebuilt from `tools/pack/source` |
+| Time Dilate colours | `temporal_brown/bronze/gold.png` | now #B0703A / #8C5530 / #F0C48C |
+
+Rebuild with `tools/pack/rift_frames.py` then `tools/pack/relay_pack_assets.py`. The display items are plain paper with an `item_model`, so no custom model data numbers are used.
+
 ## Known, not fixed
 
 The screen-flash images (`textures/overlay/gold_*.png`, `red_*.png`, `brown_flash.png`) are 512x288 and 1024x576. Minecraft font glyphs are limited to 256x256 pixels, so these may show as empty boxes instead of a flash. They were supplied this way and have been left alone.

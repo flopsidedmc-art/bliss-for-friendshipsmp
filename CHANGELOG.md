@@ -1,3 +1,11 @@
+# Relay Rift (quick travel) and Time Dilate restyle
+
+- New `RelayRift.java`: a fourth Relay power on sneak + left-click. Two anchors per player (saved in `relay-rift.yml`), a 5-second channel broken by damage or moving, a 15-second combat tag, a rift that stays open 4 seconds for anyone to follow, safe landing within 5 blocks, 1 second of fall protection, a 300-second cooldown and a 10-second cooldown for a broken channel. Disabled during the finale and switchable with `mythics.relay.rift.enabled`.
+- Rift visuals: the approved six-frame brown tear on a full-bright display with a brown Glowing outline, a ground light spill, drifting dust, random stutters, a half-size arrival rift and an arrival flash visible within 64 blocks. HUD slot with glyph `U+E043`.
+- Time Dilate: clock lines 1.5x thicker, recoloured to glowing brown, and given a brown Glowing outline. Gameplay unchanged.
+- Rewind, Time Dilate, Temporal Divinity, Tuned In, Quickened and Clean Signal unchanged.
+- Compiled; 15 unit tests pass. Not run in a game. Full details, settings, files changed and the test plan: RIFT.md.
+
 # Standard-gem ability damage scaled for armored targets
 
 - `GemListener.java`: the flat damage of Crisp, Breezy Bash (both forms), Dash, Kinetic Burst and Energy Beam is multiplied by `ability-damage.multiplier` (default 3). One ability hit is limited to `ability-damage.cap` (default 40 HP before armor) after the holder's on-hit bonuses such as Overdrive and Ground.

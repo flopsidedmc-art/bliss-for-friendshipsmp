@@ -1,0 +1,945 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/astra1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue010"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/astra2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue011"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/fire1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue012"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/fire2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue013"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/flux1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue014"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/flux2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue015"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/life1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue016"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/life2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue017"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/puff1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue018"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/puff2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue019"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/speed1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/speed2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/strength1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/strength2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01d"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/wealth1.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01e"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/wealth2.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ue01f"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/aegis.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\u22b4"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/peforators.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\u22b5"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/bloodsaws.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ud83e\udd1f"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/bloodlinking.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ud83e\udd0c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_rewind.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue040"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_dilation.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue041"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue042"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_rift.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue043"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/aegis_bg.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\u22b2"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/peforators_bg.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\u22b3"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/bloodsaws_without_bg.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua423"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/bloodlinking_without_bg.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua421"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\uf801": -1,
+        "\uf802": -2,
+        "\uf803": -3,
+        "\uf804": -4,
+        "\uf805": -5,
+        "\uf806": -6,
+        "\uf807": -7,
+        "\uf808": -8,
+        "\uf809": -9,
+        "\uf80a": -10,
+        "\uf80b": -11,
+        "\uf80c": -12,
+        "\uf80d": -13,
+        "\uf80e": -14,
+        "\uf80f": -15,
+        "\uf810": -16,
+        "\uf811": -17,
+        "\uf812": -18,
+        "\uf813": -19,
+        "\uf814": -20,
+        "\uf815": -21,
+        "\uf816": -22,
+        "\uf817": -23,
+        "\uf818": -24,
+        "\uf819": -25,
+        "\uf81a": -26,
+        "\uf81b": -27,
+        "\uf81c": -28,
+        "\uf81d": -29,
+        "\uf81e": -30,
+        "\uf81f": -31,
+        "\uf820": -32
+      }
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/gem_lock.png",
+      "ascent": 7,
+      "height": 8,
+      "chars": [
+        "\ua42c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/astradagger.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua41f"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/astraprojection.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua420"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/bloodlinking.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua422"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/bloodsaws.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua424"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/fire_fireball.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua425"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/firecampfire.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua426"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/flux_beam.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua427"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/flux_domain.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua428"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/group.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua429"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/life_heart.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua42a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/life_rose.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua42b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/negative.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua42d"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/positive.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua42e"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/puff_arrow.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua42f"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/puff_fist.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua430"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/solo.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua431"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/speed_bolt.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua432"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/speed_injection.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua433"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/spook.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua434"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/strength_chain.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua435"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/strength_giga.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua436"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/strength_muscle.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua437"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/tag.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua438"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/tier1.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua439"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/tier2.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_astra.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43d"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_astra.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43e"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_fire.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43f"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_fire.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua440"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_flux.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua441"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_flux.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua442"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_life.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua443"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_life.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua444"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_puff.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua445"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_puff.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua446"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_speed.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua447"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_speed.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua448"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_strength.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua449"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_strength.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua44a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier1_wealth.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua44b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "minecraft:font/tier2_wealth.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua44c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/wealth_clover.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:gems/icons/wealth_money.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "\ua43c"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\ue201": -7,
+        "\ue203": -1
+      }
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/space"
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/default",
+      "filter": {
+        "uniform": false
+      }
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/unifont"
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_0.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue050"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_1.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue051"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_2.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue052"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_3.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue053"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_4.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue054"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_5.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue055"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_6.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue056"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_7.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue057"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c1.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue058"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c2.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue059"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c3.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue05a"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c4.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue05b"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/relay_tuned_c5.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue05c"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_0.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue100"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_1.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue101"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_2.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue102"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_3.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue103"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_4.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue104"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/gold_5.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue105"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_0.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue110"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_1.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue111"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_2.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue112"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_3.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue113"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_4.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue114"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/red_5.png",
+      "ascent": 144,
+      "height": 288,
+      "chars": [
+        "\ue115"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:overlay/brown_flash.png",
+      "ascent": 720,
+      "height": 1440,
+      "chars": [
+        "\ue120"
+      ]
+    }
+  ]
+}

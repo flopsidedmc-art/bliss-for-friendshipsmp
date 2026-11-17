@@ -1,0 +1,208 @@
+{
+  "textures": {
+    "brown": "blissgems:item/temporal_brown",
+    "bronze": "blissgems:item/temporal_bronze",
+    "gold": "blissgems:item/temporal_gold",
+    "particle": "blissgems:item/temporal_brown"
+  },
+  "elements": [
+    {
+      "from": [
+        7.375,
+        8,
+        -3.0
+      ],
+      "to": [
+        8.625,
+        8.025,
+        7.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        8.5,
+        8,
+        7.5
+      ],
+      "to": [
+        14.0,
+        8.025,
+        8.625
+      ],
+      "faces": {
+        "up": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        8.625,
+        8,
+        7.375
+      ],
+      "to": [
+        14.0,
+        8.025,
+        7.5
+      ],
+      "faces": {
+        "up": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#brown",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        7.375,
+        8,
+        -4.625
+      ],
+      "to": [
+        8.625,
+        8.025,
+        -3.0
+      ],
+      "faces": {
+        "up": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        7.375,
+        8,
+        7.5
+      ],
+      "to": [
+        8.5,
+        8.025,
+        8.625
+      ],
+      "faces": {
+        "up": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        14.0,
+        8,
+        7.375
+      ],
+      "to": [
+        15.625,
+        8.025,
+        8.625
+      ],
+      "faces": {
+        "up": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#gold",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": false
+    }
+  ]
+}

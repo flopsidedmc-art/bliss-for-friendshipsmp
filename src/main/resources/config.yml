@@ -177,6 +177,8 @@ mythics:
         horizontal-speed-cap: 0.6 # blocks/tick at 1x; caps retained knockback/momentum at the field scale
         melee-base-interval-ticks: 10 # scaled by 1/time-scale; applies to accepted melee damage
         display-models: true # use supplied overlay; false enables bounded particle fallback
+        glow: true # brown Glowing outline on the clock (shows through walls, like the vanilla Glowing effect)
+        glow-color: "#B0703A"
         particle-interval-ticks: 4
       divinity:
         required-charge: 100
@@ -209,6 +211,32 @@ mythics:
         return-fall-grace-ticks: 100
       hud:
         use-glyphs: true # false uses text labels; no client pack detection is attempted
+    # Rift [Sneak + left-click gem]: quick travel between two saved anchors, A and B.
+    # The menu travels to an anchor or saves where you stand. Travelling channels first; when it completes
+    # the rift stays open behind you and anyone who walks in follows you to the same anchor.
+    rift:
+      enabled: true # false switches Rift off without a rebuild (the HUD slot disappears)
+      cooldown-seconds: 300 # after a completed jump; separate from every other Relay cooldown
+      channel-seconds: 5
+      cancel-distance: 1.5 # blocks you may drift from where the channel started
+      # A channel broken by damage, moving, death, logout or letting go of the Relay costs this much.
+      # A rift that fails for safety reasons (no safe ground, teleport blocked) costs nothing.
+      cancel-cooldown-seconds: 10
+      combat-tag-seconds: 15 # no Rift within this long of hitting, or being hit by, another player
+      open-seconds: 4 # how long the rift stays open behind you for others to follow
+      follow-delay-ticks: 20 # a follower arrives this long after stepping in
+      arrival-protection-ticks: 20 # fall-damage protection on arrival; nothing else is granted
+      safe-search-radius: 5 # landing spot is the nearest safe block within this many blocks of the anchor
+      flash-radius: 64 # players this close see the arrival particles
+      blocked-worlds: [] # worlds where anchors can't be set or reached, e.g. [world_nether]
+      # Boxes where anchors can't be set or reached, e.g. the abyss or arena areas:
+      #   - {name: the abyss, world: world, x1: -200, z1: -200, x2: 200, z2: 200}
+      blocked-areas: []
+      width: 2.5 # blocks
+      height: 6.0 # blocks
+      glow-color: "#B0703A"
+      display-models: true # false draws the rift in dust instead of pack textures
+      particles: true # dust drifting into the rift
     hud:
       # Pack font glyphs. Without the overlay pack use plain text instead (for example "<<", "(*)", "(o)").
       rewind-glyph: "\uE040"
@@ -216,6 +244,7 @@ mythics:
       # Tuned In charging, 6 frames: compass with the bar empty .. full
       tuned-charge-glyphs: ["\uE042", "\uE058", "\uE059", "\uE05A", "\uE05B", "\uE05C"]
       dilation-glyph: "\uE041"
+      rift-glyph: "\uE043" # text fallback "Rift" when temporal.hud.use-glyphs is false
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 

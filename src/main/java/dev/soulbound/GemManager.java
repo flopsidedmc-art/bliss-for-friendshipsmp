@@ -413,6 +413,8 @@ public class GemManager {
         item.setItemMeta(m);
     }
 
+    static final String RIFT_LORE = "§7— §x§B§8§9§3§5§8✦ RIFT §8[Sneak + left-click gem]";
+
     /** Migrates old Relay items without replacing item identity or model data. */
     public static void prepareRelayItem(ItemStack item) {
         // Remove the legacy hold-to-consume input without touching PDC/model data.
@@ -427,7 +429,12 @@ public class GemManager {
                 if(line.endsWith("⟲ REWIND"))line+=" §8[Left-click gem]";
                 if(!line.equals(old)){lore.set(i,line);changed=true;}
             }
-            if(changed) {lore.add("§7— §dTEMPORAL DIVINITY §8[Sneak + right-click gem]");meta.setLore(lore);item.setItemMeta(meta);}
+            if(changed) lore.add("§7— §dTEMPORAL DIVINITY §8[Sneak + right-click gem]");
+            // Relay items made before Rift existed get its line, once, right after Temporal Divinity.
+            int divinity=-1;boolean hasRift=false;
+            for(int i=0;i<lore.size();i++) {String l=lore.get(i);if(l.contains("✦ RIFT"))hasRift=true;if(l.contains("TEMPORAL DIVINITY"))divinity=i;}
+            if(!hasRift && divinity>=0){lore.add(divinity+1,RIFT_LORE);changed=true;}
+            if(changed) {meta.setLore(lore);item.setItemMeta(meta);}
         }
     }
 
@@ -503,6 +510,7 @@ public class GemManager {
             lore.add("§7— §x§B§8§9§3§5§8⟲ REWIND §8[Left-click gem]");
             lore.add("§7— §x§B§8§9§3§5§8⌛ TIME DILATE §8[Right-click gem]");
             lore.add("§7— §dTEMPORAL DIVINITY §8[Sneak + right-click gem]");
+            lore.add(RIFT_LORE);
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         }

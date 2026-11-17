@@ -1,0 +1,7 @@
+Relay Temporal overlay for Minecraft Java 1.21.11. Place ABOVE the existing Bliss resource pack. The supplied archive was an overlay without pack.mcmeta; this release includes metadata. Existing glyphs, finale shaders/overlays, textures and sounds are preserved. Adds blissgems:temporal_clock and temporal_hand item models. Set mythics.relay.temporal.dilate.display-models=false and temporal.hud.use-glyphs=false for a pack-free fallback.
+
+Antique palette revision: Time Dilate uses #5A3A1C main markings, #92613B secondary rings, #C99855 restrained accents. The two existing model IDs, geometry, UVs, interpolation and rotation remain unchanged. Existing full-bright displays keep the gold accents readable at night; this does not add shader bloom or world lighting. Replace/reload the client overlay for the model recolor, no new server JAR is needed for that. The optional updated JAR also recolors the pack-free particle fallback.
+
+Texture path fix: the three temporal_*.png material textures now live in assets/blissgems/textures/item/ (was textures/effect/, a folder Minecraft does not load for models). Colours, geometry and model IDs are unchanged.
+
+Rift + Time Dilate restyle: adds blissgems:rift_0..rift_5 (the six rift frames, 40x96, vertical plane models), blissgems:rift_light (ground light spill) and HUD glyph U+E043 (blissgems:icons/relay_rift.png, 33x20). Time Dilate clock lines are 1.5x thicker and recoloured to glowing brown #B0703A / #8C5530 / #F0C48C; the brown Glowing outline is set by the plugin.

@@ -63,6 +63,10 @@ final class TemporalFlow implements org.bukkit.event.Listener {
                     d.setItemStack(item); d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                     d.setPersistent(false); d.setInvulnerable(true); d.setBrightness(new Display.Brightness(15,15));
                     d.setViewRange(1.5f); d.setInterpolationDuration(2); d.setDisplayWidth((float)(f.radius*2)); d.setDisplayHeight(1);
+                    if(plugin.getConfig().getBoolean("mythics.relay.temporal.dilate.glow",true)) { // brown Glowing outline, same colour as the Rift
+                        d.setGlowing(true);
+                        d.setGlowColorOverride(RelayRift.parseColor(plugin.getConfig().getString("mythics.relay.temporal.dilate.glow-color","#B0703A"),RelayRift.RIM));
+                    }
                     f.displays.add(d);
                 }
             } catch(RuntimeException ex) { removeDisplays(f); plugin.getLogger().warning("Relay display fallback: "+ex.getMessage()); }
@@ -189,9 +193,10 @@ final class TemporalFlow implements org.bukkit.event.Listener {
                 new Vector3f((float)f.radius,1,(float)f.radius),new Quaternionf()));
         }
         if(f.displays.isEmpty() && tick%Math.max(2,(int)cfg("dilate.particle-interval-ticks",4))==0) {
-            Particle.DustOptions brown=new Particle.DustOptions(Color.fromRGB(0x5A,0x3A,0x1C),1.1f);
-            Particle.DustOptions bronze=new Particle.DustOptions(Color.fromRGB(0x92,0x61,0x3B),1.1f);
-            Particle.DustOptions gold=new Particle.DustOptions(Color.fromRGB(0xC9,0x98,0x55),1.1f);
+            // Glowing-brown palette shared with the Rift: rim brown, deep brown, pale accents.
+            Particle.DustOptions brown=new Particle.DustOptions(RelayRift.RIM,1.1f);
+            Particle.DustOptions bronze=new Particle.DustOptions(RelayRift.DEEP,1.1f);
+            Particle.DustOptions gold=new Particle.DustOptions(RelayRift.PALE,1.1f);
             for(int i=0;i<36;i++) { if(i%9==0)continue; double a=f.phase+i*Math.PI/18;
                 Particle.DustOptions dust=i%9==1?gold:(i%3==0?bronze:brown);
                 f.center.getWorld().spawnParticle(Particle.DUST,f.center.clone().add(Math.cos(a)*f.radius,0.1,Math.sin(a)*f.radius),1,0,0,0,0,dust);
