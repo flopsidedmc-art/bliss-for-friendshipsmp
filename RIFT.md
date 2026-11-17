@@ -25,7 +25,7 @@ Sneak + left-click never fires Rewind or Dilate: the click goes to the menu, and
 4. **Jump.** You land on the nearest safe block within 5 blocks of the anchor. If there is none, or another plugin blocks the teleport, the rift collapses and **no cooldown** is used.
 5. **Others follow.** The rift stays open where you stood for 4 seconds. Any player who walks into it (trusted or not, no special case) arrives at the same anchor 1 second later, offset so nobody lands inside anyone.
 6. **Arrival.** Everyone who arrives gets 1 second of fall-damage protection and nothing else. Players within 64 blocks see a brown flash and column of particles and hear a sound, and a half-size rift opens next to you for 1 second.
-7. **Cooldown:** 300 seconds after a completed jump, separate from every other Relay cooldown, persisted across restarts.
+7. **Cooldown:** 300 seconds after a completed jump, separate from every other Relay cooldown, persisted across restarts. Like every Relay power it also needs a full Tuned In bar (`temporal.charge.full-to-use`), which a completed jump empties; a broken or failed rift leaves the bar alone.
 8. **HUD:** the Rift icon and its timer sit just right of the hotbar; the rest of the Relay HUD stays on the action bar exactly where it was. See "Rift HUD slot" below.
 
 **My decision on cancelled channels: a 10-second cooldown, not none.** With no cooldown, a holder who gets hit can restart the instant the attacker lets up, and can spam fake rifts as a visual and sound decoy. Set `cancel-cooldown-seconds: 0` for none. Rifts that fail for safety reasons, or that the finale shuts down, never cost a cooldown.

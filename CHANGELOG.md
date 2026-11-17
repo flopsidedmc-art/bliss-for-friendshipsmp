@@ -1,3 +1,12 @@
+# Tuned In must be full to use a Relay power
+
+- `temporal.charge.full-to-use` (new, default true): Rewind, Time Dilate, Temporal Divinity and Rift each need a full Tuned In bar and empty it when they succeed. A power that fails (no safe spot, cancelled teleport, broken Rift channel) costs nothing. Cooldowns still apply on top. false restores the per-power costs.
+- `temporal.charge.hits-to-fill` (new, default 10): hits on players needed to fill the bar from empty (10 charge each). Being hit still adds `received` (4), so mutual fights fill it a little faster. 0 restores `hit`.
+- New settings, so they apply to existing configs without editing the old `hit`, `dilate-cost` and `rewind-cost` values.
+- Trying a power without a full bar says "Tuned In isn't full yet (x/100)" at most every 2 seconds; for Rewind only on a click into the air, not on every punch with the gem.
+- Rift checks the bar before channelling and empties it only when the jump succeeds.
+- 26 unit tests pass. Not run in a game.
+
 # Temporal Divinity in the Relay colour
 
 - Temporal Divinity's lore line and its "needs a nearby opponent" message use the Relay's antique gold (#B89358) like Rewind, Time Dilate and Rift, instead of pink.

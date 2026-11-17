@@ -340,6 +340,7 @@ final class RelayRift implements Listener {
         if (cd > 0) { p.sendMessage("§6Rift recharging (" + fmt(cd) + ")."); return; }
         long combat = combatLeft(id);
         if (combat > 0) { p.sendMessage("§6Rift unstable: in combat (" + fmt(combat) + ")"); return; }
+        if (!relay.chargedFor(p, "rift")) return; // Tuned In must be full (used up only when the jump succeeds)
         Anchor a = profile(id).anchors[slot];
         if (a == null) { p.sendMessage("§6Anchor " + NAMES[slot] + " isn't set."); return; }
         Location target = a.location();
@@ -397,6 +398,7 @@ final class RelayRift implements Listener {
             return;
         }
         c.landed.add(dest);
+        relay.spendFor(p, "rift");
         Profile pr = profile(c.owner);
         pr.cooldownUntil = now() + Math.max(0, cfgI("cooldown-seconds", 300)) * 1000L;
         save();

@@ -154,7 +154,11 @@ mythics:
     temporal:
       charge:
         maximum: 100
-        hit: 8
+        # Every Relay power (Rewind, Time Dilate, Temporal Divinity, Rift) needs a full Tuned In bar and empties it
+        # when it succeeds. false: each power uses its own cost below (and divinity.required-charge).
+        full-to-use: true
+        hits-to-fill: 10 # hits on players that fill the bar from empty; 0 = use "hit" below
+        hit: 8 # charge per hit dealt, only when hits-to-fill is 0
         received: 4
         minimum-damage: 0.5 # final damage in HP, after cancellation/protection
         minimum-spacing-ms: 400 # shared per recipient for dealt/received gains
@@ -165,8 +169,9 @@ mythics:
         persist-death: false
         persist-logout: true
         persist-restart: true # PDC saved by normal player saves; hard crash may lose recent gains
-        dilate-cost: 0
-        rewind-cost: 0
+        dilate-cost: 0 # used only when full-to-use is false
+        rewind-cost: 0 # used only when full-to-use is false
+        rift-cost: 0 # used only when full-to-use is false
       dilate:
         cooldown-seconds: 65
         duration-seconds: 8 # server ticks; hard safety maximum 120 seconds

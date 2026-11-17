@@ -55,6 +55,35 @@ public final class RelayGem implements Listener {
     private int maxCharge() { return Math.max(1, cfgI("temporal.charge.maximum", 100)); }
     private int charge(UUID id) { return Math.min(maxCharge(), tunedCharge.getOrDefault(id, 0)); }
     private void spend(UUID id, int amount) { tunedCharge.put(id, Math.max(0, charge(id) - Math.max(0, amount))); }
+    private final Map<UUID, Long> lastChargeNotice = new HashMap<>();
+    /**
+     * Tuned In needed for a power ("rewind", "dilate", "divinity", "rift"). With charge.full-to-use (default) every
+     * Relay power needs a full bar and empties it when it succeeds; otherwise each power's own *-cost applies.
+     */
+    int abilityCost(String power) {
+        if (cfgB("temporal.charge.full-to-use", true)) return maxCharge();
+        if ("divinity".equals(power)) return Math.min(maxCharge(), Math.max(1, cfgI("temporal.divinity.required-charge", 100)));
+        return Math.max(0, cfgI("temporal.charge." + power + "-cost", 0));
+    }
+    /** True if the player has enough Tuned In for the power; if not, says so (at most every 2 seconds). */
+    boolean chargedFor(Player p, String power) {
+        UUID id = p.getUniqueId();
+        if (charge(id) >= abilityCost(power)) return true;
+        long n = now();
+        if (n - lastChargeNotice.getOrDefault(id, 0L) >= 2000) {
+            lastChargeNotice.put(id, n);
+            p.sendMessage("§x§B§8§9§3§5§8Tuned In isn't full yet §7(" + charge(id) + "/" + maxCharge() + "). §8Land hits to fill it.");
+            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.PLAYERS, 0.6f, 0.6f);
+        }
+        return false;
+    }
+    /** Uses up the Tuned In a power costs, once it has succeeded. */
+    void spendFor(Player p, String power) { spend(p.getUniqueId(), abilityCost(power)); persist(p); }
+    /** Charge per hit dealt: maximum / charge.hits-to-fill (10 hits by default), or charge.hit if that is 0. */
+    private int hitGain() {
+        int hits = cfgI("temporal.charge.hits-to-fill", 10);
+        return hits > 0 ? (maxCharge() + hits - 1) / hits : cfgI("temporal.charge.hit", 8);
+    }
     public double timeScale(Location at, UUID owner) { return flow.scaleAt(at, owner); }
     public boolean inDomain(UUID id) { return domain.contains(id); }
     private static String fmt(long ms) { return Math.max(1, (ms + 999) / 1000) + "s"; }
@@ -78,7 +107,7 @@ public final class RelayGem implements Listener {
         if (p.isDead() || !cfgB("enabled", true) || !plugin.getConfig().getBoolean("mythics.enabled", true)) return;
         if (e.getAction().isLeftClick()) {
             // Sneak + left-click is Rift. useRewind ignores sneaking, so the swing listener cannot also Rewind.
-            if (p.isSneaking()) rift.openMenu(p); else useRewind(p);
+            if (p.isSneaking()) rift.openMenu(p); else useRewind(p, e.getClickedBlock() == null);
             return;
         }
         long n = now();
@@ -88,8 +117,8 @@ public final class RelayGem implements Listener {
     }
     public void useDilation(Player p) {
         UUID id = p.getUniqueId(); long n = now();
-        int cost = cfgI("temporal.charge.dilate-cost", 0);
-        if (domain.contains(id) || dilationReady.getOrDefault(id, 0L) > n || charge(id) < cost) return;
+        int cost = abilityCost("dilate");
+        if (domain.contains(id) || dilationReady.getOrDefault(id, 0L) > n || !chargedFor(p, "dilate")) return;
         if (!flow.start(p)) return;
         spend(id, cost);
         dilationReady.put(id, n + Math.max(0, cfgL("temporal.dilate.cooldown-seconds", 65)) * 1000);
@@ -97,8 +126,8 @@ public final class RelayGem implements Listener {
     }
     private void useDivinity(Player p) {
         UUID id = p.getUniqueId(); long n = now();
-        int required = Math.min(maxCharge(), Math.max(1, cfgI("temporal.divinity.required-charge", 100)));
-        if (divinityReady.getOrDefault(id, 0L) > n || charge(id) < required || domain.contains(id)) return;
+        int required = abilityCost("divinity");
+        if (divinityReady.getOrDefault(id, 0L) > n || domain.contains(id) || !chargedFor(p, "divinity")) return;
         if (!domain.start(p)) return; // transaction: journal + all teleports must succeed first
         spend(id, required);
         divinityReady.put(id, n + Math.max(0, cfgL("temporal.divinity.cooldown-seconds", 90)) * 1000);
@@ -155,7 +184,9 @@ public final class RelayGem implements Listener {
         attr.addTransientModifier(new AttributeModifier(quickenedKey, bonus, AttributeModifier.Operation.MULTIPLY_SCALAR_1));
     }
 
-    public void useRewind(Player p) {
+    public void useRewind(Player p) { useRewind(p, false); }
+    /** @param deliberate a click into the air: only then does an empty Tuned In bar get a message, not every punch. */
+    public void useRewind(Player p, boolean deliberate) {
         if (!mainHandIsRelay(p) || p.isSneaking() || p.isDead() || domain.contains(p.getUniqueId())) return;
         UUID id = p.getUniqueId();
         long now = now();
@@ -193,8 +224,8 @@ public final class RelayGem implements Listener {
         to.setYaw(from.getYaw());
         to.setPitch(from.getPitch());
 
-        int cost = cfgI("temporal.charge.rewind-cost", 0);
-        if (charge(id) < cost || !safe(to) || !p.teleport(to)) return;
+        int cost = abilityCost("rewind");
+        if ((deliberate ? !chargedFor(p, "rewind") : charge(id) < cost) || !safe(to) || !p.teleport(to)) return;
         spend(id, cost);
         lastRewind.put(id, now);
         slots[slot] = now + cfgL("rewind.regen-ms", 20000L);
@@ -257,7 +288,7 @@ public final class RelayGem implements Listener {
             gain(v, cfgI("temporal.charge.received", 4));
             if (holds(attacker)) tags.computeIfAbsent(attacker.getUniqueId(), k -> new HashMap<>()).put(v.getUniqueId(), now() + cfgL("passives.tag-duration-ms", 30000));
         } else if (!cfgB("temporal.charge.allow-mobs", false)) return;
-        gain(attacker, cfgI("temporal.charge.hit", 8));
+        gain(attacker, hitGain());
     }
     private void gain(Player p, int value) {
         if (!holds(p) || value <= 0) return;
