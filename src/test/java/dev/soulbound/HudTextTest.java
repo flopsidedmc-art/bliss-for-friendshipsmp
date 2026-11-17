@@ -13,7 +13,7 @@ class HudTextTest {
         assertEquals(4, HudText.width("t"));
         assertEquals(4, HudText.width(" "));
         assertEquals(6, HudText.width("/"));
-        assertEquals(8, HudText.width("…"));
+        assertEquals(8, HudText.width("\u2026"));
     }
 
     @Test void colourCodesTakeNoSpaceAndBoldAddsOnePixel() {
@@ -24,10 +24,11 @@ class HudTextTest {
     }
 
     @Test void relayIcons() {
-        assertEquals(34 + 4 + 18, HudText.width("§f §b2/2"), "Rewind icon, space, 2/2");
-        assertEquals(26, HudText.width(""));
-        assertEquals(26, HudText.width(""));
-        assertEquals(34, HudText.width(""));
+        assertEquals(34 + 4 + 18, HudText.width("§f\uE040 §b2/2"), "Rewind icon, space, 2/2");
+        assertEquals(26, HudText.width("\uE041"));
+        assertEquals(26, HudText.width("\uE043"));
+        assertEquals(26, HudText.width("\uE044"), "Divinity");
+        assertEquals(34, HudText.width("\uE05A"));
     }
 
     @Test void shiftsMoveExactlyTheRequestedDistance() {

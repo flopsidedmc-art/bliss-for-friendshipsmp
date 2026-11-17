@@ -325,11 +325,14 @@ public final class RelayGem implements Listener {
         String rg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rewind-glyph","\uE040"):"Rewind";
         String dg=glyphs?plugin.getConfig().getString("mythics.relay.hud.dilation-glyph","\uE041"):"Dilate";
         String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):"Rift";
+        String dvg=glyphs?plugin.getConfig().getString("mythics.relay.hud.divinity-glyph","\uE044"):"Divinity";
         List<String> frames=plugin.getConfig().getStringList("mythics.relay.hud.tuned-charge-glyphs");
         int frame=Math.min(5,charge(id)*5/maxCharge());
         String meter=glyphs&&frames.size()>frame?frames.get(frame)+" ":"";
         String inlineRift=rs==null||riftByHotbar()?"":"  §f"+rfg+" "+rs;
-        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §fDivinity "+dv+"  §f"+meter+"Tuned In §b"+charge(id)+"/"+maxCharge();
+        // With the pack's icons the bar shows icons and timers only: no ability names, and Tuned In is just its meter.
+        String tuned=glyphs&&!meter.isEmpty()?meter.trim():"Tuned In §b"+charge(id)+"/"+maxCharge();
+        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §f"+dvg+" "+dv+"  §f"+tuned;
     }
     /** The Rift slot sits beside the hotbar unless glyphs are off (no pack) or rift-position is "inline". */
     private boolean riftByHotbar() {

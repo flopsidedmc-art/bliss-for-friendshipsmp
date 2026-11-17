@@ -1,3 +1,10 @@
+# Icons-only Relay HUD, Divinity icon, Dilate mini domain
+
+- Relay action bar: with the pack, no ability names and no Tuned In numbers, just each icon and its timer. Temporal Divinity gets its own icon (`U+E044`, an eye in a triangle) and Tuned In shows only its meter. Text labels come back when `temporal.hud.use-glyphs` is false.
+- Time Dilate: the clock and the field's centre sit 3 blocks below the caster, or on the floor if closer (`dilate.clock-depth`).
+- Time Dilate: the caster air-swims while airborne inside their own field, with the same controller and settings as Temporal Divinity and kept inside by a soft wall (`dilate.swim`). Flags are restored afterwards, also after a crash, and a swim ending mid-air gives no fall damage until landing.
+- Compiled; 19 unit tests pass. Not run in a game.
+
 # Rift HUD slot beside the hotbar
 
 - The Rift icon and its timer moved from the action bar to just right of the hotbar, using a new pack font `blissgems:hud_low` and invisible spacing characters. The rest of the Relay HUD is unchanged and doesn't move.

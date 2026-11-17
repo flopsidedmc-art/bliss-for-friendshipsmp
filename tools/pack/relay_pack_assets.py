@@ -60,14 +60,29 @@ for y, row in enumerate(TEAR):
     for x, ch in enumerate(row):
         icon.putpixel((7 + x, 2 + y), P[ch] + (255,))
 icon.save(os.path.join(icons, "relay_rift.png"))
+# U+E044 Temporal Divinity: an eye inside a triangle, same frame
+EYE = ["................", ".......LL.......", "......L..L......", "......L..L......",
+       ".....L....L.....", ".....L....L.....", "....L.llll.L....", "....LlmPPmlL....",
+       "...LldPddPdlL...", "...L.lmPPml.L...", "..L...llll...L..", "..L..........L..",
+       ".L............L.", ".L............L.", "LLLLLLLLLLLLLLLL", "................"]
+eye = Image.open(os.path.join(icons, "relay_dilation.png")).convert("RGBA")
+for y, row in enumerate(EYE):
+    assert len(row) == 16
+    for x, ch in enumerate(row):
+        eye.putpixel((7 + x, 2 + y), P[ch] + (255,))
+eye.save(os.path.join(icons, "relay_divinity.png"))
+
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
-if not any(p.get("chars") == [""] for p in font["providers"]):
-    at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == [""]) + 1
-    font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:icons/relay_rift.png", "ascent": 17, "height": 20, "chars": [""]})
-    with open(font_path, "w", encoding="utf-8") as f:
-        json.dump(font, f, indent=2, ensure_ascii=True)
-        f.write("\n")
+if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):
+    at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == ["\ue042"]) + 1
+    font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:icons/relay_rift.png", "ascent": 17, "height": 20, "chars": ["\ue043"]})
+if not any(p.get("chars") == ["\ue044"] for p in font["providers"]):
+    at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == ["\ue043"]) + 1
+    font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:icons/relay_divinity.png", "ascent": 17, "height": 20, "chars": ["\ue044"]})
+with open(font_path, "w", encoding="utf-8") as f:
+    json.dump(font, f, indent=2, ensure_ascii=True)
+    f.write("\n")
 
 # ---- blissgems:hud_low: the Rift slot drawn beside the hotbar instead of on the action-bar line.
 # The action bar's text top is 72 GUI px above the screen bottom; a glyph's top is (7 - ascent) below

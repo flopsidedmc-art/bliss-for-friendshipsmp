@@ -218,6 +218,15 @@
     },
     {
       "type": "bitmap",
+      "file": "blissgems:icons/relay_divinity.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue044"
+      ]
+    },
+    {
+      "type": "bitmap",
       "file": "blissgems:icons/aegis_bg.png",
       "ascent": 8,
       "height": 8,

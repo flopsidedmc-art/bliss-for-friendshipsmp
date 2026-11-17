@@ -129,7 +129,8 @@ final class TemporalDomain implements Listener {
                 if(!c.load())throw new IOException("Domain chunk failed to load");
                 c.addPluginChunkTicket(plugin);session.chunks.add(c);
             }
-            for(Player p:players) {session.ids.add(p.getUniqueId());pending.put(p.getUniqueId(),new Saved(p));}
+            // Anyone air-swimming in a Dilate field gets their own flags back first, so the snapshot is their real state.
+            for(Player p:players) {flow.endSwim(p.getUniqueId());session.ids.add(p.getUniqueId());pending.put(p.getUniqueId(),new Saved(p));}
             if(!saveJournal())throw new IOException("Recovery journal could not be saved");
             for(Player p:players)members.put(p.getUniqueId(),session);
             Location origin=owner.getLocation();

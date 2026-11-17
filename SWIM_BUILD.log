@@ -50,11 +50,11 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.HudTextTest
-[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s -- in dev.soulbound.HudTextTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in dev.soulbound.HudTextTest
 [INFO] Running dev.soulbound.RelayRiftTest
-[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.043 s -- in dev.soulbound.RelayRiftTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in dev.soulbound.RelayRiftTest
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.126 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.095 s -- in dev.soulbound.AirSwimTest
 [INFO] 
 [INFO] Results:
 [INFO] 
@@ -70,6 +70,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.213 s
-[INFO] Finished at: 2026-11-17T20:36:34Z
+[INFO] Total time:  5.888 s
+[INFO] Finished at: 2026-11-17T20:46:12Z
 [INFO] ------------------------------------------------------------------------

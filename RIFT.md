@@ -53,12 +53,16 @@ The Rift icon and its status (Ready, a countdown, Unstable, Active, Sealed) are 
 
 ## Time Dilate restyle
 
-The same clock, animation and gameplay, but:
+The same clock and animation, plus a mini domain for the caster:
 
 - **Lines are 1.5× thicker.** Every line grew 1/8 of a model unit on each side. The model also went from 492 to 334 pieces.
 - **Colours:** brown `#5A3A1C` → `#B0703A`, bronze `#92613B` → `#8C5530`, gold `#C99855` → `#F0C48C`.
 - **Glow:** both clock displays get the brown Glowing outline. Turn it off with `temporal.dilate.glow: false`.
 - **Particle fallback:** uses the same three colours.
+- **Lower clock:** the clock, and the centre of the slowing field, goes 3 blocks below you, or on the floor if that's closer, so it is never buried in the ground. Standing on the ground it is where it always was. `temporal.dilate.clock-depth`.
+- **Air-swimming:** while you're in the air inside your own field you swim, exactly as in Temporal Divinity, with the same controls and `swim-*` settings. A soft wall keeps you inside the field. Landing on something puts you back to walking, and jumping starts swimming again. Only the caster swims; everyone else in the field is still slowed. Turn it off with `temporal.dilate.swim: false`.
+  - When the field ends, or you're pulled into a domain mid-air, gravity and flight go back to what they were, and you take no fall damage until you land (`landing-grace-ticks`, 10s).
+  - Your original flags are also saved on the player, so a crash mid-swim can't leave anyone without gravity; they're restored when you rejoin.
 
 The Glowing outline, like the vanilla Glowing effect, **shows through walls** for anyone within the display's view range. That applies to both the clock and the rift.
 
@@ -88,6 +92,7 @@ All under `mythics.relay.rift`. Existing configs get them added on startup.
 
 Elsewhere:
 - `mythics.relay.hud.rift-glyph`: `\uE043`. The text fallback is "Rift" when `temporal.hud.use-glyphs` is false.
+- `mythics.relay.hud.divinity-glyph`: `\uE044`. The text fallback is "Divinity".
 - `mythics.relay.hud.rift-position`: `hotbar` (default) or `inline`.
 - `mythics.relay.hud.rift-hotbar-offset`: `0`. Nudges the hotbar slot left (negative) or right (positive), in GUI pixels.
 - `mythics.relay.temporal.dilate.glow` (true) and `glow-color`.
@@ -101,6 +106,7 @@ Elsewhere:
 | Rift frames | `assets/blissgems/textures/item/rift_0.png` … `rift_5.png` (40×96) | item models `blissgems:rift_0` … `blissgems:rift_5` |
 | Light spill | `assets/blissgems/textures/item/rift_light.png` (32×32) | item model `blissgems:rift_light` |
 | HUD icon | `assets/blissgems/textures/icons/relay_rift.png` (33×20) | font glyph `U+E043` |
+| Divinity HUD icon | `assets/blissgems/textures/icons/relay_divinity.png` (33×20) | font glyph `U+E044` |
 | Hotbar HUD font | `assets/blissgems/font/hud_low.json` | `U+E043` icon at ascent -44, vanilla letters at ascent -50, spacing `U+E400`–`U+E408` (+1…+256) and `U+E410`–`U+E418` (−1…−256) |
 | Dilate clock | `models/item/temporal_clock.json`, `temporal_hand.json` | thicker lines |
 | Dilate colours | `textures/item/temporal_brown/bronze/gold.png` | new palette |
@@ -118,7 +124,9 @@ Elsewhere:
 | `HudText.java` (new) | Pixel widths of HUD text and the spacing characters, to place the Rift slot |
 | `MythicListener.java` | Sends the Relay HUD as a component so the hotbar slot keeps its font |
 | `GemManager.java` | "✦ RIFT [Sneak + left-click gem]" in the Relay's lore; existing Relay items get the line once |
-| `TemporalFlow.java` | Brown Glowing outline on the clock displays; new particle-fallback colours |
+| `TemporalFlow.java` | Brown Glowing outline on the clock; new particle-fallback colours; clock 3 blocks below; caster air-swimming in their own field, with flag restore and landing grace |
+| `TemporalDomain.java` | Ends a Dilate swim before the return snapshot, so a captured swimmer gets their real flags back |
+| `AirSwim.java` | `seed()`, so a swim that starts from a jump keeps its momentum |
 | `config.yml` | `mythics.relay.rift` section, `hud.rift-glyph`, `rift-position`, `rift-hotbar-offset`, `temporal.dilate.glow` and `glow-color` |
 | `RelayRiftTest.java`, `HudTextTest.java` (new) | Unit tests for the follow hitbox, landing search order, colour parsing, HUD widths and spacing |
 | `resource-pack/` | New rift, light and icon assets, font glyph, thicker recoloured clock; overlay kept unpacked |
@@ -126,7 +134,7 @@ Elsewhere:
 
 ## In-game test plan (not yet run)
 
-Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and remember to set it back. Twelve checks:
+Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and remember to set it back. Thirteen checks:
 
 1. **Two players following.** Set A somewhere, walk away, channel to A. While the rift is open, the second player walks into it.
    - Expect: they arrive at A about 1 second later, beside you, not inside you.
@@ -158,6 +166,11 @@ Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and re
 12. **HUD slot.** Hold the Relay at a few GUI scales and window sizes.
     - Expect: the Rift icon sits just right of the hotbar, centred on it, and the rest of the Relay HUD doesn't move as timers change.
     - If it is a few pixels off, adjust `rift-hotbar-offset`.
+13. **Dilate mini domain.** Cast Time Dilate while standing, then while jumping off something high.
+    - Expect: on the ground the clock is at your feet; in the air it is 3 blocks below you, or on the floor.
+    - In the air you swim and can't leave the field. Landing makes you walk; jumping makes you swim.
+    - When it ends mid-air you fall without fall damage. Afterwards you have normal gravity and can't fly.
+    - Others in the field are still slowed and can't swim.
 
 ## What was and was not tested
 

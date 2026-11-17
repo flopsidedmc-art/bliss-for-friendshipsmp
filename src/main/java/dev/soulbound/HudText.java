@@ -19,10 +19,10 @@ final class HudText {
     static int advance(char c) {
         if (c >= ' ' && c <= '~') return ASCII.charAt(c - ' ') - '0';
         return switch (c) {
-            case '…' -> 8; // … (nonlatin_european.png)
-            case '', '' -> 34; // Rewind, Tuned In (icon with its side box)
-            case '', '' -> 26; // Dilation, Rift
-            default -> (c >= '' && c <= '') ? 34 : 6; // Tuned In charge frames
+            case '\u2026' -> 8; // the ellipsis, from nonlatin_european.png
+            case '\uE040', '\uE042' -> 34; // Rewind, Tuned In (icon with its side box)
+            case '\uE041', '\uE043', '\uE044' -> 26; // Dilation, Rift, Divinity
+            default -> (c >= '\uE050' && c <= '\uE05C') ? 34 : 6; // Tuned In charge frames
         };
     }
 
@@ -47,7 +47,7 @@ final class HudText {
     static String shift(int pixels) {
         StringBuilder out = new StringBuilder();
         int n = Math.abs(pixels);
-        char base = pixels < 0 ? '' : '';
+        char base = pixels < 0 ? '\uE410' : '\uE400';
         for (int bit = 8; bit >= 0; bit--) {
             while (n >= (1 << bit)) {
                 out.append((char) (base + bit));
@@ -61,8 +61,8 @@ final class HudText {
     static int shiftWidth(String s) {
         int w = 0;
         for (char c : s.toCharArray()) {
-            if (c >= '' && c <= '') w += 1 << (c - '');
-            else if (c >= '' && c <= '') w -= 1 << (c - '');
+            if (c >= '\uE400' && c <= '\uE408') w += 1 << (c - '\uE400');
+            else if (c >= '\uE410' && c <= '\uE418') w -= 1 << (c - '\uE410');
         }
         return w;
     }

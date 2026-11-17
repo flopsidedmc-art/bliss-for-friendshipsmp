@@ -178,6 +178,9 @@ mythics:
         melee-base-interval-ticks: 10 # scaled by 1/time-scale; applies to accepted melee damage
         display-models: true # use supplied overlay; false enables bounded particle fallback
         glow: true # brown Glowing outline on the clock (shows through walls, like the vanilla Glowing effect)
+        clock-depth: 3 # the clock (and the field's centre) goes this many blocks below you, or on the floor if that is closer
+        swim: true # while you're in the air inside your own field you air-swim, as in Temporal Divinity (uses the divinity swim-* settings)
+        landing-grace-ticks: 200 # if the swim ends mid-air you take no fall damage until you land (or this many ticks pass)
         glow-color: "#B0703A"
         particle-interval-ticks: 4
       divinity:
@@ -245,6 +248,7 @@ mythics:
       tuned-charge-glyphs: ["\uE042", "\uE058", "\uE059", "\uE05A", "\uE05B", "\uE05C"]
       dilation-glyph: "\uE041"
       rift-glyph: "\uE043" # text fallback "Rift" when temporal.hud.use-glyphs is false
+      divinity-glyph: "\uE044" # text fallback "Divinity" when temporal.hud.use-glyphs is false
       rift-position: hotbar # hotbar: Rift icon + timer just right of the hotbar. inline: in the action bar with the others
       rift-hotbar-offset: 0 # nudge the hotbar Rift slot left (negative) or right (positive), in GUI pixels
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.

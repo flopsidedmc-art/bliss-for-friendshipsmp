@@ -35,6 +35,12 @@ final class AirSwim {
 
     static double bound(double v, double lo, double hi) { return Double.isNaN(v) ? lo : Math.max(lo, Math.min(hi, v)); }
 
+    /** Starts from an existing motion (a jump, a fall) capped at the given speed, so taking over is seamless. */
+    void seed(Vector motion, double cap) {
+        velocity.copy(motion);
+        if (velocity.length() > cap) velocity.normalize().multiply(cap);
+    }
+
     /** Unit look vector using Minecraft's yaw/pitch convention (yaw 0 = +Z, pitch -90 = straight up). */
     static Vector look(float yaw, float pitch) {
         double y = Math.toRadians(yaw), p = Math.toRadians(pitch);

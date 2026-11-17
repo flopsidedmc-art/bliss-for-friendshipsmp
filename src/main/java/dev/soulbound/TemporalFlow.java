@@ -14,6 +14,12 @@ import java.util.*;
 final class TemporalFlow implements org.bukkit.event.Listener {
     private final SoulboundGemsPlugin plugin;
     private final NamespacedKey motionKey=new NamespacedKey("soulbound-gems","temporal_projectile_motion");
+    /** Saved movement flags of a caster air-swimming in their own Dilate field: allowFlight, flying, gravity. */
+    private final NamespacedKey swimKey=new NamespacedKey("soulbound-gems","dilate_swim_flags");
+    private static final class Swim { final AirSwim controller=new AirSwim(); boolean allowFlight,flying,gravity; }
+    private final Map<UUID,Swim> swimmers=new HashMap<>();
+    /** Fall-damage protection after a swim ends mid-air, until landing (tick deadline). */
+    private final Map<UUID,Long> landingGrace=new HashMap<>();
     private final NamespacedKey slowKey = new NamespacedKey("soulbound-gems", "temporal_slow");
     private final List<Field> fields = new ArrayList<>();
     private record Region(Location center, double radius, double scale) {}
@@ -46,7 +52,7 @@ final class TemporalFlow implements org.bukkit.event.Listener {
     boolean start(Player p) {
         if(fields.size()>=Math.max(1,(int)cfg("dilate.max-fields",8))) return false;
         removeOwner(p.getUniqueId());
-        Field f=new Field(); f.owner=p.getUniqueId(); f.center=p.getLocation().clone();
+        Field f=new Field(); f.owner=p.getUniqueId(); f.center=clockSpot(p.getLocation());
         // Display entities take their rotation from the spawn location, so the caster's look
         // direction would tilt the clock. Zero it: the ring always lies flat.
         f.center.setYaw(0); f.center.setPitch(0);
@@ -74,6 +80,17 @@ final class TemporalFlow implements org.bukkit.event.Listener {
         p.getWorld().playSound(p.getLocation(),Sound.BLOCK_BEACON_ACTIVATE,0.8f,0.6f);
         return true;
     }
+    /**
+     * Where the clock (and the field's centre) goes: dilate.clock-depth blocks below the caster, or on the
+     * floor (or a water surface) if that is closer, so it never ends up buried in the ground.
+     */
+    private Location clockSpot(Location at) {
+        double depth=Math.max(0,Math.min(16,cfg("dilate.clock-depth",3)));
+        Location spot=at.clone();
+        var hit=at.getWorld().rayTraceBlocks(at.clone().add(0,0.05,0),new Vector(0,-1,0),depth+0.05,FluidCollisionMode.ALWAYS,true);
+        spot.setY(hit!=null?hit.getHitPosition().getY():at.getY()-depth);
+        return spot;
+    }
     private boolean exempt(Field f, UUID owner) {
         if(owner==null)return false;
         if(f.owner.equals(owner))return true;
@@ -94,6 +111,7 @@ final class TemporalFlow implements org.bukkit.event.Listener {
     }
     void tick() {
         tick++;
+        swimTick();
         if(tick%200==0)meleeTick.entrySet().removeIf(e->tick-e.getValue()>2400);
         Map<UUID, Double> living=new HashMap<>(forced), shots=new HashMap<>();
         Iterator<Field> fi=fields.iterator();
@@ -203,6 +221,83 @@ final class TemporalFlow implements org.bukkit.event.Listener {
             }
         }
     }
+    // ---- Air-swimming in your own Dilate field: a mini domain for the caster only
+
+    /**
+     * While the caster is airborne inside their own field they swim through the air like in Temporal
+     * Divinity (same controller and swim-* settings), kept inside the field by its soft wall. Landing,
+     * leaving the field or the field ending puts them back to normal; a swim that ends mid-air leaves
+     * them falling with no fall damage until they land.
+     */
+    private void swimTick() {
+        boolean allowed=plugin.getConfig().getBoolean("mythics.relay.temporal.dilate.swim",true);
+        Set<UUID> keep=new HashSet<>();
+        if(allowed) for(Field f:fields) {
+            Player p=Bukkit.getPlayer(f.owner);
+            if(p==null || p.isDead() || !p.getWorld().equals(f.center.getWorld())) continue;
+            if(p.getGameMode()!=GameMode.SURVIVAL && p.getGameMode()!=GameMode.ADVENTURE) continue;
+            if(p.isInsideVehicle() || p.isGliding() || p.isInWater() || p.isInLava() || plugin.relay().inDomain(f.owner)) continue;
+            if(p.getLocation().distanceSquared(f.center)>f.radius*f.radius) continue;
+            Swim s=swimmers.get(f.owner);
+            if(p.isOnGround()) continue; // only in the air; standing on something is ordinary movement
+            if(s==null) s=startSwim(p);
+            keep.add(f.owner);
+            p.setFallDistance(0);
+            if(p.isFlying()) p.setFlying(false);
+            if(!p.getAllowFlight()) p.setAllowFlight(true); // only stops vanilla's hover kick; flying is cancelled below
+            if(p.hasGravity()) p.setGravity(false);
+            Input in=p.getCurrentInput(); Location at=p.getLocation();
+            p.setVelocity(s.controller.step(swimTuning(),at.getYaw(),at.getPitch(),in.isForward(),in.isBackward(),in.isLeft(),in.isRight(),
+                in.isJump(),in.isSneak(),in.isSprint()||p.isSprinting(),at.toVector().subtract(f.center.toVector()),f.radius));
+        }
+        for(UUID id:new ArrayList<>(swimmers.keySet())) if(!keep.contains(id)) endSwim(id);
+        landingGrace.entrySet().removeIf(e->{Player p=Bukkit.getPlayer(e.getKey());return e.getValue()<tick || p==null || p.isOnGround();});
+    }
+    private AirSwim.Tuning swimTuning() {
+        String d="mythics.relay.temporal.divinity.";
+        var c=plugin.getConfig();
+        return new AirSwim.Tuning(c.getDouble(d+"swim-speed",0.38),c.getDouble(d+"swim-sprint-multiplier",1.5),c.getDouble(d+"swim-acceleration",0.14),
+            c.getDouble(d+"swim-drag",0.86),c.getDouble(d+"swim-stroke",0.10));
+    }
+    private Swim startSwim(Player p) {
+        Swim s=new Swim(); s.allowFlight=p.getAllowFlight(); s.flying=p.isFlying(); s.gravity=p.hasGravity();
+        // Written to the player so a crash mid-swim cannot leave them without gravity (restored on join).
+        p.getPersistentDataContainer().set(swimKey,org.bukkit.persistence.PersistentDataType.BYTE_ARRAY,
+            new byte[]{(byte)(s.allowFlight?1:0),(byte)(s.flying?1:0),(byte)(s.gravity?1:0)});
+        s.controller.seed(p.getVelocity(),swimTuning().speed());
+        swimmers.put(p.getUniqueId(),s);
+        return s;
+    }
+    /** Ends a caster's air-swim and restores their own movement flags. Safe to call when not swimming. */
+    void endSwim(UUID id) {
+        Swim s=swimmers.remove(id); Player p=Bukkit.getPlayer(id);
+        if(s==null || p==null) return;
+        p.setGravity(s.gravity); p.setFlying(false); p.setAllowFlight(s.allowFlight); if(s.allowFlight) p.setFlying(s.flying);
+        p.getPersistentDataContainer().remove(swimKey);
+        p.setFallDistance(0);
+        if(!p.isOnGround()) landingGrace.put(id,tick+Math.max(20,(long)cfg("dilate.landing-grace-ticks",200)));
+    }
+    @org.bukkit.event.EventHandler(priority=org.bukkit.event.EventPriority.LOW,ignoreCancelled=true)
+    public void swimLanding(org.bukkit.event.entity.EntityDamageEvent e) {
+        if(e.getCause()==org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL && landingGrace.remove(e.getEntity().getUniqueId())!=null) e.setCancelled(true);
+    }
+    @org.bukkit.event.EventHandler(priority=org.bukkit.event.EventPriority.HIGHEST,ignoreCancelled=true)
+    public void swimFlight(org.bukkit.event.player.PlayerToggleFlightEvent e) {
+        if(e.isFlying() && swimmers.containsKey(e.getPlayer().getUniqueId())) e.setCancelled(true);
+    }
+    @org.bukkit.event.EventHandler
+    public void swimQuit(org.bukkit.event.player.PlayerQuitEvent e) { endSwim(e.getPlayer().getUniqueId()); landingGrace.remove(e.getPlayer().getUniqueId()); }
+    @org.bukkit.event.EventHandler
+    public void swimDeath(org.bukkit.event.entity.PlayerDeathEvent e) { endSwim(e.getEntity().getUniqueId()); }
+    /** After a crash mid-swim the flags were saved with the player: put them back. */
+    @org.bukkit.event.EventHandler
+    public void swimJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p=e.getPlayer(); byte[] f=p.getPersistentDataContainer().get(swimKey,org.bukkit.persistence.PersistentDataType.BYTE_ARRAY);
+        if(f==null || f.length!=3) return;
+        p.setGravity(f[2]!=0); p.setFlying(false); p.setAllowFlight(f[0]!=0); if(f[0]!=0) p.setFlying(f[1]!=0);
+        p.getPersistentDataContainer().remove(swimKey);
+    }
+
     void removeOwner(UUID id) { fields.removeIf(f->{ if(!f.owner.equals(id))return false; removeDisplays(f); return true; }); }
     private void removeDisplays(Field f) { f.displays.forEach(Entity::remove); f.displays.clear(); }
     @org.bukkit.event.EventHandler(priority=org.bukkit.event.EventPriority.HIGHEST,ignoreCancelled=true)
@@ -236,6 +331,8 @@ final class TemporalFlow implements org.bukkit.event.Listener {
     @org.bukkit.event.EventHandler
     public void loaded(org.bukkit.event.world.EntitiesLoadEvent e) {for(Entity entity:e.getEntities())if(entity instanceof Projectile p)recoverMotion(p);}
     void shutdown() {
+        for(UUID id:new ArrayList<>(swimmers.keySet())) endSwim(id);
+        landingGrace.clear();
         fields.forEach(this::removeDisplays);fields.clear();forced.clear();regions.clear();meleeTick.clear();
         for(UUID id:slowLiving) { Entity e=Bukkit.getEntity(id); if(e instanceof LivingEntity le)restoreLiving(le); } slowLiving.clear();
         projectiles.forEach((id,m)->{Entity e=Bukkit.getEntity(id);if(e instanceof Projectile p){p.getPersistentDataContainer().remove(motionKey);p.setGravity(m.gravity);if(!(p instanceof AbstractArrow a&&a.isInBlock()))p.setVelocity(m.canonical);}}); projectiles.clear();
