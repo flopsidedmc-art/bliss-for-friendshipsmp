@@ -1,3 +1,9 @@
+# Rift HUD slot beside the hotbar
+
+- The Rift icon and its timer moved from the action bar to just right of the hotbar, using a new pack font `blissgems:hud_low` and invisible spacing characters. The rest of the Relay HUD is unchanged and doesn't move.
+- `mythics.relay.hud.rift-position` (`hotbar` or `inline`) and `rift-hotbar-offset` (nudge in GUI pixels). Without the pack it falls back to an inline text slot.
+- New `HudText.java` (vanilla font widths, measured) and `HudTextTest`. 19 unit tests pass. Placement checked on a mock-up only, not in a real client.
+
 # Relay Rift (quick travel) and Time Dilate restyle
 
 - New `RelayRift.java`: a fourth Relay power on sneak + left-click. Two anchors per player (saved in `relay-rift.yml`), a 5-second channel broken by damage or moving, a 15-second combat tag, a rift that stays open 4 seconds for anyone to follow, safe landing within 5 blocks, 1 second of fall protection, a 300-second cooldown and a 10-second cooldown for a broken channel. Disabled during the finale and switchable with `mythics.relay.rift.enabled`.

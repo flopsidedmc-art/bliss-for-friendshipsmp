@@ -25,7 +25,8 @@ Sneak + left-click never fires Rewind or Dilate: the click goes to the menu, and
 4. **Jump.** You land on the nearest safe block within 5 blocks of the anchor. If there is none, or another plugin blocks the teleport, the rift collapses and **no cooldown** is used.
 5. **Others follow.** The rift stays open where you stood for 4 seconds. Any player who walks into it (trusted or not, no special case) arrives at the same anchor 1 second later, offset so nobody lands inside anyone.
 6. **Arrival.** Everyone who arrives gets 1 second of fall-damage protection and nothing else. Players within 64 blocks see a brown flash and column of particles and hear a sound, and a half-size rift opens next to you for 1 second.
-7. **Cooldown:** 300 seconds after a completed jump, separate from every other Relay cooldown, persisted across restarts. The HUD shows a Rift slot between Dilate and Divinity.
+7. **Cooldown:** 300 seconds after a completed jump, separate from every other Relay cooldown, persisted across restarts.
+8. **HUD:** the Rift icon and its timer sit just right of the hotbar; the rest of the Relay HUD stays on the action bar exactly where it was. See "Rift HUD slot" below.
 
 **My decision on cancelled channels: a 10-second cooldown, not none.** With no cooldown, a holder who gets hit can restart the instant the attacker lets up, and can spam fake rifts as a visual and sound decoy. Set `cancel-cooldown-seconds: 0` for none. Rifts that fail for safety reasons, or that the finale shuts down, never cost a cooldown.
 
@@ -39,6 +40,16 @@ Sneak + left-click never fires Rewind or Dilate: the click goes to the menu, and
 - **Closing:** snaps shut over 5 ticks with a crack and a puff of dust.
 - **Limits:** at most 2 displays per rift plus 1 for the arrival rift. They are never saved to the world, so a crash or restart cannot leave one behind.
 - **Without the pack:** set `display-models: false` and the tear is drawn in dust instead.
+
+## Rift HUD slot
+
+The Rift icon and its status (Ready, a countdown, Unstable, Active, Sealed) are drawn just right of the hotbar, vertically centred on it, at any screen size and GUI scale.
+
+- **How:** it is still part of the action bar. That part uses the pack font `blissgems:hud_low`, which draws the same icon and letters lower, and invisible spacing characters move the pen there and back. So the action bar keeps its width and the rest of the Relay HUD doesn't move.
+- **Widths:** placing it needs the pixel width of the text before it. The plugin uses vanilla's letter widths, measured from Minecraft's own font sheet (your pack doesn't replace it), and your Relay icons' widths (`HudText.java`).
+  - If you change the icons, or a pack replaces the default font, the slot can drift by a few pixels. Fix that with `rift-hotbar-offset`.
+- **Can overlap:** the offhand slot of left-handed players (it sits on the right for them), and the attack indicator when it is set to "Hotbar". Nudge it with `rift-hotbar-offset`, or set `rift-position: inline` to put it back on the action bar.
+- **Without the pack**, or with `temporal.hud.use-glyphs: false`, it falls back to an inline "Rift" text slot.
 
 ## Time Dilate restyle
 
@@ -76,7 +87,9 @@ All under `mythics.relay.rift`. Existing configs get them added on startup.
 | `particles` | true | drifting dust |
 
 Elsewhere:
-- `mythics.relay.hud.rift-glyph`: ``. The text fallback is "Rift" when `temporal.hud.use-glyphs` is false.
+- `mythics.relay.hud.rift-glyph`: `\uE043`. The text fallback is "Rift" when `temporal.hud.use-glyphs` is false.
+- `mythics.relay.hud.rift-position`: `hotbar` (default) or `inline`.
+- `mythics.relay.hud.rift-hotbar-offset`: `0`. Nudges the hotbar slot left (negative) or right (positive), in GUI pixels.
 - `mythics.relay.temporal.dilate.glow` (true) and `glow-color`.
 
 **The abyss and the Pantheon arenas** don't exist in this plugin, so they can't be detected automatically. Add them under `blocked-areas` (or their worlds under `blocked-worlds`). Blocked spots can't be set as anchors or travelled to.
@@ -88,6 +101,7 @@ Elsewhere:
 | Rift frames | `assets/blissgems/textures/item/rift_0.png` … `rift_5.png` (40×96) | item models `blissgems:rift_0` … `blissgems:rift_5` |
 | Light spill | `assets/blissgems/textures/item/rift_light.png` (32×32) | item model `blissgems:rift_light` |
 | HUD icon | `assets/blissgems/textures/icons/relay_rift.png` (33×20) | font glyph `U+E043` |
+| Hotbar HUD font | `assets/blissgems/font/hud_low.json` | `U+E043` icon at ascent -44, vanilla letters at ascent -50, spacing `U+E400`–`U+E408` (+1…+256) and `U+E410`–`U+E418` (−1…−256) |
 | Dilate clock | `models/item/temporal_clock.json`, `temporal_hand.json` | thicker lines |
 | Dilate colours | `textures/item/temporal_brown/bronze/gold.png` | new palette |
 
@@ -100,17 +114,19 @@ Elsewhere:
 | File | Why |
 |---|---|
 | `RelayRift.java` (new) | The whole Rift: menu, anchors and their file, channel, follow window, safe landing, combat tag, fall protection, visuals, cleanup |
-| `RelayGem.java` | Sneak + left-click opens Rift; ticks it every tick; shuts it down; Rift slot in the HUD |
+| `RelayGem.java` | Sneak + left-click opens Rift; ticks it every tick; shuts it down; Rift slot beside the hotbar (`hudComponent`) |
+| `HudText.java` (new) | Pixel widths of HUD text and the spacing characters, to place the Rift slot |
+| `MythicListener.java` | Sends the Relay HUD as a component so the hotbar slot keeps its font |
 | `GemManager.java` | "✦ RIFT [Sneak + left-click gem]" in the Relay's lore; existing Relay items get the line once |
 | `TemporalFlow.java` | Brown Glowing outline on the clock displays; new particle-fallback colours |
-| `config.yml` | `mythics.relay.rift` section, `hud.rift-glyph`, `temporal.dilate.glow` and `glow-color` |
-| `RelayRiftTest.java` (new) | Unit tests for the follow hitbox, landing search order and colour parsing |
+| `config.yml` | `mythics.relay.rift` section, `hud.rift-glyph`, `rift-position`, `rift-hotbar-offset`, `temporal.dilate.glow` and `glow-color` |
+| `RelayRiftTest.java`, `HudTextTest.java` (new) | Unit tests for the follow hitbox, landing search order, colour parsing, HUD widths and spacing |
 | `resource-pack/` | New rift, light and icon assets, font glyph, thicker recoloured clock; overlay kept unpacked |
 | `tools/pack/` (new) | Scripts that generate those assets |
 
 ## In-game test plan (not yet run)
 
-Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and remember to set it back.
+Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and remember to set it back. Twelve checks:
 
 1. **Two players following.** Set A somewhere, walk away, channel to A. While the rift is open, the second player walks into it.
    - Expect: they arrive at A about 1 second later, beside you, not inside you.
@@ -139,6 +155,9 @@ Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and re
     - the light spill sits on the ground;
     - the arrival flash is visible from about 60 blocks;
     - the Dilate clock is thicker, brighter and outlined.
+12. **HUD slot.** Hold the Relay at a few GUI scales and window sizes.
+    - Expect: the Rift icon sits just right of the hotbar, centred on it, and the rest of the Relay HUD doesn't move as timers change.
+    - If it is a few pixels off, adjust `rift-hotbar-offset`.
 
 ## What was and was not tested
 
@@ -146,6 +165,7 @@ Use two accounts (or a friend). Set `cooldown-seconds: 20` while testing, and re
 |---|---|
 | Code inspection | `RelayGem`, `MythicListener`, `TemporalFlow`, `TemporalDomain`, `Finale`, `GemManager` read; every Relay input path checked so sneak + left-click reaches only Rift |
 | Compilation | `mvn clean package` succeeds against `io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT` on Java 21 |
-| Unit tests | 15 pass: 6 new for Rift (follow hitbox from several facings, landing search order and range, colour parsing) and the 9 existing swimming tests |
+| Unit tests | 19 pass: 6 for Rift (follow hitbox from several facings, landing search order and range, colour parsing), 4 for the HUD widths and spacing, and the 9 existing swimming tests |
+| HUD placement | Checked against a drawn mock-up using vanilla's layout constants, font sheet and your icons; not seen in a real client |
 | Pack checks | Every JSON parses; every new item model and texture resolves; models stay inside the legal -16..32 range; one new font glyph, no duplicates; the merged full pack carries the same files |
 | **Live gameplay** | **None.** Not run on a server or client: the feel, visuals, glow, multiplayer following, restart persistence and the finale lockout are all unverified |
