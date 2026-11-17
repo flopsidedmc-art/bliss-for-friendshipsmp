@@ -1,3 +1,9 @@
+# Tagged players get a ring; Tuned In icon is a target
+
+- Players you've tagged with Tuned In (30 seconds after you hit them) get a slowly turning ring of Relay-brown dust at their feet while you hold the Relay, within 48 blocks. Only you see it by default; invisible players get none. `mythics.relay.passives.tag-ring`, `tag-ring-color` (`#FFFFFF` for white) and `tag-ring-everyone`.
+- The Tuned In meter icon is now a target reticle around a player silhouette, matching the rings: each fifth of charge lights one quarter of the ring, and full makes the whole icon bright. Replaces the short-lived signal-wave version. Same codepoints, border and side bar.
+- 26 unit tests pass. Not run in a game.
+
 # Rewind uses half the bar; Tuned In gets a signal icon
 
 - Rewind still needs a full Tuned In bar but now uses only half of it (`temporal.charge.rewind-share`, 0.5), so after a Rewind the next power is 5 hits away. The other powers still empty it.

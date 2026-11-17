@@ -150,6 +150,7 @@ public final class RelayGem implements Listener {
         domain.tick();
         flow.tick();
         rift.tick();
+        if (ticks % 4 == 0) drawTagRings();
         if (ticks % 2 != 0) return;
         long n = now();
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -171,6 +172,35 @@ public final class RelayGem implements Listener {
         if (ticks % 200 == 0) {
             tags.values().forEach(m -> m.values().removeIf(v -> v <= n));
             tags.values().removeIf(Map::isEmpty);
+        }
+    }
+    /**
+     * A slowly turning ring of dust at the feet of every player you have tagged (Tuned In), while you hold the
+     * Relay. Only you see it unless passives.tag-ring-everyone is on; invisible players get no ring.
+     */
+    private void drawTagRings() {
+        if (!cfgB("passives.tag-ring", true) || tags.isEmpty()) return;
+        long n = now();
+        boolean everyone = cfgB("passives.tag-ring-everyone", false);
+        Particle.DustOptions dust = new Particle.DustOptions(
+            RelayRift.parseColor(plugin.getConfig().getString("mythics.relay.passives.tag-ring-color", "#B0703A"), RelayRift.RIM), 0.8f);
+        double phase = ticks * 0.12, radius = 0.8;
+        for (var entry : tags.entrySet()) {
+            Player owner = Bukkit.getPlayer(entry.getKey());
+            if (owner == null || owner.isDead() || !holds(owner)) continue;
+            for (var tag : entry.getValue().entrySet()) {
+                if (tag.getValue() <= n) continue;
+                Player v = Bukkit.getPlayer(tag.getKey());
+                if (v == null || v.isDead() || v.getGameMode() == GameMode.SPECTATOR || v.hasPotionEffect(PotionEffectType.INVISIBILITY)) continue;
+                if (!v.getWorld().equals(owner.getWorld()) || v.getLocation().distanceSquared(owner.getLocation()) > 48 * 48) continue;
+                Location base = v.getLocation().add(0, 0.12, 0);
+                for (int i = 0; i < 14; i++) {
+                    double a = phase + i * Math.PI * 2 / 14;
+                    Location at = base.clone().add(Math.cos(a) * radius, 0, Math.sin(a) * radius);
+                    if (everyone) v.getWorld().spawnParticle(Particle.DUST, at, 1, 0, 0, 0, 0, dust);
+                    else owner.spawnParticle(Particle.DUST, at, 1, 0, 0, 0, 0, dust);
+                }
+            }
         }
     }
     private void applyQuickened(Player p, boolean active) {

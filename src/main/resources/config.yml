@@ -143,6 +143,9 @@ mythics:
     passives:
       tag-duration-ms: 30000 # retained damage-tag passive, independent from the charge meter
       tag-damage-bonus: 0.05 # +5% damage from the holder against tagged players
+      tag-ring: true # a turning ring of dust at the feet of players you've tagged, while you hold the Relay
+      tag-ring-color: "#B0703A" # Relay brown; "#FFFFFF" for white
+      tag-ring-everyone: false # false: only the tagger sees the ring. true: everyone nearby does
       attack-speed-multiplier: 1.2 # Quickened: holding the gem swings 1.2x faster
 
     rewind:
