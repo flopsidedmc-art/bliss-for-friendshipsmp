@@ -77,8 +77,17 @@ public final class RelayGem implements Listener {
         }
         return false;
     }
+    /**
+     * Tuned In a power uses up when it succeeds. With full-to-use, every power empties the bar except Rewind,
+     * which uses charge.rewind-share of it (half by default), so a Rewind leaves you part-way to the next power.
+     */
+    int abilitySpend(String power) {
+        if (cfgB("temporal.charge.full-to-use", true) && "rewind".equals(power))
+            return (int) Math.round(maxCharge() * Math.max(0, Math.min(1, cfgD("temporal.charge.rewind-share", 0.5))));
+        return abilityCost(power);
+    }
     /** Uses up the Tuned In a power costs, once it has succeeded. */
-    void spendFor(Player p, String power) { spend(p.getUniqueId(), abilityCost(power)); persist(p); }
+    void spendFor(Player p, String power) { spend(p.getUniqueId(), abilitySpend(power)); persist(p); }
     /** Charge per hit dealt: maximum / charge.hits-to-fill (10 hits by default), or charge.hit if that is 0. */
     private int hitGain() {
         int hits = cfgI("temporal.charge.hits-to-fill", 10);
@@ -226,7 +235,7 @@ public final class RelayGem implements Listener {
 
         int cost = abilityCost("rewind");
         if ((deliberate ? !chargedFor(p, "rewind") : charge(id) < cost) || !safe(to) || !p.teleport(to)) return;
-        spend(id, cost);
+        spend(id, abilitySpend("rewind"));
         lastRewind.put(id, now);
         slots[slot] = now + cfgL("rewind.regen-ms", 20000L);
         drawRewindTrail(from, to);

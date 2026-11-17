@@ -20,6 +20,7 @@ Not verified in a Minecraft client.
 | Rift frames | `assets/blissgems/textures/item/rift_0.png` to `rift_5.png` (40x96) | item models `blissgems:rift_0` to `blissgems:rift_5`, flat vertical planes |
 | Rift light spill | `assets/blissgems/textures/item/rift_light.png` (32x32) | item model `blissgems:rift_light`, flat on the ground |
 | Rift HUD icon | `assets/blissgems/textures/icons/relay_rift.png` (33x20) | font glyph `U+E043` (`mythics.relay.hud.rift-glyph`) |
+| Tuned In meter | `assets/blissgems/textures/icons/relay_tuned.png`, `relay_tuned_c1.png` … `relay_tuned_c5.png` | signal waves (redrawn inside only) on `U+E042`, `U+E058`–`U+E05C` |
 | Lore eye symbol | `assets/blissgems/textures/font/lore_eye.png` (11x7, white and greys) | font glyph `U+E045`, before TEMPORAL DIVINITY in the Relay lore |
 | Hotbar HUD font | `assets/blissgems/font/hud_low.json` | Rift icon and vanilla letters drawn beside the hotbar, plus spacing characters U+E400-E418 |
 | Time Dilate clock | `temporal_clock.json`, `temporal_hand.json` | lines 1.5x thicker, rebuilt from `tools/pack/source` |

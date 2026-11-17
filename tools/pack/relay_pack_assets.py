@@ -72,6 +72,32 @@ for y, row in enumerate(EYE):
         eye.putpixel((7 + x, 2 + y), P[ch] + (255,))
 eye.save(os.path.join(icons, "relay_divinity.png"))
 
+# Tuned In meter (U+E042 empty, U+E058-E05C 20%..full): signal waves instead of the old compass. Each step
+# lights one more wave; full makes everything bright. Only the 16x16 inside is redrawn, so the frame and the
+# side bar of each frame stay as they were (re-runnable).
+SIG_CX, SIG_CY, SIG_RINGS = 14.5, 15.0, [2.6, 4.9, 7.2, 9.5]
+def signal_arc(x, y):
+    dx, dy = x - SIG_CX, y - SIG_CY
+    if dy > 0.6 or abs(math.degrees(math.atan2(dx, -dy))) > 46:
+        return None
+    r = math.hypot(dx, dy)
+    return next((i for i, R in enumerate(SIG_RINGS) if abs(r - R) <= 0.62), None)
+for step, name in enumerate(["relay_tuned", "relay_tuned_c1", "relay_tuned_c2", "relay_tuned_c3", "relay_tuned_c4", "relay_tuned_c5"]):
+    path = os.path.join(icons, name + ".png")
+    meter = Image.open(path).convert("RGBA")
+    lit, full = min(step, 4), step == 5
+    for y in range(2, 18):
+        for x in range(7, 23):
+            arc = signal_arc(x, y)
+            if arc is not None:
+                ch = ("P" if full else "L") if arc < lit else "d"
+            elif math.hypot(x - SIG_CX, y - SIG_CY - 0.2) <= 1.25:
+                ch = "P" if lit > 0 or full else "l"
+            else:
+                ch = "."
+            meter.putpixel((x, y), P[ch] + (255,))
+    meter.save(path)
+
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
 if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):

@@ -158,6 +158,7 @@ mythics:
         # when it succeeds. false: each power uses its own cost below (and divinity.required-charge).
         full-to-use: true
         hits-to-fill: 10 # hits on players that fill the bar from empty; 0 = use "hit" below
+        rewind-share: 0.5 # Rewind still needs a full bar but only uses this share of it (0.5 = half)
         hit: 8 # charge per hit dealt, only when hits-to-fill is 0
         received: 4
         minimum-damage: 0.5 # final damage in HP, after cancellation/protection

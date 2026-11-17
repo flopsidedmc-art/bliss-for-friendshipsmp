@@ -1,3 +1,9 @@
+# Rewind uses half the bar; Tuned In gets a signal icon
+
+- Rewind still needs a full Tuned In bar but now uses only half of it (`temporal.charge.rewind-share`, 0.5), so after a Rewind the next power is 5 hits away. The other powers still empty it.
+- The Tuned In meter icon is now radio signal waves instead of a compass: each fifth of charge lights one more wave and full makes the whole icon bright. Same six frames and codepoints (U+E042, U+E058-E05C), so the HUD and the hotbar slot pick it up with no code change. Only the inside of each icon was redrawn; the frame and side bar are unchanged.
+- Tuned In never pointed at anyone in this plugin (that compass behaviour was removed in the temporal rework); it is the charge meter plus the 30-second tag that adds 5% damage against players you hit.
+
 # Tuned In must be full to use a Relay power
 
 - `temporal.charge.full-to-use` (new, default true): Rewind, Time Dilate, Temporal Divinity and Rift each need a full Tuned In bar and empty it when they succeed. A power that fails (no safe spot, cancelled teleport, broken Rift channel) costs nothing. Cooldowns still apply on top. false restores the per-power costs.
