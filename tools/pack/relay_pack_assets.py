@@ -77,16 +77,15 @@ eye.save(os.path.join(icons, "relay_divinity.png"))
 # right); full makes the whole icon bright. Only the 16x16 inside is redrawn, so each frame's border and
 # side bar stay as they were (re-runnable).
 RET_CX, RET_CY, RET_R = 14.5, 9.5, 6.4
-# A head over shoulders, the usual "player" silhouette
-RET_FIGURE = {(14, 6), (15, 6), (13, 7), (14, 7), (15, 7), (16, 7), (14, 8), (15, 8),
-              (13, 10), (14, 10), (15, 10), (16, 10), (12, 11), (13, 11), (14, 11), (15, 11), (16, 11), (17, 11),
-              (12, 12), (13, 12), (14, 12), (15, 12), (16, 12), (17, 12)}
+# A small standing player: head, shoulders, body
+RET_FIGURE = {(14, 6), (15, 6), (14, 7), (15, 7), (13, 8), (14, 8), (15, 8), (16, 8), (13, 9), (14, 9), (15, 9), (16, 9),
+              (14, 10), (15, 10), (14, 11), (15, 11), (14, 12), (15, 12)}
 def reticle(x, y, step):
     full, lit = step == 5, min(step, 4)
     dx, dy = x - RET_CX, y - RET_CY
     if (x, y) in RET_FIGURE:
         return "P" if full else ("L" if lit else "m")
-    if (abs(dx) < 0.6 and 5.4 <= abs(dy) <= 7.6) or (abs(dy) < 0.6 and 5.4 <= abs(dx) <= 7.6):
+    if (abs(dx) < 0.6 and 4.8 <= abs(dy) <= 7.6) or (abs(dy) < 0.6 and 4.8 <= abs(dx) <= 7.6):
         return "P" if full else "l"  # crosshair ticks at north, east, south and west
     if abs(math.hypot(dx, dy) - RET_R) <= 0.6:
         ang = (math.degrees(math.atan2(dx, -dy)) + 360) % 360
