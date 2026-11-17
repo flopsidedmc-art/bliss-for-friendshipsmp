@@ -31,9 +31,27 @@ class SmallCapsTest {
         assertTrue(SmallCaps.plain("§dTEMPORAL DIVINITY").contains("TEMPORAL DIVINITY"), "unconverted lore matches too");
     }
 
+    @Test void capitalsStyleOnlyChangesCapitalLetters() {
+        assertEquals("ᴛuned ɪn", SmallCaps.capitals("Tuned In"));
+        assertEquals("ʀᴇʟᴀʏ ɢᴇᴍ", SmallCaps.capitals("RELAY GEM"));
+        assertEquals("§7— §x§B§8§9§3§5§8⟲ ʀᴇᴡɪɴᴅ §8[ʟeft-click gem]", SmallCaps.capitals("§7— §x§B§8§9§3§5§8⟲ REWIND §8[Left-click gem]"),
+                "hex colour digits after § are not letters to convert");
+        assertEquals("§8ᴛier 2 • ᴇnergy 5/10", SmallCaps.capitals("§8Tier 2 • Energy 5/10"));
+        String once = SmallCaps.capitals("§dTEMPORAL DIVINITY");
+        assertEquals(once, SmallCaps.capitals(once), "converting twice changes nothing");
+        assertTrue(SmallCaps.plain(once).contains("TEMPORAL DIVINITY"));
+    }
+
+    @Test void styleNamesPickTheLettering() {
+        List<String> lore = List.of("§7— Clean Signal");
+        assertEquals(List.of("§7— ᴄlean ꜱignal"), SmallCaps.lore(lore, "capitals"));
+        assertEquals(List.of("§7— ᴄʟᴇᴀɴ ꜱɪɢɴᴀʟ"), SmallCaps.lore(lore, "all"));
+        assertEquals(lore, SmallCaps.lore(lore, "off"));
+    }
+
     @Test void itemHistoryLinesAreLeftAlone() {
         List<String> lore = List.of("§7— Quickened", "§cSTOLEN §7by Steve", "§eGIFTED §7by Alex", "§9STORED §7by notch_2");
-        List<String> out = SmallCaps.lore(lore);
+        List<String> out = SmallCaps.lore(lore, "all");
         assertEquals("§7— ǫᴜɪᴄᴋᴇɴᴇᴅ", out.get(0));
         assertEquals(lore.subList(1, 4), out.subList(1, 4));
         assertTrue(SmallCaps.isHistoryLine("§cSTOLEN §7by Steve"));

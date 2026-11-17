@@ -1,3 +1,9 @@
+# Lore: small caps for capital letters only
+
+- `lore.small-caps` now picks a style: `capitals` (new default: only letters that were capitals become small caps, "RELAY GEM" -> "ʀᴇʟᴀʏ ɢᴇᴍ", "Tuned In" -> "ᴛuned ɪn"), `all` (every letter, the previous behaviour) or `off`. `true`/`false` in an existing config mean `capitals`/`off`.
+- Existing gems are no longer converted text-to-text: their lore is rebuilt from the gem's own data in the configured style, keeping item-history lines, and the gem remembers the style it was written in. So changing the setting later, including back from `all`, comes out exactly right.
+- 26 unit tests pass. Not run in a game; the look was checked on a tooltip mock-up drawn with vanilla's font sheets.
+
 # Small-caps gem lore; Tuned In beside the hotbar
 
 - Gem lore (every standard and mythic gem) is written in small caps: every letter, e.g. "ᴛᴜɴᴇᴅ ɪɴ". Colour codes, symbols and digits are kept, and so are item-history lines ("STOLEN by Name"), which bounty tracking and item history read back. Existing gems switch over when held or when their owner joins. `lore.small-caps` (true).

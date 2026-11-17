@@ -322,10 +322,13 @@ recipes:
 progression:
   level: 1
 
-# Gem lore lettering. true: every letter in small caps ("ᴛᴜɴᴇᴅ ɪɴ"); item-history lines (STOLEN by ...) stay as they are.
-# Existing gems switch over when held or when their owner joins. false only affects lore written from then on.
+# Gem lore lettering. Item-history lines (STOLEN by ...) always stay as they are.
+#   capitals: only letters that were capitals become small caps ("RELAY GEM" -> "ʀᴇʟᴀʏ ɢᴇᴍ", "Tuned In" -> "ᴛuned ɪn")
+#   all:      every letter in small caps ("ᴛᴜɴᴇᴅ ɪɴ")
+#   off:      normal lettering
+# Existing gems are rewritten in the new style when held or when their owner joins.
 lore:
-  small-caps: true
+  small-caps: capitals
 
 # Standard-gem ability cooldowns in seconds (Energy-stage multiplier still applies).
 # Tune live via /config instead of editing this file.

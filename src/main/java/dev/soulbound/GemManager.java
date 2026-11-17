@@ -23,6 +23,8 @@ public class GemManager {
     public final NamespacedKey keyKind;
 
     private final Plugin plugin;
+    /** Which lore lettering a gem was last written in, so styleLore only rebuilds when the setting changes. */
+    private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -108,23 +110,42 @@ public class GemManager {
         return item;
     }
 
-    /** Gem lore in small caps when lore.small-caps is on (item-history lines are left alone). */
+    /** lore.small-caps: "capitals" (default), "all" or "off". true/false from older configs mean capitals/off. */
+    private String loreStyle() {
+        String s = String.valueOf(plugin.getConfig().getString("lore.small-caps", "capitals")).trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (s) {
+            case "true", "capitals" -> "capitals";
+            case "all" -> "all";
+            default -> "off";
+        };
+    }
+
+    /** Gem lore in the configured lettering (item-history lines are left alone). */
     private List<String> styled(List<String> lore) {
-        return plugin.getConfig().getBoolean("lore.small-caps", true) ? SmallCaps.lore(lore) : lore;
+        return SmallCaps.lore(lore, loreStyle());
     }
 
     /**
-     * Brings an existing gem's lore to small caps in place, keeping any item-history lines. Does nothing
-     * (and writes nothing) when it already is, so it is cheap to call on held gems every tick.
+     * Makes an existing gem's lore match the configured lettering. The lore is rebuilt from the gem's own
+     * data (so a style change, even from every-letter small caps, comes out right), and any item-history
+     * lines are carried over. The gem remembers its style, so this is one PDC read when nothing changed.
      */
     public void styleLore(ItemStack item) {
-        if (!isGem(item) || !plugin.getConfig().getBoolean("lore.small-caps", true)) return;
+        if (!isGem(item)) return;
+        String style = loreStyle();
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasLore()) return;
-        List<String> lore = meta.getLore(), next = SmallCaps.lore(lore);
-        if (next.equals(lore)) return;
-        meta.setLore(next);
-        item.setItemMeta(meta);
+        if (meta == null || style.equals(meta.getPersistentDataContainer().get(keyLoreStyle, PersistentDataType.STRING))) return;
+        List<String> history = new ArrayList<>();
+        if (meta.hasLore()) for (String line : meta.getLore()) if (line != null && SmallCaps.isHistoryLine(line)) history.add(line);
+        refreshLore(item);
+        ItemMeta after = item.getItemMeta();
+        if (!history.isEmpty()) {
+            List<String> lore = after.hasLore() ? new ArrayList<>(after.getLore()) : new ArrayList<>();
+            lore.addAll(history);
+            after.setLore(lore);
+        }
+        after.getPersistentDataContainer().set(keyLoreStyle, PersistentDataType.STRING, style);
+        item.setItemMeta(after);
     }
 
     /** Lore text. Strength layout matches user-provided screenshots; wording is user-supplied. */
