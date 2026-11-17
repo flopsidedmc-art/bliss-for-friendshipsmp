@@ -1,3 +1,8 @@
+# Temporal Divinity in the Relay colour
+
+- Temporal Divinity's lore line and its "needs a nearby opponent" message use the Relay's antique gold (#B89358) like Rewind, Time Dilate and Rift, instead of pink.
+- Gem lore now carries a version; bumping it (now 2) makes existing gems rebuild their lore once, so lore text changes reach gems people already have.
+
 # Lore: small caps for capital letters only
 
 - `lore.small-caps` now picks a style: `capitals` (new default: only letters that were capitals become small caps, "RELAY GEM" -> "ʀᴇʟᴀʏ ɢᴇᴍ", "Tuned In" -> "ᴛuned ɪn"), `all` (every letter, the previous behaviour) or `off`. `true`/`false` in an existing config mean `capitals`/`off`.
