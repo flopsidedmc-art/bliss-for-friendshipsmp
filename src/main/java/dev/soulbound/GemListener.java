@@ -358,7 +358,7 @@ public class GemListener implements Listener {
             // Actionbar for held gem (accurate live status)
             ItemStack held = heldGem(p);
             if (held != null) {
-                sendActionbar(p, held);
+                if (plugin.revenant() == null || !plugin.revenant().hudActive(p)) sendActionbar(p, held); // the Revenant HUD has the bar
                 if (type == GemType.STRENGTH) {
                     updateBountyCompass(p);
                     drawTrackingLine(p);
@@ -921,6 +921,8 @@ public class GemListener implements Listener {
         boolean right = (a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK);
         if (!left && !right) return;
         Player p = e.getPlayer();
+        // With the Revenant in the main hand, clicks belong to its powers, not to a gem in the other hand.
+        if (plugin.revenant() != null && plugin.revenant().holdsMace(p)) return;
 
         // Offhand gem activation: Crisp + Bounty Hunter are offhand-hold right-click.
         if (e.getHand() == EquipmentSlot.OFF_HAND) {

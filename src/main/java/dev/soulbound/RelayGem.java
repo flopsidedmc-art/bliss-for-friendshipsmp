@@ -142,8 +142,10 @@ public final class RelayGem implements Listener {
         divinityReady.put(id, n + Math.max(0, cfgL("temporal.divinity.cooldown-seconds", 90)) * 1000);
         persist(p);
         p.saveData();
-        flow.removeOwner(id);
-        history.remove(id);
+        if (domain.contains(id)) { // the caster went to the void; not when Divinity only suspended the Revenant
+            flow.removeOwner(id);
+            history.remove(id);
+        }
     }
     public void tick() {
         ticks++;

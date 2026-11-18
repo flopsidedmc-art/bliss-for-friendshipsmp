@@ -98,6 +98,9 @@ public final class Finale implements Listener {
     private double progress;
     private long lastTickMs;
     private BukkitTask task;
+    /** A short borrowed sky (the Revenant's phase 2), run while the finale itself is idle. */
+    private BukkitTask pulseTask;
+    private boolean pulseRed;
     private boolean skyOn;
     private int skyTicks;
     private int overlayFrame;
@@ -326,7 +329,7 @@ public final class Finale implements Listener {
         int frameTicks = Math.max(1, (int) skyL("overlay.frame-ticks", 4L));
         if (skyB("overlay.enabled", true) && skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
             overlayFrame = (overlayFrame + 1) % OVERLAY_FRAMES;
-            boolean red = "red".equalsIgnoreCase(skyS("overlay.style", "gold"));
+            boolean red = pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold"));
             char glyph = (char) ((red ? 0xE110 : 0xE100) + overlayFrame);
             Title t = Title.title(Component.text(String.valueOf(glyph)), Component.empty(),
                     Title.Times.times(Duration.ZERO, Duration.ofMillis(frameTicks * 50L * 4L), Duration.ZERO));
@@ -1142,7 +1145,36 @@ public final class Finale implements Listener {
     }
 
     public void shutdown() {
+        endPulse();
         if (phase != Phase.IDLE) finish(null);
+    }
+
+    /**
+     * The finale's sky and overlay, in red, for a few seconds (the Revenant's phase 2). Does nothing while the
+     * finale runs; if the finale starts during a pulse, the finale takes the sky over.
+     */
+    public void skyPulse(int seconds) {
+        if (phase != Phase.IDLE || skyOn) return;
+        pulseRed = true;
+        startSky();
+        int[] left = {Math.max(1, seconds) * 20};
+        pulseTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (phase != Phase.IDLE) { pulseRed = false; cancelPulseTask(); return; }
+            skyTick();
+            if (--left[0] <= 0) endPulse();
+        }, 1L, 1L);
+    }
+
+    private void endPulse() {
+        if (pulseTask == null) return;
+        cancelPulseTask();
+        pulseRed = false;
+        if (phase == Phase.IDLE) stopSky();
+    }
+
+    private void cancelPulseTask() {
+        if (pulseTask != null) pulseTask.cancel();
+        pulseTask = null;
     }
 
     // ------------------------------------------------------------------ events

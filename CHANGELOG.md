@@ -1,3 +1,20 @@
+# The Revenant: soul mace boss weapon
+
+Full details, test plan and decisions: REVENANT.md.
+
+**Not tested in game.** It compiles, and 34 unit tests pass (8 new: smash damage and the 14-heart cap, falloff, leap height, independent Plunge charges, behind-target spot, world-border clamp). The pack JSON and every file it points to were checked. Nothing below was played or seen on a client.
+
+- New admin-only boss weapon: `/revenant give <player> [fresh]`, `/revenant boss start|stop`, `/revenant status` (permission `soulbound.revenant`, ops). A mace with your texture (`blissgems:revenant_mace`), teal name and lore. Not a gem, so the Trader, Upgrader, energy and disables ignore it.
+- One at a time: an id plus a holder; copies are inert. It can't be dropped or stored, never drops, and vanishes on death and logout.
+- Plunge (right-click, 2 charges at 12 s each), Rising (sneak + right-click, 25 s), Undertow (sneak + left-click, 30 s). Passives: Abyssal Weight (hits stop jumping for 2 s) and no fall damage. Every Revenant hit is capped at 28 HP (14 hearts) before armor.
+- Boss mode: 60 hearts, knockback resistance 0.6, a boss bar within 100 blocks. Phase 2 at half health (faster Plunge, 10 s red sky). He shatters on death. `boss stop` ends it quietly.
+- Logout mid-fight pauses it. The bar reads "The Revenant has vanished…", and health, phase and timers are saved. The same player rejoining gets the mace back after a 5 s warning. `give ... fresh` restarts at full health.
+- Relay counters:
+  - Time Dilate slows Plunge and blocks Rising.
+  - Temporal Divinity never takes him to the void. It suspends him 3 blocks up for 5 s (3 s in phase 2), with no movement, no powers and no knockback resistance; then he gets a gentle drop and 30 s immunity.
+  - He can't open or follow rifts.
+- Pack: mace item definition and model (`handheld_mace` parent), your texture, and HUD icons `U+E046` Plunge, `U+E047` Rising, `U+E048` Undertow (33x20, iron frame, teal art).
+
 # Tagged players get a ring; Tuned In icon is a target
 
 - Players you've tagged with Tuned In (30 seconds after you hit them) get a slowly turning ring of Relay-brown dust at their feet while you hold the Relay, within 48 blocks. Only you see it by default; invisible players get none. `mythics.relay.passives.tag-ring`, `tag-ring-color` (`#FFFFFF` for white) and `tag-ring-everyone`.

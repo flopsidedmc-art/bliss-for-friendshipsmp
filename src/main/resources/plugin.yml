@@ -34,6 +34,11 @@ commands:
     description: Manage The Signal world turmoil and Relay finale.
     usage: /turmoil <start|stop|status|spawn|setspawn|overlay|finale>
     permission: soulbound.turmoil
+  revenant:
+    description: The Revenant, the final boss weapon.
+    usage: /revenant <give <player> [fresh]|boss <start|stop>|status>
+    permission: soulbound.revenant
+    permission-message: You lack permission.
   stalker:
     description: Shadow Stalker — begin the hunt toward a tracked player.
     usage: /stalker <player>
@@ -41,6 +46,8 @@ commands:
     permission-message: You lack permission.
 permissions:
   soulbound.turmoil:
+    default: op
+  soulbound.revenant:
     default: op
   bliss.player:
     default: true

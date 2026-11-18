@@ -5,3 +5,5 @@ Antique palette revision: Time Dilate uses #5A3A1C main markings, #92613B second
 Texture path fix: the three temporal_*.png material textures now live in assets/blissgems/textures/item/ (was textures/effect/, a folder Minecraft does not load for models). Colours, geometry and model IDs are unchanged.
 
 Rift + Time Dilate restyle: adds blissgems:rift_0..rift_5 (the six rift frames, 40x96, vertical plane models), blissgems:rift_light (ground light spill) and HUD glyph U+E043 (blissgems:icons/relay_rift.png, 33x20). Time Dilate clock lines are 1.5x thicker and recoloured to glowing brown #B0703A / #8C5530 / #F0C48C; the brown Glowing outline is set by the plugin.
+
+The Revenant: adds blissgems:revenant_mace (item definition, handheld_mace model, the supplied 16x16 texture) and HUD glyphs U+E046 Plunge, U+E047 Rising, U+E048 Undertow (blissgems:icons/revenant_*.png, 33x20).

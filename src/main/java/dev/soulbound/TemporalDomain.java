@@ -103,6 +103,8 @@ final class TemporalDomain implements Listener {
         return sky;
     }
     boolean start(Player owner) {
+        RevenantMace revenant=plugin.revenant();
+        if(revenant!=null && revenant.isBoss(owner))return false; // the Revenant never enters the void world
         if(!journalHealthy || contains(owner.getUniqueId()) || owner.isInsideVehicle() || owner.isDead()
             || owner.getGameMode()==GameMode.SPECTATOR || owner.getWorld().getName().equals(worldName()))return false;
         int maximum=Math.max(1,Math.min(8,(int)cfg("max-sessions",4)));
@@ -110,12 +112,20 @@ final class TemporalDomain implements Listener {
         int slot=0;while(used.contains(slot))slot++;if(slot>=maximum)return false;
         double radius=Math.max(1,Math.min(32,cfg("capture-radius",10)));
         List<Player> players=new ArrayList<>();players.add(owner);
+        List<Player> caught=new ArrayList<>();
         owner.getNearbyEntities(radius,radius,radius).stream().filter(e->e instanceof Player).map(e->(Player)e)
             .filter(p->p.getLocation().distanceSquared(owner.getLocation())<=radius*radius && !p.isDead() && !contains(p.getUniqueId())
                 && !p.isInsideVehicle() && !plugin.listener().isTrusted(owner,p) && !plugin.listener().isTrusted(p,owner)
                 && (p.getGameMode()==GameMode.SURVIVAL||p.getGameMode()==GameMode.ADVENTURE))
             .sorted(Comparator.comparingDouble(p->p.getLocation().distanceSquared(owner.getLocation())))
-            .limit(Math.max(1,Math.min(16,(int)cfg("max-opponents",8)))).forEach(players::add);
+            .limit(Math.max(1,Math.min(16,(int)cfg("max-opponents",8)))).forEach(caught::add);
+        // The Revenant is never taken to the void: Divinity suspends him where he stands instead (unless he is immune).
+        Player boss=null;
+        for(Player p:caught) {
+            if(revenant!=null && revenant.isBoss(p)) { if(revenant.suspendable(p))boss=p; }
+            else players.add(p);
+        }
+        if(players.size()<2 && boss!=null) { revenant.suspend(boss);return true; } // only the Revenant was caught
         // allow-solo is a testing aid (default off): lets one player open an empty domain to try the swimming.
         if(players.size()<2 && !plugin.getConfig().getBoolean("mythics.relay.temporal.divinity.allow-solo",false)) { owner.sendMessage("§x§B§8§9§3§5§8Temporal Divinity needs a nearby opponent.");return false; }
         Session session=new Session();session.owner=owner.getUniqueId();session.slot=slot;
@@ -156,6 +166,7 @@ final class TemporalDomain implements Listener {
                 }
             }
             flow.domain(session.owner,session.center,boundary(),cfg("enemy-scale",0.15));
+            if(boss!=null)revenant.suspend(boss);
             return true;
         } catch(Exception ex) {
             plugin.getLogger().warning("Temporal Divinity entry rolled back: "+ex.getMessage());

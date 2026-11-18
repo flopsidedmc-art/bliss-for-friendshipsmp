@@ -127,6 +127,11 @@ public class GemManager {
         return SmallCaps.lore(lore, loreStyle());
     }
 
+    /** The same lettering for other mythic items' lore (the Revenant). */
+    public List<String> styleLoreLines(List<String> lore) {
+        return styled(lore);
+    }
+
     /**
      * Makes an existing gem's lore match the configured lettering. The lore is rebuilt from the gem's own
      * data (so a style change, even from every-letter small caps, comes out right), and any item-history

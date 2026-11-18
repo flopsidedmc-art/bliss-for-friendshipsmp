@@ -25,6 +25,8 @@ Not verified in a Minecraft client.
 | Hotbar HUD font | `assets/blissgems/font/hud_low.json` | Rift icon and vanilla letters drawn beside the hotbar, plus spacing characters U+E400-E418 |
 | Time Dilate clock | `temporal_clock.json`, `temporal_hand.json` | lines 1.5x thicker, rebuilt from `tools/pack/source` |
 | Time Dilate colours | `temporal_brown/bronze/gold.png` | now #B0703A / #8C5530 / #F0C48C |
+| The Revenant (mace) | `assets/blissgems/items/revenant_mace.json`, `models/item/revenant_mace.json`, `textures/item/revenant_mace.png` (16x16, supplied) | item model `blissgems:revenant_mace`, parent `minecraft:item/handheld_mace` |
+| Revenant HUD icons | `assets/blissgems/textures/icons/revenant_plunge.png`, `revenant_rising.png`, `revenant_undertow.png` (33x20) | font glyphs `U+E046` Plunge, `U+E047` Rising, `U+E048` Undertow |
 
 Rebuild with `tools/pack/rift_frames.py` then `tools/pack/relay_pack_assets.py`. The display items are plain paper with an `item_model`, so no custom model data numbers are used.
 

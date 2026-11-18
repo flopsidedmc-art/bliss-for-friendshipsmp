@@ -21,6 +21,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private PrismaticEdge edge;
     private Turmoil turmoil;
     private Finale finale;
+    private RevenantMace revenant;
 
     /** Pristine-stage energy per player per gem (showcase parity). Public by design. */
     public EnergyManager energy;
@@ -38,6 +39,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public PrismaticEdge prismaticEdge() { return edge; }
     public Turmoil turmoil() { return turmoil; }
     public Finale finale() { return finale; }
+    public RevenantMace revenant() { return revenant; }
 
     @Override
     public void onEnable() {
@@ -59,6 +61,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         turmoil = new Turmoil(this);
         finale = new Finale(this);
         finale.recoverAfterCrash();
+        revenant = new RevenantMace(this);
 
         Bukkit.getPluginManager().registerEvents(listener, this);
         Bukkit.getPluginManager().registerEvents(mythics, this);
@@ -73,6 +76,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(stalker, this);
         Bukkit.getPluginManager().registerEvents(turmoil, this);
         Bukkit.getPluginManager().registerEvents(finale, this);
+        Bukkit.getPluginManager().registerEvents(revenant, this);
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -98,6 +102,10 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             getCommand("turmoil").setExecutor(turmoilCommand);
             getCommand("turmoil").setTabCompleter(turmoilCommand);
         }
+        if (getCommand("revenant") != null) {
+            getCommand("revenant").setExecutor(revenant);
+            getCommand("revenant").setTabCompleter(revenant);
+        }
         if (getCommand("stalker") != null) {
             getCommand("stalker").setExecutor(stalker);
         }
@@ -115,6 +123,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         }, 20L, period);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> relay.tick(), 1L, 1L);
+        Bukkit.getScheduler().runTaskTimer(this, () -> revenant.tick(), 1L, 1L);
 
         registerRecipes();
         getLogger().info("Soulbound Gems enabled.");
@@ -122,6 +131,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
         if (finale != null) finale.shutdown();
         if (turmoil != null && turmoil.isActive()) turmoil.stop();

@@ -21,7 +21,7 @@ final class HudText {
         return switch (c) {
             case '\u2026' -> 8; // the ellipsis, from nonlatin_european.png
             case '\uE040', '\uE042' -> 34; // Rewind, Tuned In (icon with its side box)
-            case '\uE041', '\uE043', '\uE044' -> 26; // Dilation, Rift, Divinity
+            case '\uE041', '\uE043', '\uE044', '\uE046', '\uE047', '\uE048' -> 26; // Dilation, Rift, Divinity, Revenant powers
             default -> (c >= '\uE050' && c <= '\uE05C') ? 34 : 6; // Tuned In charge frames
         };
     }

@@ -958,6 +958,33 @@
       "chars": [
         "\ue120"
       ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/revenant_plunge.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue046"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/revenant_rising.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue047"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "blissgems:icons/revenant_undertow.png",
+      "ascent": 17,
+      "height": 20,
+      "chars": [
+        "\ue048"
+      ]
     }
   ]
 }

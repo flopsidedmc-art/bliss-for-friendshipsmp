@@ -264,6 +264,48 @@ mythics:
       # Legacy compass frames retained for pack compatibility; temporal HUD uses charge frames.
       tuned-glyphs: ["\uE050", "\uE051", "\uE052", "\uE053", "\uE054", "\uE055", "\uE056", "\uE057"]
 
+  # The Revenant: the final boss weapon (a mace, not a gem). Only from /revenant give; see REVENANT.md.
+  revenant:
+    enabled: true
+    plunge: # [Right-click] leap up, then slam down where you look
+      charges: 2
+      recharge-seconds: 12 # each charge on its own timer
+      leap-height: 12 # blocks
+      leap-forward-speed: 0.35 # blocks/tick of forward drift during the leap
+      range: 16 # how far away the slam can land
+      slam-speed: 1.8 # blocks/tick on the way down
+      radius: 4 # impact radius
+      base-damage: 6 # a mace hit; the vanilla mace fall bonus is added on top, falling to half at the edge
+      damage-cap: 28 # most HP one Revenant hit can deal, melee included (28 = 14 hearts), before armor
+      knockback: 1.0 # outward push on impact (never upward)
+    rising: # [Sneak + right-click] sink, then rise behind the nearest enemy
+      cooldown-seconds: 25 # half comes back if there is no safe spot behind them
+      range: 20
+      sink-ticks: 20
+    undertow: # [Sneak + left-click] pull every enemy in; no damage
+      cooldown-seconds: 30
+      radius: 8
+      strength: 1.4 # strongest pull, blocks/tick
+    abyssal-weight-seconds: 2 # his hits stop the target jumping or being launched upward (no icon or particles)
+    boss:
+      max-health: 120 # total HP while he holds the mace (120 = 60 hearts)
+      knockback-resistance: 0.6
+      bar-radius: 100 # players this close see his boss bar
+      phase2-plunge-recharge: 0.7 # phase 2 (half health): Plunge recharges in 70% of the time
+    phase2-sky: true # phase 2 borrows the finale's red sky and overlay
+    phase2-sky-seconds: 10
+    # Temporal Divinity never takes him to the void: it suspends him 3 blocks up instead, unable to move or use
+    # powers, with no knockback resistance. Everyone else it catches goes to the void as usual.
+    divinity-suspend-seconds: 5
+    divinity-suspend-seconds-phase2: 3
+    divinity-immunity-seconds: 30 # after a suspension ends he can't be suspended again for this long
+    return-delay-seconds: 5 # a holder who rejoins a paused fight gets the mace back after this warning
+    hud:
+      use-glyphs: true # false: text labels instead of the pack's icons
+      plunge-glyph: "\uE046"
+      rising-glyph: "\uE047"
+      undertow-glyph: "\uE048"
+
 # Flat damage of standard-gem abilities: Crisp, Breezy Bash, Dash, Kinetic Burst and Energy Beam.
 # Their base numbers (4, 6, 3 a second, up to 10, up to 14.5 HP) suit unarmored targets but do under 1 heart
 # through Protection IV diamond, so they are multiplied here. Fireball has its own setting below.

@@ -101,6 +101,41 @@ for step, name in enumerate(["relay_tuned", "relay_tuned_c1", "relay_tuned_c2", 
             meter.putpixel((x, y), P[reticle(x, y, step)] + (255,))
     meter.save(path)
 
+# ---- The Revenant: the mace (the supplied 16x16 texture, kept in tools/pack/source) and its HUD icons
+shutil.copyfile(os.path.join(HERE, "source", "revenant_mace.png"), os.path.join(tex, "revenant_mace.png"))
+write_json(os.path.join(A, "blissgems/models/item/revenant_mace.json"),
+           {"parent": "minecraft:item/handheld_mace", "textures": {"layer0": "blissgems:item/revenant_mace"}})
+write_json(os.path.join(A, "blissgems/items/revenant_mace.json"),
+           {"model": {"type": "minecraft:model", "model": "blissgems:item/revenant_mace"}})
+# HUD icons U+E046 Plunge, U+E047 Rising, U+E048 Undertow: the Dilation icon's 20x20 frame recoloured to dark
+# iron, with teal art inside (33x20 like the other Relay icons).
+IRON = {(154, 115, 63): (86, 94, 108), (92, 61, 31): (35, 40, 48)}
+RV = {".": (0, 0, 0), "T": (110, 250, 232), "t": (40, 170, 160), "s": (20, 90, 88), "W": (205, 255, 248), "i": (86, 94, 108), "I": (52, 57, 66)}
+REVENANT_ICONS = {
+    "revenant_plunge": ["................", ".......TT.......", ".......TT.......", ".......TT.......", ".......TT.......",
+                        "....TTTTTTTT....", ".....TTTTTT.....", "......TTTT......", ".......TT.......", "..W....WW....W..",
+                        "...W..tWWt..W...", "iiiiiiiiiiiiiiii", "IIsIIIIsIIIIsIII", ".s....s..s....s.", "................", "................"],
+    "revenant_rising": ["................", ".......TT.......", "......TTTT......", ".....TTTTTT.....", "....TTTTTTTT....",
+                        ".......TT.......", ".......TT.......", ".......TT.......", "..t....TT....t..", "...t...TT...t...",
+                        "iiiiiitTTtiiiiii", "IIIIIsssssIIIIII", "IIIIssIIssIIIIII", ".....s....s.....", "................", "................"],
+    "revenant_undertow": ["................", ".....tttttt.....", "...tt......tt...", "..t...T..T...t..", ".t.....TT.....t.",
+                          ".t..T......T..t.", "t....T....T....t", "t......WW......t", "t......WW......t", "t....T....T....t",
+                          ".t..T......T..t.", ".t.....TT.....t.", "..t...T..T...t..", "...tt......tt...", ".....tttttt.....", "................"],
+}
+frame = Image.open(os.path.join(icons, "relay_dilation.png")).convert("RGBA")
+for name, rows in REVENANT_ICONS.items():
+    ic = frame.copy()
+    for y in range(20):
+        for x in range(33):
+            px = ic.getpixel((x, y))
+            if px[3] and px[:3] in IRON:
+                ic.putpixel((x, y), IRON[px[:3]] + (255,))
+    for y, row in enumerate(rows):
+        assert len(row) == 16, (name, y)
+        for x, ch in enumerate(row):
+            ic.putpixel((7 + x, 2 + y), RV[ch] + (255,))
+    ic.save(os.path.join(icons, name + ".png"))
+
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
 if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):
@@ -109,6 +144,9 @@ if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):
 if not any(p.get("chars") == ["\ue044"] for p in font["providers"]):
     at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == ["\ue043"]) + 1
     font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:icons/relay_divinity.png", "ascent": 17, "height": 20, "chars": ["\ue044"]})
+for code, name in ((0xE046, "revenant_plunge"), (0xE047, "revenant_rising"), (0xE048, "revenant_undertow")):
+    if not any(p.get("chars") == [chr(code)] for p in font["providers"]):
+        font["providers"].append({"type": "bitmap", "file": "blissgems:icons/" + name + ".png", "ascent": 17, "height": 20, "chars": [chr(code)]})
 with open(font_path, "w", encoding="utf-8") as f:
     json.dump(font, f, indent=2, ensure_ascii=True)
     f.write("\n")

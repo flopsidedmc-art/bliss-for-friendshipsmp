@@ -210,8 +210,11 @@ final class RelayRift implements Listener {
     // ------------------------------------------------------------------ menu
 
     /** Sneak + left-click with the Relay in the main hand. */
+    private boolean revenant(Player p) { return plugin.revenant() != null && plugin.revenant().isBoss(p); }
+
     void openMenu(Player p) {
         if (!enabled()) return;
+        if (revenant(p)) { p.sendMessage("§6The Revenant can't open rifts."); return; }
         if (p.getOpenInventory().getTopInventory().getHolder() instanceof Menu) return;
         if (finaleRunning()) { p.sendMessage("§6Rifts are sealed while the finale runs."); return; }
         if (relay.inDomain(p.getUniqueId()) || p.getWorld().getName().equals(domainWorld())) return;
@@ -333,7 +336,7 @@ final class RelayRift implements Listener {
 
     private void travel(Player p, int slot) {
         UUID id = p.getUniqueId();
-        if (!enabled() || p.isDead() || !holdsRelay(p)) return;
+        if (!enabled() || p.isDead() || !holdsRelay(p) || revenant(p)) return;
         if (finaleRunning()) { p.sendMessage("§6Rifts are sealed while the finale runs."); return; }
         if (relay.inDomain(id) || p.getWorld().getName().equals(domainWorld()) || casts.containsKey(id)) return;
         long cd = cooldownLeft(id);
@@ -503,7 +506,7 @@ final class RelayRift implements Listener {
         World w = t.base.getWorld();
         for (Player o : w.getNearbyPlayers(t.base, Math.max(t.width, t.height) / 2 + 2)) {
             UUID id = o.getUniqueId();
-            if (id.equals(c.owner) || followers.containsKey(id) || casts.containsKey(id)) continue;
+            if (id.equals(c.owner) || followers.containsKey(id) || casts.containsKey(id) || revenant(o)) continue; // the Revenant can't follow
             if (o.isDead() || o.getGameMode() == GameMode.SPECTATOR || o.isInsideVehicle() || relay.inDomain(id)) continue;
             Location l = o.getLocation();
             if (!inside(l.getX() - t.base.getX(), l.getY() - t.base.getY(), l.getZ() - t.base.getZ(),
@@ -607,7 +610,7 @@ final class RelayRift implements Listener {
         return dx * dx + dz * dz < 0.9 * 0.9;
     }
 
-    private static boolean standable(World w, int x, int y, int z) {
+    static boolean standable(World w, int x, int y, int z) {
         if (y <= w.getMinHeight() || y + 2 >= w.getMaxHeight()) return false;
         Block feet = w.getBlockAt(x, y, z);
         if (!w.getWorldBorder().isInside(feet.getLocation())) return false;

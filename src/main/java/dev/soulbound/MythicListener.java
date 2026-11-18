@@ -1405,10 +1405,11 @@ public final class MythicListener implements Listener {
             // Only touch the action bar while a mythic is held (and once more to clear it when the
             // mythic is put away). Sending an empty bar to everyone else wiped the normal gem HUD
             // that GemListener.tick() sends on the very same tick.
-            if (type != null) {
+            boolean revenantBar = plugin.revenant() != null && plugin.revenant().hudActive(p);
+            if (type != null && !revenantBar) {
                 p.sendActionBar(mythicActionBar(p, type, n));
                 mythicBarShown.add(p.getUniqueId());
-            } else if (mythicBarShown.remove(p.getUniqueId())) {
+            } else if (mythicBarShown.remove(p.getUniqueId()) && !revenantBar) {
                 p.sendActionBar(net.kyori.adventure.text.Component.empty());
             }
         }
