@@ -97,46 +97,64 @@ mythics:
       max-slams: 3
       max-victims: 2
 
+  # Auratus (rebuilt; see AURATUS.md). Gem in the main hand: left-click chains, right-click Aegis,
+  # sneak + right-click (in the air) Gilded Slam, sneak + left-click Flagpole. Off hand: right-click chains,
+  # sneak + right-click Aegis. Damage numbers are before ability-damage.multiplier and its cap, like the standard gems.
+  # Servers upgrading from the old Auratus get this section fresh once; Feathered Fall and the chain model settings are kept.
   auratus:
     passives:
-      hauling-strike-reach: 4.0
-      hauling-strike-chance: 0.5 # normal hits trigger Hauling Strike this often
-      hauling-strike-knockback: 0.65
-      hauling-strike-shield-extend-ticks: 100 # shield jam, wall flips 5s/10s
-      feathered-fall-damage-multiplier: 0.10
-      angels-grasp-mode: PULL # PULL, ARMOR_REDUCTION, or BOTH. This passive is an educated guess.
-      angels-grasp-pull-chance: 0.05
-    chain:
-      range: 48.0
+      feathered-fall-damage-multiplier: 0.10 # Feathered Fall (unchanged): 90% less fall damage
+      hauling-strike-extra-reach: 1.0 # Hauling Strike: melee reach added while holding the gem (vanilla is 3)
+      hauling-strike-pull: 0.3 # full-strength hits pull the target toward you this hard instead of knocking them away; 0 = vanilla knockback
+      hauling-strike-shield-ticks: 100 # full-strength hits drop a raised shield and jam it this long
+      angels-grasp-seconds: 4 # anything your chain, slam or Flagpole hits can't ender pearl, wind charge, eat chorus fruit or use a trident
+      divine-purity-multiplier: 0.5 # harmful effects on you last this fraction as long; a parry also cleanses them
+    chain: # Venerated Perforators
       charges: 2
-      regen-ms: 8000
-      show-models: true # per-link chain + hook head from the pack (echo shard CMDs)
-      fly-speed: 0.3 # 6 blocks/sec terrain pull
-      pull-accel: 0.10 # reel-in acceleration per tick along the chain (higher = snappier haul)
-      pull-max-speed: 1.1 # top reel-in speed in blocks/tick (~22 blocks/sec)
-      max-flight-ticks: 28
-      entity-damage: 4.0 # 2 hearts (wiki: 2 hearts per chain)
+      recharge-seconds: 8 # each charge on its own timer
+      range: 40.0
+      min-entity-distance: 3.5 # an enemy closer than this (or within your melee reach, if longer) is just a swing: no chain, no charge
+      reel-speed: 1.1 # top reel-in speed, blocks/tick (~22 blocks/s)
+      ramp-ticks: 4 # ticks to reach that speed
+      max-reel-ticks: 40
+      arrival-momentum: 0.45 # share of the reel speed you keep when you arrive
+      hit-damage: 3.0 # reaching an enemy you hooked (x3 = 9 HP, 4.5 hearts unarmored)
+      show-models: true # chain links + hook from the pack (echo shard models 12348/12349); false = gold dust
       link-spacing: 1.0 # blocks between chain links
-      link-scale: 1.0 # link model is ~3 blocks long; shrink to fit spacing
-    aegis:
+      link-scale: 1.0
+    aegis: # Echoing Aegis
       cooldown-seconds: 15
-      window-ms: 1250
-      success-heal-hp: 5.0
-      success-speed-ticks: 60
-      weapon-durability-loss: 30
-      anchor-height: 8.0
-      anchor-window-ms: 5000
-    slam:
-      radius: 6.0
-      center-damage: 3.0
-      edge-damage: 3.0
-      launch-y: 1.05
-      steep-degrees: 65.0 # downward aim at/ past this arms the slam, free of charge
-      aim-ticks: 2 # look-around window between landing and the dash
-      dash-speed: 1.9 # ~20 blocks of dash
-      sneak-window-ms: 3000 # how long after touchdown sneaking still starts the aim
-      min-height: 4.0 # fall height required for the slam to go off (wiki: 4 blocks)
-      dive-speed: 1.6 # slam dive pull (separate from the 6 b/s travel pull)
+      success-cooldown-seconds: 10 # counted from the cast, when the parry caught a hit
+      window-ms: 1000
+      reflect: 0.5 # share of a parried hit sent back to the attacker
+      attacker-slow-seconds: 1.5 # Slowness II on whoever you parried
+      weapon-durability-loss: 30 # off the attacker's weapon on a parried melee hit
+      heal-hp: 5.0 # once per Aegis, on the first parry
+      speed-seconds: 3 # Speed II, same
+      anchor-height: 8.0 # the Echo Anchor appears up to this high above you
+      anchor-seconds: 5
+      anchor-cone-degrees: 35 # throw a chain within this angle of the anchor and it latches on
+    slam: # Gilded Slam
+      cooldown-seconds: 8
+      min-height: 4.0 # blocks above the ground needed to start it
+      range: 24 # how far away the landing spot can be (where you look, or straight down)
+      dive-speed: 1.6
+      radius: 5.0
+      damage-center: 6.0 # x3 = 18 HP (9 hearts) unarmored at the centre
+      damage-edge: 3.0 # at the edge of the radius
+      launch: 0.45 # upward pop on everyone hit
+    flagpole: # Flagpole: hoist the enemy your chain just hooked
+      cooldown-seconds: 25
+      hook-memory-seconds: 5 # works on an enemy your chain latched onto this recently
+      range: 24
+      height: 5.0 # lifted this high (less under a ceiling)
+      hold-seconds: 2.5
+    hud:
+      use-glyphs: true # false: text labels instead of the pack's icons
+      chain-glyph: "\uE049"
+      aegis-glyph: "\uE04A"
+      slam-glyph: "\uE04B"
+      flagpole-glyph: "\uE04C"
 
   # Relay Gem: prize for "The Signal" ARG. One of a kind, ignores energy, drops on death.
   relay:

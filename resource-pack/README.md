@@ -27,6 +27,7 @@ Not verified in a Minecraft client.
 | Time Dilate colours | `temporal_brown/bronze/gold.png` | now #B0703A / #8C5530 / #F0C48C |
 | The Revenant (mace) | `assets/blissgems/items/revenant_mace.json`, `models/item/revenant_mace.json`, `textures/item/revenant_mace.png` (16x16, supplied) | item model `blissgems:revenant_mace`, parent `minecraft:item/handheld_mace` |
 | Revenant HUD icons | `assets/blissgems/textures/icons/revenant_plunge.png`, `revenant_rising.png`, `revenant_undertow.png` (33x20) | font glyphs `U+E046` Plunge, `U+E047` Rising, `U+E048` Undertow |
+| Auratus HUD icons | `assets/blissgems/textures/icons/auratus_chain.png`, `auratus_aegis.png`, `auratus_slam.png`, `auratus_flagpole.png` (33x20, gold frame) | font glyphs `U+E049` chains, `U+E04A` Aegis, `U+E04B` Gilded Slam, `U+E04C` Flagpole |
 
 Rebuild with `tools/pack/rift_frames.py` then `tools/pack/relay_pack_assets.py`. The display items are plain paper with an `item_model`, so no custom model data numbers are used.
 

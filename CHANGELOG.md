@@ -1,3 +1,23 @@
+# Auratus, rebuilt
+
+Same powers, rebuilt from scratch: chains, Aegis, slam, Flagpole and the passives, with one clean button each, new visuals and sounds, HUD icons and new damage numbers. Feathered Fall is unchanged. Details, damage table, test plan and decisions: AURATUS.md.
+
+**Not tested in game.** It compiles, and 41 unit tests pass (7 new: slam falloff, reel ramp, anchor cone, Flagpole hover, Divine Purity durations, Aegis cooldown, chain charges). The pack JSON and its files were checked. Nothing was played or seen on a client.
+
+- **Controls.** Main hand: left-click chains, right-click Aegis, sneak + right-click (in the air) Gilded Slam, sneak + left-click Flagpole. Off hand: right-click chains, sneak + right-click Aegis, and the main hand's own uses (bows, food, blocks) win. Doors and chests still open. No random procs, no hidden two-button combos.
+- **Chains:** 2 independent charges (8 s each); misses are free; chain-hop by throwing again mid-reel. Reaching an enemy hits them for 4.5 hearts unarmored.
+- **Aegis:** 1 s window. It blocks attacks only (it used to block falls and fire too) and reflects half (it was all). It rewards once: heal, Speed II, a cleanse and an Echo Anchor to chain to. 10 s cooldown after a parry, 15 s after a miss.
+- **Slam:** one button in the air instead of the look-down/land/sneak/aim/dash sequence. 9 hearts at the centre to 4.5 at the edge, unarmored. The gold ring now lies on the ground instead of under it.
+- **Flagpole:** sneak + left-click within 5 s of a chain hook. They're lifted 5 blocks for 2.5 s with their camera free; it used to be Levitation V for 5 s with the camera locked.
+- **Passives:**
+  - Hauling Strike: real +1 reach; full hits pull in and drop shields.
+  - Angels Grasp: no pearls, wind charges, chorus or tridents for 4 s after your chain, slam or Flagpole hits.
+  - Divine Purity: debuffs last half as long. It did nothing before.
+  - Haste II while crouching is gone.
+- **Damage:** chains and slam use the standard `ability-damage` scaling and cap.
+- **Config:** a config with the old Auratus section gets the new one on first start (some keys changed meaning). Feathered Fall and the chain model settings are kept. `/mythicconfig` lists the new settings.
+- **Lore and HUD:** the lore lists the controls (lore version 5, so existing gems update). The HUD shows four new gold icons, `U+E049`-`U+E04C`, with each timer.
+
 # The Revenant: soul mace boss weapon
 
 Full details, test plan and decisions: REVENANT.md.

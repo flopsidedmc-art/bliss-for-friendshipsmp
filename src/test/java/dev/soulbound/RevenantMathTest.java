@@ -39,7 +39,7 @@ class RevenantMathTest {
     }
 
     @Test void plungeChargesRechargeIndependently() {
-        RevenantMath.Charges c = new RevenantMath.Charges(2);
+        Charges c = new Charges(2);
         long t = 1_000_000;
         assertEquals(2, c.ready(t));
         assertTrue(c.use(t, 12_000));
@@ -52,13 +52,13 @@ class RevenantMathTest {
     }
 
     @Test void chargeCountChangesKeepTimers() {
-        RevenantMath.Charges c = new RevenantMath.Charges(2);
+        Charges c = new Charges(2);
         c.use(0, 10_000);
         c.resize(3);
         assertEquals(3, c.max());
         assertEquals(2, c.ready(5_000), "the used charge is still recharging, the new one is ready");
         long[] saved = c.times();
-        RevenantMath.Charges back = new RevenantMath.Charges(3);
+        Charges back = new Charges(3);
         back.load(saved);
         assertEquals(2, back.ready(5_000), "timers survive a save and load");
         back.refillAll();

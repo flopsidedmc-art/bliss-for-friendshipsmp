@@ -115,7 +115,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
     private UUID itemId, holder;
     private double savedHealth = -1; // boss health kept across logout/restart; -1 = full
     private boolean phase2;
-    private final RevenantMath.Charges plunge = new RevenantMath.Charges(2);
+    private final Charges plunge = new Charges(2);
     private long risingReady, undertowReady; // epoch ms
 
     // Live, per-session state (there is only ever one holder).

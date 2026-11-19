@@ -7,3 +7,5 @@ Texture path fix: the three temporal_*.png material textures now live in assets/
 Rift + Time Dilate restyle: adds blissgems:rift_0..rift_5 (the six rift frames, 40x96, vertical plane models), blissgems:rift_light (ground light spill) and HUD glyph U+E043 (blissgems:icons/relay_rift.png, 33x20). Time Dilate clock lines are 1.5x thicker and recoloured to glowing brown #B0703A / #8C5530 / #F0C48C; the brown Glowing outline is set by the plugin.
 
 The Revenant: adds blissgems:revenant_mace (item definition, handheld_mace model, the supplied 16x16 texture) and HUD glyphs U+E046 Plunge, U+E047 Rising, U+E048 Undertow (blissgems:icons/revenant_*.png, 33x20).
+
+Auratus rebuild: adds HUD glyphs U+E049 chains, U+E04A Aegis, U+E04B Gilded Slam, U+E04C Flagpole (blissgems:icons/auratus_*.png, 33x20). The chain, hook, slam ring and Aegis halo still use the main pack's echo shard models 12348, 12349, 12345 and 12346.

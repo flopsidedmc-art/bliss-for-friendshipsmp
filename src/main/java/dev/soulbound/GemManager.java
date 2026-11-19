@@ -25,8 +25,8 @@ public class GemManager {
     private final Plugin plugin;
     /** Which lore lettering and lore version a gem was last written in, so styleLore only rebuilds on a change. */
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
-    /** Bump when gem lore text changes, so existing gems rebuild their lore once (4: Divinity's eye, pack glyph U+E045). */
-    private static final int LORE_VERSION = 4;
+    /** Bump when gem lore text changes, so existing gems rebuild their lore once (5: the rebuilt Auratus). */
+    private static final int LORE_VERSION = 5;
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -534,14 +534,17 @@ public class GemManager {
             lore.add("§5(Mythic)");
             lore.add("");
             lore.add("§6♦ §ePASSIVES");
-            lore.add("§7— Divine Purity");
-            lore.add("§7— Angels Grasp");
-            lore.add("§7— Feathered Fall");
-            lore.add("§7— Hauling Strike");
+            lore.add("§7— Feathered Fall §8[90% less fall damage]");
+            lore.add("§7— Hauling Strike §8[+1 reach, full hits pull in]");
+            lore.add("§7— Angels Grasp §8[Your chains stop escapes]");
+            lore.add("§7— Divine Purity §8[Debuffs last half as long]");
             lore.add("");
             lore.add("§6♦ §bPOWERS");
-            lore.add("§7— §6⛓ VENERATED PERFORATORS");
-            lore.add("§7— §e✧ ECHOING AEGIS");
+            lore.add("§7— §6⛓ VENERATED PERFORATORS §8[Left-click]");
+            lore.add("§7— §e✧ ECHOING AEGIS §8[Right-click]");
+            lore.add("§7— §6▼ GILDED SLAM §8[Sneak + right-click, in the air]");
+            lore.add("§7— §e⚑ FLAGPOLE §8[Sneak + left-click, after a hook]");
+            lore.add("§8In the off hand: right-click chains, sneak + right-click Aegis");
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         } else if (type == GemType.RELAY) {

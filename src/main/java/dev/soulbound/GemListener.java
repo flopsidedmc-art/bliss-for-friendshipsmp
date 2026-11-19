@@ -223,6 +223,11 @@ public class GemListener implements Listener {
         }
     }
 
+    /** The same scaled, capped ability damage for mythic powers (the Auratus' chains and slam). */
+    void abilityHit(LivingEntity victim, double base, Player source) {
+        abilityDamage(victim, base, source);
+    }
+
     /** Runs after onHit (NORMAL) has applied the holder's bonuses. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onAbilityDamageCap(EntityDamageByEntityEvent e) {

@@ -22,6 +22,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private Turmoil turmoil;
     private Finale finale;
     private RevenantMace revenant;
+    private AuratusGem auratus;
 
     /** Pristine-stage energy per player per gem (showcase parity). Public by design. */
     public EnergyManager energy;
@@ -40,6 +41,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public Turmoil turmoil() { return turmoil; }
     public Finale finale() { return finale; }
     public RevenantMace revenant() { return revenant; }
+    public AuratusGem auratus() { return auratus; }
 
     @Override
     public void onEnable() {
@@ -49,6 +51,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         energy = new EnergyManager(this);
         gemManager = new GemManager(this);
         mythics = new MythicListener(this);
+        auratus = new AuratusGem(this);
         listener = new GemListener(this);
         relay = new RelayGem(this);
         progression = new ProgressionManager(this);
@@ -65,6 +68,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
 
         Bukkit.getPluginManager().registerEvents(listener, this);
         Bukkit.getPluginManager().registerEvents(mythics, this);
+        Bukkit.getPluginManager().registerEvents(auratus, this);
         Bukkit.getPluginManager().registerEvents(relay, this);
         Bukkit.getPluginManager().registerEvents(progression, this);
         Bukkit.getPluginManager().registerEvents(menu, this);
@@ -124,6 +128,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
 
         Bukkit.getScheduler().runTaskTimer(this, () -> relay.tick(), 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> revenant.tick(), 1L, 1L);
+        Bukkit.getScheduler().runTaskTimer(this, () -> auratus.tick(), 1L, 1L);
 
         registerRecipes();
         getLogger().info("Soulbound Gems enabled.");
@@ -133,6 +138,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public void onDisable() {
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
+        if (auratus != null) auratus.shutdown(); // removes chains, halos and slam rings, and lets go of anyone on a Flagpole
         if (finale != null) finale.shutdown();
         if (turmoil != null && turmoil.isActive()) turmoil.stop();
         if (stalker != null) stalker.shutdown();
