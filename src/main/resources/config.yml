@@ -543,7 +543,7 @@ finale:
     distance: 6.0 # with no spot set: this far either side of the finale center (/turmoil pedestal 1|2 sets exact spots)
     reach: 4.0
     timeout-seconds: 0 # 0 = voluntary drops only; never auto-take gems
-    custom-model: true # the pack's pedestal models; false = the old stacked blocks (for players without the pack)
+    custom-model: true # the pack's pedestal models (gold trim for Auratus, red for Heretic); false = the old stacked blocks
   seal: # a golden clock seal on the ground under the merge, spinning faster as the gems close in (pack model)
     enabled: true
     size: 7.0 # blocks across

@@ -10,4 +10,4 @@ The Revenant: adds blissgems:revenant_mace (item definition, handheld_mace model
 
 Auratus rebuild: no new assets. The gem uses the main pack's chain and Aegis HUD glyphs (U+22B5, U+22B4) and echo shard models 12348, 12349, 12345 and 12346.
 
-Finale: adds item models blissgems:finale_pedestal_auratus, blissgems:finale_pedestal_heretic (vanilla blackstone with gold or amethyst trim) and blissgems:finale_seal (textures/item/finale_seal.png, a clock face laid on the ground under the merge).
+Finale: adds item models blissgems:finale_pedestal_auratus, blissgems:finale_pedestal_heretic (vanilla blackstone with gold or red trim) and blissgems:finale_seal (textures/item/finale_seal.png, a clock face laid on the ground under the merge).

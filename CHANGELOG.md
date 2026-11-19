@@ -1,3 +1,8 @@
+# Heretic pedestal in red
+
+- The Heretic's finale pedestal has red trim (the vanilla redstone block texture) instead of amethyst. Its floating label, guide beam and arrow text are red too. The old block pedestals (`finale.pedestal.custom-model: false`) use a redstone block.
+- 56 unit tests pass. Not run in a game.
+
 # Sound overhaul; finale pedestals on the ground, settable, and with custom models
 
 ## Sounds (your spec)
@@ -37,7 +42,7 @@
 - **`/turmoil pedestal 1` and `/turmoil pedestal 2`** set where the Auratus and Heretic pedestals stand: wherever you're standing, on the ground. `/turmoil pedestal` shows both, and `/turmoil pedestal clear` goes back to automatic. The spots are saved in `turmoil.yml` with the finale center.
 - **The gems orbit, merge and form the Relay between the two pedestals,** wherever they are, easing up out of their cradles.
 - **Custom models:**
-  - **Pedestals:** blackstone with gold (Auratus) or amethyst (Heretic) trim and a four-prong cradle the gem floats over. They're built from vanilla block textures. `finale.pedestal.custom-model: false` brings back the old stacked blocks for players without the pack.
+  - **Pedestals:** blackstone with gold (Auratus) or red (Heretic) trim and a four-prong cradle the gem floats over. They're built from vanilla block textures. `finale.pedestal.custom-model: false` brings back the old stacked blocks for players without the pack.
   - **Clock seal:** a golden clock face, 7 blocks across, on the ground under the merge. It grows in as the gems lift, spins faster as they close in, kicks outward when they collide, and bursts into dust when the Relay forms (`finale.seal`).
 
 ## Files

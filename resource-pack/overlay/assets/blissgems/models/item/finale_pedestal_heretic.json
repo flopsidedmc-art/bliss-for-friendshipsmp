@@ -4,7 +4,7 @@
     "base": "minecraft:block/polished_blackstone_bricks",
     "pillar": "minecraft:block/chiseled_polished_blackstone",
     "top": "minecraft:block/polished_blackstone",
-    "accent": "minecraft:block/amethyst_block",
+    "accent": "minecraft:block/redstone_block",
     "particle": "minecraft:block/polished_blackstone_bricks"
   },
   "elements": [

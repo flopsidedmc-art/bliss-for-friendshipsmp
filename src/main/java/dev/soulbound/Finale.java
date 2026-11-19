@@ -466,7 +466,7 @@ public final class Finale implements Listener {
 
     private void buildPedestal(Location at, boolean auratus) {
         if (customPedestals()) {
-            // The pack's pedestal model (blackstone with gold or amethyst trim and a four-prong cradle), base on the ground.
+            // The pack's pedestal model (blackstone with gold or red trim and a four-prong cradle), base on the ground.
             ItemStack model = packModel(auratus ? "finale_pedestal_auratus" : "finale_pedestal_heretic");
             pedestalParts.add(at.getWorld().spawn(at.clone().add(0, 0.5, 0), ItemDisplay.class, d -> {
                 d.setItemStack(model);
@@ -475,11 +475,11 @@ public final class Finale implements Listener {
         } else {
             pedestalPart(at, Material.POLISHED_BLACKSTONE_BRICKS, 1.3f, 0.45f, 1.3f, 0.0f);
             pedestalPart(at, Material.CHISELED_POLISHED_BLACKSTONE, 0.8f, 0.85f, 0.8f, 0.45f);
-            pedestalPart(at, auratus ? Material.GOLD_BLOCK : Material.AMETHYST_BLOCK, 1.0f, 0.18f, 1.0f, 1.3f);
+            pedestalPart(at, auratus ? Material.GOLD_BLOCK : Material.REDSTONE_BLOCK, 1.0f, 0.18f, 1.0f, 1.3f);
         }
         TextDisplay label = at.getWorld().spawn(at.clone().add(0, gemHeight() + 0.9, 0), TextDisplay.class, d -> {
             d.text(Component.text(auratus ? "AURATUS" : "HERETIC")
-                    .color(auratus ? NamedTextColor.GOLD : NamedTextColor.LIGHT_PURPLE)
+                    .color(auratus ? NamedTextColor.GOLD : NamedTextColor.RED)
                     .decorate(TextDecoration.BOLD));
             d.setBillboard(Display.Billboard.CENTER);
             d.setPersistent(false);
@@ -553,7 +553,7 @@ public final class Finale implements Listener {
                 if (aur ? placedAuratus : placedHeretic) continue;
                 Location ped = aur ? pedAuratus : pedHeretic;
                 p.sendActionBar(Component.text("Drop the " + (aur ? "Auratus" : "Heretic") + " gem on its pedestal  "
-                        + arrowTo(p, ped)).color(aur ? NamedTextColor.GOLD : NamedTextColor.LIGHT_PURPLE));
+                        + arrowTo(p, ped)).color(aur ? NamedTextColor.GOLD : NamedTextColor.RED));
                 break;
             }
         }
@@ -631,7 +631,7 @@ public final class Finale implements Listener {
         dropTicks++;
         if (dropTicks % 4 == 0) {
             beam(pedAuratus, placedAuratus, Color.fromRGB(255, 196, 60));
-            beam(pedHeretic, placedHeretic, Color.fromRGB(211, 75, 255));
+            beam(pedHeretic, placedHeretic, Color.fromRGB(220, 36, 36));
         }
         if (dropTicks % 20 == 0) guideHolders();
         int timeout = cfgI("pedestal.timeout-seconds", 0);

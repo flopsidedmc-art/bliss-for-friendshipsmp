@@ -136,7 +136,7 @@ for name, rows in REVENANT_ICONS.items():
             ic.putpixel((7 + x, 2 + y), RV[ch] + (255,))
     ic.save(os.path.join(icons, name + ".png"))
 
-# ---- Finale: two pedestal models (vanilla blackstone with gold or amethyst trim, a four-prong cradle on top) and
+# ---- Finale: two pedestal models (vanilla blackstone with gold or red trim, a four-prong cradle on top) and
 # the clock seal drawn on the ground under the merge. Pedestals use vanilla block textures, so nothing new to load.
 def box(frm, to, tex, faces=("north", "south", "east", "west", "up", "down")):
     w, h, d = to[0] - frm[0], to[1] - frm[1], to[2] - frm[2]
@@ -172,7 +172,7 @@ def pedestal(accent):
         "top": "minecraft:block/polished_blackstone", "accent": accent, "particle": "minecraft:block/polished_blackstone_bricks"},
         "elements": els}
 
-for name, accent in (("finale_pedestal_auratus", "minecraft:block/gold_block"), ("finale_pedestal_heretic", "minecraft:block/amethyst_block")):
+for name, accent in (("finale_pedestal_auratus", "minecraft:block/gold_block"), ("finale_pedestal_heretic", "minecraft:block/redstone_block")):
     write_json(os.path.join(A, "blissgems/models/item/%s.json" % name), pedestal(accent))
     write_json(os.path.join(A, "blissgems/items/%s.json" % name), {"model": {"type": "minecraft:model", "model": "blissgems:item/" + name}})
 
