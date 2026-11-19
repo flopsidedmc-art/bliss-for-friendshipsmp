@@ -50,19 +50,19 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.HudStatusTest
-[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.081 s -- in dev.soulbound.HudStatusTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.074 s -- in dev.soulbound.HudStatusTest
 [INFO] Running dev.soulbound.HudTextTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in dev.soulbound.HudTextTest
 [INFO] Running dev.soulbound.RelayRiftTest
-[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in dev.soulbound.RelayRiftTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.047 s -- in dev.soulbound.RelayRiftTest
 [INFO] Running dev.soulbound.RevenantMathTest
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in dev.soulbound.RevenantMathTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in dev.soulbound.RevenantMathTest
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.114 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.118 s -- in dev.soulbound.AirSwimTest
 [INFO] Running dev.soulbound.AuratusMathTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.022 s -- in dev.soulbound.AuratusMathTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in dev.soulbound.AuratusMathTest
 [INFO] Running dev.soulbound.SmallCapsTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in dev.soulbound.SmallCapsTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in dev.soulbound.SmallCapsTest
 [INFO] 
 [INFO] Results:
 [INFO] 
@@ -78,6 +78,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  5.928 s
-[INFO] Finished at: 2026-11-19T17:43:30Z
+[INFO] Total time:  5.942 s
+[INFO] Finished at: 2026-11-19T17:48:35Z
 [INFO] ------------------------------------------------------------------------

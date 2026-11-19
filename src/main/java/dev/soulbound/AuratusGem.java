@@ -43,6 +43,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -68,7 +69,8 @@ import java.util.UUID;
  * The Auratus gem, rebuilt: the same chains, Aegis, slam and Flagpole, on the old Auratus controls.
  *
  * Gem in the main hand: left-click Venerated Perforators (chains), right-click Echoing Aegis, sneak + chain in the
- * air Gilded Slam, left + right-click together Flagpole. Gem in the off hand: right-click chains, sneak +
+ * air Gilded Slam, left + right-click together Flagpole. A chain that hits an enemy stays in them: chain again to fly
+ * to them, press the swap-hands key to haul them to you, or leave it (the hit is already done). Gem in the off hand: right-click chains, sneak +
  * right-click Aegis (or the slam, in the air). Passives while holding it in either hand: Feathered Fall, Hauling
  * Strike, Angels Grasp, Divine Purity.
  *
@@ -94,6 +96,7 @@ final class AuratusGem implements Listener {
     private final Map<UUID, Reel> reels = new HashMap<>();
     private final Map<UUID, Dive> dives = new HashMap<>();
     private final Map<UUID, Hook> hooks = new HashMap<>(); // holder -> the enemy their chain last latched onto
+    private final Map<UUID, Tether> tethers = new HashMap<>(); // holder -> the enemy their hook is still in
     private final Map<UUID, Hoist> hoists = new HashMap<>(); // hoisted entity -> its Flagpole
     private final Map<UUID, Long> grasped = new HashMap<>(); // Angels Grasp: entity -> until (ms)
     private final Map<UUID, Long> fallGrace = new HashMap<>(); // a slam landing never hurts its caster
@@ -114,9 +117,11 @@ final class AuratusGem implements Listener {
             hook = null;
         }
     }
-    private static final class Reel { Location point; UUID entity; double age; boolean airborne; Vector carry = new Vector(); final Chain chain = new Chain(); }
+    private static final class Reel { Location point; UUID entity; boolean hooked; double age; int blocked; boolean airborne; Vector carry = new Vector(); final Chain chain = new Chain(); }
+    /** A hook left in an enemy: until it times out, snaps or you decide (fly to them, or haul them in). */
+    private static final class Tether { UUID victim; long until; double age; int blocked; boolean hauling; Vector carry = new Vector(); final Chain chain = new Chain(); }
     private static final class Dive { Location target; double startY, age; ItemDisplay decal; final Chain chain = new Chain(); }
-    private static final class Aegis { long castAt, until; int age; boolean parried; ItemDisplay halo; }
+    private static final class Aegis { long castAt, until, prevReady; int age; boolean parried; ItemDisplay halo; }
     private static final class Anchor { Location at; long until; ItemDisplay ring; }
     private record Hook(UUID victim, long at) {}
     private static final class Hoist { UUID owner; double baseY, topY; int left; }
@@ -254,7 +259,7 @@ final class AuratusGem implements Listener {
         if (left) {
             if (n - lastLeft.getOrDefault(id, 0L) < 150) return; // one click can arrive as two events
             lastLeft.put(id, n);
-            if (main && n - lastRight.getOrDefault(id, 0L) <= combo) { flagpole(p); return; } // left + right together
+            if (main && n - lastRight.getOrDefault(id, 0L) <= combo) { undoAegis(p, n - combo); flagpole(p); return; } // left + right together
             if (p.isSneaking() && slamPosition(p)) { slam(p); return; } // sneak + chain in the air
             chain(p);
             return;
@@ -293,6 +298,11 @@ final class AuratusGem implements Listener {
     private void chain(Player p) {
         UUID id = p.getUniqueId();
         if (dives.containsKey(id) || hoists.containsKey(id)) return;
+        Tether held = tethers.get(id);
+        if (held != null) { // your hook is still in them: the chain button flies you to them
+            if (!held.hauling && !swingingAtSomeone(p)) flyToHooked(p, held);
+            return;
+        }
         long n = now();
         Charges c = charges(p);
         if (c.ready(n) == 0) {
@@ -302,7 +312,8 @@ final class AuratusGem implements Listener {
         Target t = aim(p);
         if (t == null) return; // nothing in range, or close enough to just hit: no charge used
         c.use(n, ms("chain.recharge-seconds", 8));
-        startReel(p, t);
+        if (t.entity() != null && isEnemy(p, t.entity())) latch(p, t.entity());
+        else startReel(p, t); // terrain, the Echo Anchor, or a friend / animal to ride to
     }
 
     /** Something within melee reach in front of you: the click was a hit, not a power. */
@@ -354,7 +365,6 @@ final class AuratusGem implements Listener {
         reels.put(id, r);
         World w = p.getWorld();
         Location tip = t.entity() != null ? t.entity().getLocation().add(0, t.entity().getHeight() * 0.5, 0) : t.point();
-        if (t.entity() != null && isEnemy(p, t.entity())) hooks.put(id, new Hook(t.entity().getUniqueId(), now()));
         if (t.anchor()) removeAnchor(id); // the Echo Anchor is used up
         w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.1f, 0.7f);
         w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THROW, SoundCategory.PLAYERS, 0.6f, 1.5f);
@@ -378,6 +388,10 @@ final class AuratusGem implements Listener {
         }
         if (!target.getWorld().equals(p.getWorld())) { stopReel(id); return; }
         double scale = Math.min(timeScale(p.getLocation(), id), timeScale(target, id));
+        // A wall between you and the hook point snaps the chain instead of pinning you against it.
+        if (r.age > 0 && blockedBetween(p.getEyeLocation(), target)) {
+            if (++r.blocked >= 2) { snap(p, r.chain, target); stopReel(id); return; }
+        } else r.blocked = 0;
         drawChain(r.chain, p.getLocation().add(0, 1.2, 0), target);
         Vector to = target.toVector().subtract(p.getLocation().toVector().add(new Vector(0, 0.9, 0)));
         double dist = to.length();
@@ -386,7 +400,7 @@ final class AuratusGem implements Listener {
         boolean arrived = dist <= (le != null ? 2.4 : 1.6);
         if (arrived || landed || r.age >= cfgD("chain.max-reel-ticks", 40)) {
             stopReel(id);
-            if (le != null && dist < 3.5) strike(p, le);
+            if (le != null && r.hooked && dist < 3.5) tug(p, le);
             if (!landed) p.setVelocity(r.carry.clone().multiply(cfgD("chain.arrival-momentum", 0.45) * scale)); // keep some speed, no dead stop
             p.setFallDistance(0);
             p.getWorld().playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.PLAYERS, 0.8f, 1.3f);
@@ -402,19 +416,124 @@ final class AuratusGem implements Listener {
         if (tick % 3 == 0) p.getWorld().spawnParticle(Particle.WAX_OFF, p.getLocation().add(0, 1, 0), 2, 0.2, 0.3, 0.2, 0);
     }
 
-    /** Reaching an enemy you hooked: a hit, Angels Grasp, and a tug toward you. */
-    private void strike(Player p, LivingEntity v) {
-        if (!isEnemy(p, v)) return; // friends, animals and villagers are a ride, not a target
-        plugin.listener().abilityHit(v, cfgD("chain.hit-damage", 3.0), p);
-        grasp(v);
+    /** Arriving at an enemy you flew to: a tug toward you and a clank (the hook already did the damage). */
+    private void tug(Player p, LivingEntity v) {
         Vector pull = p.getLocation().toVector().subtract(v.getLocation().toVector()).setY(0);
         if (pull.lengthSquared() > 1e-4) v.setVelocity(pull.normalize().multiply(0.45).setY(0.2));
         World w = v.getWorld();
         Location at = v.getLocation().add(0, v.getHeight() * 0.6, 0);
-        w.playSound(at, Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.2f, 0.8f);
+        w.playSound(at, Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.0f, 0.9f);
+        dust(w, at, 8, 0.3, GOLD, 1.1f);
+    }
+
+    // ---- the hook: it stays in an enemy and you choose what happens
+
+    /**
+     * The chain bites an enemy: the hit lands now (damage and a short Angels Grasp) and the hook stays in them.
+     * Then: chain again to fly to them, swap hands (F) to haul them to you, or leave it. It lets go after
+     * chain.hook-seconds, if a wall gets between you, or if they get out of range.
+     */
+    private void latch(Player p, LivingEntity v) {
+        UUID id = p.getUniqueId();
+        stopReel(id);
+        stopTether(id);
+        hooks.put(id, new Hook(v.getUniqueId(), now()));
+        Tether t = new Tether();
+        t.victim = v.getUniqueId();
+        t.until = now() + ms("chain.hook-seconds", 6);
+        tethers.put(id, t);
+        plugin.listener().abilityHit(v, cfgD("chain.hit-damage", 3.0), p);
+        grasp(v, cfgD("passives.angels-grasp-chain-seconds", 2));
+        World w = p.getWorld();
+        Location at = v.getLocation().add(0, v.getHeight() * 0.6, 0);
+        w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.1f, 0.7f);
+        w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THROW, SoundCategory.PLAYERS, 0.6f, 1.5f);
+        w.playSound(at, Sound.BLOCK_CHAIN_HIT, SoundCategory.PLAYERS, 1.3f, 0.8f);
         w.playSound(at, Sound.ENTITY_PLAYER_ATTACK_STRONG, SoundCategory.PLAYERS, 1.0f, 1.1f);
+        Sfx.play(plugin, p.getLocation(), "auratus.chain", 0.9f, 1.0f);
         w.spawnParticle(Particle.ENCHANTED_HIT, at, 16, 0.3, 0.4, 0.3, 0.3);
         dust(w, at, 12, 0.35, GOLD, 1.3f);
+    }
+
+    /** Chain again while hooked: you're reeled to them (no extra charge). */
+    private void flyToHooked(Player p, Tether t) {
+        UUID id = p.getUniqueId();
+        stopTether(id);
+        Reel r = new Reel();
+        r.entity = t.victim;
+        r.hooked = true;
+        reels.put(id, r);
+        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.0f, 1.2f);
+    }
+
+    /** Swap hands (F) while hooked: haul them to you. Never swaps the gem while the hook is in. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onSwapHands(PlayerSwapHandItemsEvent e) {
+        Player p = e.getPlayer();
+        Tether t = tethers.get(p.getUniqueId());
+        if (t == null || !holds(p) || !enabled()) return;
+        e.setCancelled(true);
+        if (t.hauling || dives.containsKey(p.getUniqueId())) return;
+        t.hauling = true;
+        t.age = 0;
+        Entity v = Bukkit.getEntity(t.victim);
+        if (v != null) v.getWorld().playSound(v.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.2f, 0.6f);
+        p.getWorld().playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 0.8f, 0.8f);
+    }
+
+    private void tickTether(Player p, Tether t) {
+        UUID id = p.getUniqueId();
+        Entity e = Bukkit.getEntity(t.victim);
+        if (!(e instanceof LivingEntity v) || !v.isValid() || v.isDead() || !v.getWorld().equals(p.getWorld())) { stopTether(id); return; }
+        Location tip = v.getLocation().add(0, v.getHeight() * 0.5, 0);
+        if (p.getEyeLocation().distance(tip) > cfgD("chain.range", 40) + 4) { snap(p, t.chain, tip); stopTether(id); return; }
+        if (blockedBetween(p.getEyeLocation(), tip)) {
+            if (++t.blocked >= 2) { snap(p, t.chain, tip); stopTether(id); return; }
+        } else t.blocked = 0;
+        drawChain(t.chain, p.getLocation().add(0, 1.2, 0), tip);
+        if (t.hauling) {
+            Vector to = p.getLocation().toVector().subtract(v.getLocation().toVector());
+            if (to.length() <= 2.5 || t.age >= cfgD("chain.haul-max-ticks", 30)) {
+                v.setVelocity(t.carry.clone().multiply(0.3));
+                tug(p, v);
+                stopTether(id);
+                return;
+            }
+            double scale = timeScale(v.getLocation(), id);
+            Vector vel = to.normalize().multiply(AuratusMath.reelSpeed(t.age, cfgD("chain.haul-speed", 1.0), cfgD("chain.ramp-ticks", 4)));
+            if (t.age < 1 && v.isOnGround()) vel.setY(Math.max(vel.getY(), 0.3)); // off the ground, not dragged along it
+            t.carry = vel.clone();
+            v.setVelocity(vel.multiply(scale));
+            v.setFallDistance(0);
+            t.age += Math.max(0.05, scale);
+            return;
+        }
+        if (now() >= t.until) { // left alone: the hook slides out
+            p.getWorld().playSound(tip, Sound.BLOCK_CHAIN_FALL, SoundCategory.PLAYERS, 0.8f, 1.0f);
+            stopTether(id);
+        }
+    }
+
+    private void stopTether(UUID id) {
+        Tether t = tethers.remove(id);
+        if (t != null) t.chain.clear();
+    }
+
+    /** A block between the two points (stopping a little short, so the hooked block or the ground they stand on doesn't count). */
+    private static boolean blockedBetween(Location from, Location to) {
+        if (!from.getWorld().equals(to.getWorld())) return true;
+        Vector d = to.toVector().subtract(from.toVector());
+        double len = d.length();
+        if (len < 1.2) return false;
+        return from.getWorld().rayTraceBlocks(from, d.normalize(), len - 0.6, FluidCollisionMode.NEVER, true) != null;
+    }
+
+    private void snap(Player p, Chain c, Location at) {
+        c.clear();
+        World w = p.getWorld();
+        w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.1f, 1.3f);
+        w.spawnParticle(Particle.CRIT, p.getLocation().add(0, 1.2, 0), 8, 0.2, 0.2, 0.2, 0.2);
+        dust(w, at, 6, 0.2, DEEP, 1.0f);
     }
 
     private void stopReel(UUID id) {
@@ -462,8 +581,9 @@ final class AuratusGem implements Listener {
         UUID id = p.getUniqueId();
         long n = now();
         if (aegisReady.getOrDefault(id, 0L) > n || aegis.containsKey(id)) return;
-        aegisReady.put(id, n + AuratusMath.aegisCooldownMs(false, cfgD("aegis.cooldown-seconds", 15), cfgD("aegis.success-cooldown-seconds", 10)));
         Aegis a = new Aegis();
+        a.prevReady = aegisReady.getOrDefault(id, 0L);
+        aegisReady.put(id, n + AuratusMath.aegisCooldownMs(false, cfgD("aegis.cooldown-seconds", 15), cfgD("aegis.success-cooldown-seconds", 10)));
         a.castAt = n;
         a.until = n + Math.max(100, plugin.getConfig().getLong(path("aegis.window-ms"), 1000));
         a.halo = display(p.getLocation().add(0, 1.0, 0), CMD_HALO);
@@ -473,6 +593,16 @@ final class AuratusGem implements Listener {
         w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1.0f, 1.5f);
         w.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, 1.0f, 1.3f);
         Sfx.play(plugin, p.getLocation(), "auratus.aegis", 1.0f, 1.0f);
+    }
+
+    /** The right-click of a right-then-left Flagpole combo started an Aegis: take it back (unless it already parried). */
+    private void undoAegis(Player p, long since) {
+        UUID id = p.getUniqueId();
+        Aegis a = aegis.get(id);
+        if (a == null || a.parried || a.castAt < since) return;
+        aegis.remove(id);
+        if (a.halo != null && a.halo.isValid()) a.halo.remove();
+        aegisReady.put(id, a.prevReady);
     }
 
     private void tickAegis(Player p, Aegis a) {
@@ -581,6 +711,7 @@ final class AuratusGem implements Listener {
         if (target == null) return;
         slamReady.put(id, n + ms("slam.cooldown-seconds", 0));
         stopReel(id);
+        stopTether(id);
         Dive d = new Dive();
         d.target = target;
         d.startY = p.getLocation().getY();
@@ -701,6 +832,7 @@ final class AuratusGem implements Listener {
         }
         flagReady.put(id, n + ms("flagpole.cooldown-seconds", 25));
         hooks.remove(id);
+        stopTether(id); // the hook comes out as they go up
         Hoist hs = new Hoist();
         hs.owner = id;
         hs.baseY = v.getLocation().getY();
@@ -805,7 +937,7 @@ final class AuratusGem implements Listener {
         e.setKnockback(new Vector(in.getX(), Math.min(kb.getY(), 0.3), in.getZ()));
     }
 
-    /** Angels Grasp: no ender pearls, wind charges, chorus fruit or tridents for a few seconds. */
+    /** Angels Grasp: no ender pearls, wind charges, chorus fruit or tridents for a few seconds (4 from slam and Flagpole, 2 from a chain). */
     private void grasp(LivingEntity v) { grasp(v, cfgD("passives.angels-grasp-seconds", 4)); }
 
     private void grasp(LivingEntity v, double seconds) {
@@ -857,6 +989,12 @@ final class AuratusGem implements Listener {
             if (p == null || p.isDead()) { stopReel(id); continue; }
             Reel r = reels.get(id);
             if (r != null) tickReel(p, r);
+        }
+        for (UUID id : new ArrayList<>(tethers.keySet())) {
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || p.isDead()) { stopTether(id); continue; }
+            Tether t = tethers.get(id);
+            if (t != null) tickTether(p, t);
         }
         for (UUID id : new ArrayList<>(dives.keySet())) {
             Player p = Bukkit.getPlayer(id);
@@ -917,7 +1055,7 @@ final class AuratusGem implements Listener {
         UUID id = p.getUniqueId();
         long n = now();
         Charges c = charges(p);
-        String chains = dives.containsKey(id) ? HudStatus.entry(GLYPH_PERFORATORS, 0, true)
+        String chains = dives.containsKey(id) || tethers.containsKey(id) ? HudStatus.entry(GLYPH_PERFORATORS, 0, true)
                 : HudStatus.charges(GLYPH_PERFORATORS, c.ready(n), c.max(), c.nextIn(n));
         String guard = HudStatus.entry(GLYPH_AEGIS, aegisReady.getOrDefault(id, 0L) - n, aegis.containsKey(id));
         StringBuilder msg = new StringBuilder(chains + "  " + guard);
@@ -933,6 +1071,9 @@ final class AuratusGem implements Listener {
     private void cleanup(Player p) {
         UUID id = p.getUniqueId();
         stopReel(id);
+        stopTether(id);
+        for (Map.Entry<UUID, Tether> en : new ArrayList<>(tethers.entrySet())) // anyone hooked into them lets go
+            if (en.getValue().victim.equals(id)) stopTether(en.getKey());
         stopDive(id);
         Aegis a = aegis.remove(id);
         if (a != null && a.halo != null && a.halo.isValid()) a.halo.remove();
@@ -962,6 +1103,7 @@ final class AuratusGem implements Listener {
 
     void shutdown() {
         for (UUID id : new ArrayList<>(reels.keySet())) stopReel(id);
+        for (UUID id : new ArrayList<>(tethers.keySet())) stopTether(id);
         for (UUID id : new ArrayList<>(dives.keySet())) stopDive(id);
         for (Aegis a : aegis.values()) if (a.halo != null && a.halo.isValid()) a.halo.remove();
         aegis.clear();

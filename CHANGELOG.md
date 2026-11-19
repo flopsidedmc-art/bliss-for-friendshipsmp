@@ -1,3 +1,16 @@
+# Auratus chains: the hook stays in, walls snap it, shorter grasp
+
+- **The hook stays in an enemy.** A chain that hits an enemy bites straight away (the 4.5-heart hit, once per hook) and stays in them. Then you choose:
+  - **chain button again:** fly to them (no extra charge);
+  - **swap hands (F):** haul them to you;
+  - **nothing:** the hit is done, and the hook slides out after 6 s (`chain.hook-seconds`).
+  - It lets go early if a wall gets between you, if they get out of range, on a slam, or when Flagpole lifts them. F never swaps your items while a hook is in.
+  - Before, a chain always pulled you to them and hit on arrival.
+- **Walls snap the chain.** A block between you and the hook point for 2 ticks snaps it with a clank, instead of pinning you against the wall for up to 2 s. This covers chains to blocks, anchors and enemies.
+- **Angels Grasp from a chain hook is 2 s** (`passives.angels-grasp-chain-seconds`). Slam and Flagpole keep 4 s. Two charges can no longer keep someone pearl-locked.
+- **Flagpole** works while the hook is in (or 5 s after). A right-then-left combo no longer wastes the Aegis: it's taken back, cooldown included.
+- The new settings are in `/mythicconfig` too. 45 unit tests pass. Not run in a game.
+
 # No words on any action bar; Auratus' Aegis on right-click
 
 - **Every gem's action bar is now icons and timers only:** standard gems, Flux, Heretic, Auratus, the Relay (including the Rift slot by the hotbar), and the Revenant's too. There's no "Ready!", "Active...", gem name, "Slowed", "Suspended" or "x/y Ready!" any more.

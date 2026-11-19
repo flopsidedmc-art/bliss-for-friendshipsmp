@@ -18,6 +18,12 @@ The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt undern
 | Right-click | Chains |
 | Sneak + right-click | Aegis on the ground; **Gilded Slam** when 4+ blocks up |
 
+| While your **hook is in an enemy** (either hand) | What happens |
+|---|---|
+| Chain button again (left-click, or right-click with the gem in the off hand) | **You fly to them** |
+| Swap hands (F) | **They're hauled to you** |
+| Nothing | **Neither**: the hook already did its damage and slides out after 6 s |
+
 Notes on the controls:
 
 - **The slam replaces the old look-straight-down trigger.** Sneak + chain lower than 4 blocks is just a chain, and the slam costs no chain charge.
@@ -31,10 +37,15 @@ Notes on the controls:
 1. **Venerated Perforators.** Throw a chain up to 40 blocks.
    - **2 charges**, each recharging on its own 8-second timer.
    - **Block:** you reel in on a straight line that ramps up to about 22 blocks a second, and keep some momentum when you arrive. Landing ends it.
-   - **Enemy:** you reel to them. When you reach them they take a hit (9 HP, 4.5 hearts unarmored), get Angels Grasp, and are tugged toward you.
+   - **Enemy: the hook stays in them.** It bites straight away: 9 HP (4.5 hearts unarmored) and 2 s of Angels Grasp, once per hook. Then you choose:
+     - **chain button again** reels you to them (no extra charge), and they're tugged toward you when you arrive;
+     - **swap hands (F)** hauls them to you at about 20 blocks a second, lifting them off the ground so they don't drag;
+     - **do nothing** and the hook just did the damage. It slides out after 6 s.
+   - **The hook lets go early** if a wall gets between you, if they get more than 44 blocks away, or if you slam. Flagpole also pulls it out as they go up. The swap-hands key never swaps your items while a hook is in.
+   - **Walls snap the chain:** a block between you and the hook point (for a block, an anchor or an enemy) for 2 ticks in a row snaps it with a clank, instead of pinning you against the wall.
    - **Friends, animals and villagers:** a ride, never a hit.
    - **Missing costs nothing:** pointing at nothing, or at something in melee range, uses no charge. A total miss gives a quiet chain rattle.
-   - **Re-chaining:** throwing again mid-reel replaces the chain, so you can chain-hop.
+   - **Re-chaining:** throwing again mid-reel to a block replaces the chain, so you can chain-hop.
    - **Time Dilate:** a field slows the reel, as before.
 2. **Echoing Aegis.** A golden halo snaps around your waist for **1 second**.
    - Any melee hit or projectile in that second is **blocked**.
@@ -51,12 +62,12 @@ Notes on the controls:
      - you see a gold shockwave and hear a heavy smash and a bell;
      - you take no fall damage.
    - **No cooldown, like the old slam.** Getting back up costs chain charges. `slam.cooldown-seconds` adds one; while it runs, sneak + chain in the air shows "Slam ready in Xs".
-4. **Flagpole.** Within 5 seconds of your chain latching onto an enemy, click left and right together.
+4. **Flagpole.** While your hook is in an enemy (or within 5 seconds of it), click left and right together.
    - They're hoisted 5 blocks up (less under a ceiling) and held there for 2.5 s, inside a spiral of gold.
    - Hits still push them, but they can't run off, and they can't pearl away.
    - Then they drop.
    - **Cooldown:** 25 s.
-   - **Like the old combo:** if left lands first, it also throws a chain.
+   - **Combo order:** if left lands first, you also fly to them, like the old combo. If right lands first, the Aegis it started is taken back, cooldown included.
 
 ## Passives (gem in either hand)
 
@@ -65,7 +76,7 @@ Notes on the controls:
   - +1 block of melee reach;
   - full-strength hits pull the target toward you instead of knocking them away;
   - a full-strength hit on a raised shield drops it and jams it for 5 s.
-- **Angels Grasp:** anything your chain, slam or Flagpole hits can't use an ender pearl, wind charge, chorus fruit or trident for 4 s. Gold "shackles" show at their feet.
+- **Angels Grasp:** slam and Flagpole victims can't use an ender pearl, wind charge, chorus fruit or trident for 4 s; a chain hook does it for only 2 s, so two charges can't lock someone down. Gold "shackles" show at their feet.
 - **Divine Purity:** harmful effects on you last half as long, and a parry clears them.
 
 ## Action bar (the old icons, no words)
@@ -122,8 +133,8 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 
 | Section | Keys (defaults) |
 |---|---|
-| `passives` | `feathered-fall-damage-multiplier` 0.10, `hauling-strike-extra-reach` 1.0, `hauling-strike-pull` 0.3, `hauling-strike-shield-ticks` 100, `angels-grasp-seconds` 4, `divine-purity-multiplier` 0.5 |
-| `chain` | `charges` 2, `recharge-seconds` 8, `range` 40, `min-entity-distance` 3.5, `reel-speed` 1.1, `ramp-ticks` 4, `max-reel-ticks` 40, `arrival-momentum` 0.45, `hit-damage` 3.0, `show-models` true, `link-spacing` 1.0, `link-scale` 1.0 |
+| `passives` | `feathered-fall-damage-multiplier` 0.10, `hauling-strike-extra-reach` 1.0, `hauling-strike-pull` 0.3, `hauling-strike-shield-ticks` 100, `angels-grasp-seconds` 4, `angels-grasp-chain-seconds` 2, `divine-purity-multiplier` 0.5 |
+| `chain` | `charges` 2, `recharge-seconds` 8, `range` 40, `min-entity-distance` 3.5, `reel-speed` 1.1, `ramp-ticks` 4, `max-reel-ticks` 40, `arrival-momentum` 0.45, `hit-damage` 3.0, `hook-seconds` 6, `haul-speed` 1.0, `haul-max-ticks` 30, `show-models` true, `link-spacing` 1.0, `link-scale` 1.0 |
 | `aegis` | `cooldown-seconds` 15, `success-cooldown-seconds` 10, `window-ms` 1000, `reflect` 0.5, `attacker-slow-seconds` 1.5, `weapon-durability-loss` 30, `heal-hp` 5.0, `speed-seconds` 3, `anchor-height` 8, `anchor-seconds` 5, `anchor-cone-degrees` 35 |
 | `slam` | `cooldown-seconds` 0, `min-height` 4, `range` 24, `dive-speed` 1.6, `radius` 5, `damage-center` 6.0, `damage-edge` 3.0, `launch` 0.45 |
 | `flagpole` | `combo-ms` 100, `cooldown-seconds` 25, `hook-memory-seconds` 5, `range` 24, `height` 5, `hold-seconds` 2.5 |
@@ -154,8 +165,8 @@ You need a second player (or a friend), the new JAR and the merged pack.
 
 1. `/blissop mythic auratus`. The action bar shows just the old chain and Aegis icons, bright, with no words.
 2. Left-click a far wall: you're reeled to it. Click the sky: no charge is used and you hear a rattle. Throw both chains: the chain icon dims with a timer, and brightens again 8 s after the first.
-3. Left-click the other player from 10 blocks: you fly to them and they take about 4.5 hearts unarmored, less in armor. They can't pearl or wind-charge for 4 s.
-4. Within 5 s, click left and right together: they float 5 blocks up for 2.5 s in a gold spiral, then drop. The bar shows `⚑ 25s`.
+3. Left-click the other player from 10 blocks: the hook bites (about 4.5 hearts unarmored, less in armor; no pearls for 2 s) and a chain stays between you. Do nothing: it lets go after 6 s. Hook them again and press F: they're hauled to you. Hook them again and left-click: you fly to them. Hook them and step behind a wall: the chain snaps.
+4. Hook them, then click left and right together: they float 5 blocks up for 2.5 s in a gold spiral, then drop. The bar shows `⚑ 25s`. Try right-then-left: no Aegis cooldown is used.
 5. Right-click as they hit you: the hit is blocked, they take half back and are slowed, and you heal with Speed II. A gold ring appears above you and the bar shows `▲ 5s`. Throw a chain toward it: you latch on. The Aegis comes back in about 10 s.
 6. Right-click with nobody hitting you: you get a fizzle and a 15 s cooldown (the Aegis icon dims).
 7. Chain up a wall to 6+ blocks, look at the ground nearby and sneak + left-click: you dive, a ring grows below, and the impact hurts players within 5 blocks with no fall damage to you. Do it again right away: no cooldown. Sneak + left-click 2 blocks up: just a normal chain.
@@ -184,6 +195,8 @@ You need a second player (or a friend), the new JAR and the merged pack.
 - whether the 0.1 s left + right window is comfortable (`flagpole.combo-ms` changes it);
 - whether the pack models (links, hook, halo, slam ring) sit and turn right;
 - the Hauling Strike pull, which uses Paper's knockback event;
+- how the hook haul (F) feels on a player at high ping, and whether 6 s is the right hold;
+- the wall snap on uneven ground (a hole's edge can count as a wall);
 - the shield drop;
 - Divine Purity on potions from other plugins;
 - the off-hand rules with every item;

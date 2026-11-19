@@ -696,6 +696,8 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.chain.charges", Material.IRON_CHAIN, "Chain Charges", SettingKind.INT, 1, 1, 1, 5, null),
             new MythicSetting("mythics.auratus.chain.recharge-seconds", Material.RECOVERY_COMPASS, "Chain Recharge (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 60.0, null),
             new MythicSetting("mythics.auratus.chain.reel-speed", Material.SUGAR, "Chain Reel Speed", SettingKind.DOUBLE, 0.05, 0.25, 0.2, 3.0, null),
+            new MythicSetting("mythics.auratus.chain.hook-seconds", Material.TRIPWIRE_HOOK, "Hook Hold (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
+            new MythicSetting("mythics.auratus.chain.haul-speed", Material.LEAD, "Haul-In Speed", SettingKind.DOUBLE, 0.05, 0.25, 0.2, 3.0, null),
             new MythicSetting("mythics.auratus.chain.max-reel-ticks", Material.ARROW, "Chain Max Reel Ticks", SettingKind.INT, 2, 10, 4, 200, null),
             new MythicSetting("mythics.auratus.chain.link-spacing", Material.IRON_CHAIN, "Chain Link Spacing", SettingKind.DOUBLE, 0.1, 0.5, 0.2, 5.0, null),
             new MythicSetting("mythics.auratus.chain.link-scale", Material.MAGMA_CREAM, "Chain Link Scale", SettingKind.DOUBLE, 0.05, 0.25, 0.1, 3.0, null),
@@ -724,6 +726,7 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.passives.hauling-strike-pull", Material.STICK, "Haul Pull", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 2.0, null),
             new MythicSetting("mythics.auratus.passives.hauling-strike-shield-ticks", Material.IRON_AXE, "Haul Shield Jam", SettingKind.INT, 20, 100, 0, 600, null),
             new MythicSetting("mythics.auratus.passives.angels-grasp-seconds", Material.HEART_OF_THE_SEA, "Angels Grasp (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
+            new MythicSetting("mythics.auratus.passives.angels-grasp-chain-seconds", Material.PRISMARINE_SHARD, "Angels Grasp from Chains (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             new MythicSetting("mythics.auratus.passives.divine-purity-multiplier", Material.MILK_BUCKET, "Divine Purity Multiplier", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 1.0, null)
     );
 

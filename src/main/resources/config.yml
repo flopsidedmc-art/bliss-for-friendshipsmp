@@ -107,9 +107,11 @@ mythics:
       hauling-strike-extra-reach: 1.0 # Hauling Strike: melee reach added while holding the gem (vanilla is 3)
       hauling-strike-pull: 0.3 # full-strength hits pull the target toward you this hard instead of knocking them away; 0 = vanilla knockback
       hauling-strike-shield-ticks: 100 # full-strength hits drop a raised shield and jam it this long
-      angels-grasp-seconds: 4 # anything your chain, slam or Flagpole hits can't ender pearl, wind charge, eat chorus fruit or use a trident
+      angels-grasp-seconds: 4 # slam and Flagpole victims can't ender pearl, wind charge, eat chorus fruit or use a trident
+      angels-grasp-chain-seconds: 2 # the same from a chain hook (shorter, so two charges can't lock someone down); 0 = none
       divine-purity-multiplier: 0.5 # harmful effects on you last this fraction as long; a parry also cleanses them
-    chain: # Venerated Perforators
+    chain: # Venerated Perforators. A chain that hits an enemy stays in them: chain again to fly to them,
+      # swap hands (F) to haul them to you, or leave it. It snaps if a wall gets between you.
       charges: 2
       recharge-seconds: 8 # each charge on its own timer
       range: 40.0
@@ -118,7 +120,10 @@ mythics:
       ramp-ticks: 4 # ticks to reach that speed
       max-reel-ticks: 40
       arrival-momentum: 0.45 # share of the reel speed you keep when you arrive
-      hit-damage: 3.0 # reaching an enemy you hooked (x3 = 9 HP, 4.5 hearts unarmored)
+      hit-damage: 3.0 # when the hook bites an enemy (x3 = 9 HP, 4.5 hearts unarmored); once per hook
+      hook-seconds: 6 # how long the hook stays in them if you do nothing
+      haul-speed: 1.0 # top speed hauling them to you (F), blocks/tick
+      haul-max-ticks: 30
       show-models: true # chain links + hook from the pack (echo shard models 12348/12349); false = gold dust
       link-spacing: 1.0 # blocks between chain links
       link-scale: 1.0
