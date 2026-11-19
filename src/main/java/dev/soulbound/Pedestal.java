@@ -119,7 +119,7 @@ public class Pedestal implements Listener {
         open = true;
         breaks = 0;
         save();
-        w.playSound(center, Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.2f);
+        GemSounds.play(plugin, "other.pedestal-activate", center);
         Bukkit.broadcastMessage(ChatColor.GOLD + "The Pedestal rises. Rites may begin.");
     }
 

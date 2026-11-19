@@ -22,7 +22,7 @@ public final class TurmoilCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("/turmoil start | stop | status | spawn | setspawn | overlay | finale <auto|player> [force] | finale stop");
+            sender.sendMessage("/turmoil start | stop | status | spawn | setspawn | pedestal <1|2|clear> | overlay | finale <auto|player> [force] | finale stop");
             return true;
         }
         switch (args[0].toLowerCase(java.util.Locale.ROOT)) {
@@ -36,6 +36,26 @@ public final class TurmoilCommand implements CommandExecutor, TabCompleter {
             case "setspawn" -> {
                 if (!(sender instanceof Player player)) sender.sendMessage("Run this in-game at Spawn.");
                 else { plugin.finale().setCenter(player.getLocation()); sender.sendMessage("Finale center saved."); }
+            }
+            case "pedestal" -> {
+                String what = args.length >= 2 ? args[1].toLowerCase(java.util.Locale.ROOT) : "show";
+                Boolean auratus = switch (what) {
+                    case "1", "auratus" -> Boolean.TRUE;
+                    case "2", "heretic" -> Boolean.FALSE;
+                    default -> null;
+                };
+                if (what.equals("clear")) {
+                    plugin.finale().clearPedestals();
+                    sender.sendMessage("Pedestals reset: they stand either side of the finale center again. " + plugin.finale().pedestalInfo());
+                } else if (auratus == null) {
+                    sender.sendMessage(plugin.finale().pedestalInfo() + ". Set one with /turmoil pedestal <1|2> where it should stand (1 = Auratus, 2 = Heretic).");
+                } else if (!(sender instanceof Player player)) {
+                    sender.sendMessage("Run this in-game, standing where the pedestal should go.");
+                } else {
+                    org.bukkit.Location at = plugin.finale().setPedestal(auratus, player.getLocation());
+                    sender.sendMessage("Pedestal " + (auratus ? "1 (Auratus)" : "2 (Heretic)") + " set at " + at.getBlockX() + " " + at.getBlockY() + " " + at.getBlockZ()
+                            + ", on the ground. It's used from the next finale on.");
+                }
             }
             case "overlay" -> {
                 if (!(sender instanceof Player player)) sender.sendMessage("Run this in-game.");
@@ -60,7 +80,8 @@ public final class TurmoilCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("soulbound.turmoil")) return Collections.emptyList();
-        if (args.length == 1) return filter(Arrays.asList("start", "stop", "status", "spawn", "setspawn", "overlay", "finale"), args[0]);
+        if (args.length == 1) return filter(Arrays.asList("start", "stop", "status", "spawn", "setspawn", "pedestal", "overlay", "finale"), args[0]);
+        if (args.length == 2 && args[0].equalsIgnoreCase("pedestal")) return filter(Arrays.asList("1", "2", "clear"), args[1]);
         if (args.length == 2 && args[0].equalsIgnoreCase("finale")) {
             List<String> options = new ArrayList<>(Arrays.asList("auto", "stop"));
             for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) options.add(p.getName());

@@ -183,8 +183,7 @@ public final class MythicListener implements Listener {
         Vector side = right.clone().multiply(slot == 0 ? spacing : -spacing);
         spawnBloodsaw(p, eye.clone().add(side).add(forward.clone().multiply(0.6)), forward, slot);
 
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.8f, 1.45f);
-        Sfx.play(plugin, p.getLocation(), "heretic.bloodsaw", 1.0f, 1.0f);
+        GemSounds.play(plugin, "heretic.bloodsaws", p.getLocation());
     }
 
     private void spawnBloodsaw(Player owner, Location at, Vector direction, int slot) {
@@ -228,7 +227,7 @@ public final class MythicListener implements Listener {
             if (!s.entity.isValid() || n - s.lastHitAt >= idleMs) {
                 Location loc = s.entity.getLocation();
                 // "ding" + firework burst on the way out.
-                loc.getWorld().playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, 0.9f, 2.0f);
+                GemSounds.play(plugin, "heretic.bloodsaw-hit", loc);
                 loc.getWorld().spawnParticle(Particle.FIREWORK, loc, 30, 0.25, 0.25, 0.25, 0.12);
                 removeSaw(s);
                 it.remove();
@@ -384,8 +383,7 @@ public final class MythicListener implements Listener {
         w.spawnParticle(Particle.DUST, loc.clone().add(0, 0.25, 0), 60,
                 radius * 0.45, 0.3, radius * 0.45,
                 new Particle.DustOptions(Color.fromRGB(180, 0, 20), 1.8f));
-        w.playSound(loc, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 0.7f, 0.6f);
-        Sfx.play(plugin, loc, "heretic.spore", 0.9f, 1.0f);
+        GemSounds.play(plugin, "heretic.spore", loc);
         final BukkitTask[] task = new BukkitTask[1];
         final long endAt = now() + duration;
         task[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -418,7 +416,7 @@ public final class MythicListener implements Listener {
         p.setVelocity(new Vector(0, plugin.getConfig().getDouble("mythics.heretic.bloodlinking.launch-y", 1.35), 0));
         bloodlinks.put(p.getUniqueId(), new BloodlinkState(new HashSet<>(), now() + 10_000L));
         bloodlinkSlamCounts.put(p.getUniqueId(), 0);
-        Sfx.play(plugin, p.getLocation(), "heretic.bloodlink", 1.0f, 1.0f);
+        GemSounds.play(plugin, "heretic.bloodlinking", p.getLocation());
         Bukkit.getScheduler().runTaskLater(plugin, () -> beginBloodlinkDive(p), 14L);
     }
 
@@ -467,8 +465,7 @@ public final class MythicListener implements Listener {
         p.getWorld().spawnParticle(Particle.EXPLOSION, p.getLocation(), 2, 0.2, 0.1, 0.2, 0.02);
         p.getWorld().spawnParticle(Particle.DUST, p.getLocation(), 45, radius * 0.45, 0.25, radius * 0.45,
                 new Particle.DustOptions(Color.fromRGB(150, 0, 20), 1.6f));
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.55f, 1.5f);
-        Sfx.play(plugin, p.getLocation(), "heretic.slam", 1.0f, 1.0f);
+        GemSounds.play(plugin, "heretic.bloodlink-slam", p.getLocation());
         if (victims.size() > 0 && slamCount < plugin.getConfig().getInt("mythics.heretic.bloodlinking.max-slams", 3)) {
             bloodlinks.put(p.getUniqueId(), new BloodlinkState(victims, now() + 10_000L));
             p.setVelocity(new Vector(0, 0.95, 0));

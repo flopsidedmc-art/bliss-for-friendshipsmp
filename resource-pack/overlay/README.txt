@@ -9,3 +9,5 @@ Rift + Time Dilate restyle: adds blissgems:rift_0..rift_5 (the six rift frames, 
 The Revenant: adds blissgems:revenant_mace (item definition, handheld_mace model, the supplied 16x16 texture) and HUD glyphs U+E046 Plunge, U+E047 Rising, U+E048 Undertow (blissgems:icons/revenant_*.png, 33x20).
 
 Auratus rebuild: no new assets. The gem uses the main pack's chain and Aegis HUD glyphs (U+22B5, U+22B4) and echo shard models 12348, 12349, 12345 and 12346.
+
+Finale: adds item models blissgems:finale_pedestal_auratus, blissgems:finale_pedestal_heretic (vanilla blackstone with gold or amethyst trim) and blissgems:finale_seal (textures/item/finale_seal.png, a clock face laid on the ground under the merge).

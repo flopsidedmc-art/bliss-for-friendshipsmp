@@ -77,7 +77,7 @@ final class TemporalFlow implements org.bukkit.event.Listener {
                 }
             } catch(RuntimeException ex) { removeDisplays(f); plugin.getLogger().warning("Relay display fallback: "+ex.getMessage()); }
         }
-        p.getWorld().playSound(p.getLocation(),Sound.BLOCK_BEACON_ACTIVATE,0.8f,0.6f);
+        GemSounds.play(plugin,"relay.time-dilate",p.getLocation());
         return true;
     }
     /**

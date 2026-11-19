@@ -53,15 +53,99 @@ protection:
 
 # ---------------- Mythic Gems ----------------
 # Mythics intentionally ignore the normal 0-10 energy system and are not soul-kept.
-# Custom pack sounds (assets/blissgems/sounds.json). They layer on top of the vanilla sounds the abilities
-# already play. Without the resource pack players only hear the vanilla ones. Only the events listed below play.
-# Available events (need the matching file in the pack): relay.rewind, relay.dilation, relay.timelock, relay.tag,
-# auratus.chain, auratus.aegis, auratus.parry, auratus.slam, heretic.bloodsaw, heretic.spore, heretic.bloodlink, heretic.slam
+# Sounds. Every gem sound is one entry: sounds.<gem>.<ability>: {event, volume, pitch, enabled} plus at most one
+# "layer" played on the same tick. event is a Bukkit sound name (ENTITY_RAVAGER_ROAR) or a key
+# (minecraft:entity.ravager.roar, or a pack sound like blissgems:auratus.parry). A pack sound replaces the vanilla one;
+# give it a "fallback" (same fields) for when custom-enabled is false. Pitch is kept within 0.5-2.0. Volume above 1
+# does not get louder up close, it carries further (about 16 blocks x volume). Unknown names are listed in the
+# console at startup. Full table: SOUNDS.md.
 sounds:
-  custom-enabled: true
-  volume: 1.0
-  enabled-events:
-    - auratus.parry
+  custom-enabled: true # false: pack sounds (blissgems:...) are skipped and their fallback plays
+  volume: 1.0 # scales every gem sound
+  general: # Shared by every gem
+    not-ready: {event: BLOCK_NOTE_BLOCK_BASS, volume: 1.0, pitch: 0.5, enabled: true}  # you only: not enough energy, or the Relay bar isn't full
+    gem-disabled: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 0.8, enabled: true}  # only the player whose gem was disabled hears it
+  strength: # Strength: heavy, brutal (ravager, mace)
+    chad-strength: {event: ENTITY_RAVAGER_ROAR, volume: 0.9, pitch: 1.2, enabled: true, layer: {event: ITEM_MACE_SMASH_GROUND_HEAVY, volume: 1.0, pitch: 0.6}}
+    chad-fourth-hit: {event: ITEM_MACE_SMASH_GROUND, volume: 1.0, pitch: 1.2, enabled: true}  # the x2 hit
+    nullify: {event: BLOCK_CONDUIT_DEACTIVATE, volume: 1.0, pitch: 0.6, enabled: true, layer: {event: ENTITY_ILLUSIONER_CAST_SPELL, volume: 0.7, pitch: 0.8}}
+    bounty-hunter: {event: ENTITY_RAVAGER_AMBIENT, volume: 0.8, pitch: 0.7, enabled: true}  # you only, when the target is set
+  fire: # Fire: crackle, whoosh
+    fireball-charge: {event: ENTITY_BLAZE_BURN, volume: 0.8, pitch: 1.0, enabled: true}  # repeats every 1.5s while charging
+    fireball-launch: {event: ENTITY_GHAST_SHOOT, volume: 0.9, pitch: 0.8, enabled: true}
+    fireball-hit: {event: ENTITY_GENERIC_EXPLODE, volume: 0.6, pitch: 1.2, enabled: false}  # off: the explosion already makes its own boom
+    cozy-campfire: {event: BLOCK_CAMPFIRE_CRACKLE, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: ITEM_FIRECHARGE_USE, volume: 0.8, pitch: 0.8}}
+    crisp: {event: ITEM_FIRECHARGE_USE, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_FIRE_EXTINGUISH, volume: 0.8, pitch: 1.0}}
+  speed: # Speed: high, electric
+    blur: {event: ITEM_TRIDENT_RIPTIDE_1, volume: 1.0, pitch: 1.6, enabled: true}
+    speedy-storm: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_BEACON_POWER_SELECT, volume: 0.5, pitch: 1.8}}  # no thunder
+    storm-bolt: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.5, pitch: 1.8, enabled: true}  # each particle bolt
+    thunderstep: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.5, pitch: 2.0, enabled: true, layer: {event: ITEM_TRIDENT_RETURN, volume: 0.9, pitch: 1.8}}
+    speed-boost: {event: BLOCK_COPPER_BULB_TURN_ON, volume: 0.8, pitch: 1.6, enabled: true}  # the tier 2 click
+  puff: # Puff: wind, air
+    double-jump: {event: ENTITY_WIND_CHARGE_WIND_BURST, volume: 1.0, pitch: 1.3, enabled: true}
+    breezy-bash: {event: ENTITY_BREEZE_WIND_BURST, volume: 1.0, pitch: 0.8, enabled: true}
+    dash: {event: ENTITY_BREEZE_SHOOT, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: ENTITY_PHANTOM_FLAP, volume: 0.8, pitch: 1.6}}
+  astra: # Astra: crystal, void (the only gem with amethyst HIT)
+    daggers: {event: ITEM_TRIDENT_THROW, volume: 0.9, pitch: 1.6, enabled: true, layer: {event: BLOCK_AMETHYST_BLOCK_HIT, volume: 1.0, pitch: 1.5}}
+    projection: {event: BLOCK_RESPAWN_ANCHOR_CHARGE, volume: 1.0, pitch: 1.4, enabled: true}
+    dimensional-drift: {event: BLOCK_END_PORTAL_FRAME_FILL, volume: 1.0, pitch: 1.2, enabled: true, layer: {event: ENTITY_ENDERMAN_TELEPORT, volume: 0.7, pitch: 1.5}}
+    astral-void: {event: BLOCK_AMETHYST_BLOCK_HIT, volume: 1.0, pitch: 0.6, enabled: true}  # the cast; disabled players hear general.gem-disabled
+  flux: # Flux: lasers, power
+    energy-beam: {event: ENTITY_GUARDIAN_ATTACK, volume: 0.9, pitch: 1.4, enabled: true}
+    kinetic-burst: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.5, pitch: 1.6, enabled: true}
+    overdrive: {event: BLOCK_BEACON_ACTIVATE, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: BLOCK_CONDUIT_ACTIVATE, volume: 0.8, pitch: 1.0}}
+    ingot-to-watts: {event: BLOCK_CONDUIT_AMBIENT_SHORT, volume: 0.8, pitch: 1.6, enabled: true}  # you only
+  wealth: # Wealth: coins, locks (no XP orb anywhere)
+    pockets: {event: BLOCK_ENDER_CHEST_OPEN, volume: 1.0, pitch: 1.3, enabled: true}
+    item-lock: {event: BLOCK_CHEST_LOCKED, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_IRON_TRAPDOOR_CLOSE, volume: 0.8, pitch: 0.7}}
+    rich-rush: {event: BLOCK_VAULT_INSERT_ITEM, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_CHAIN_STEP, volume: 0.6, pitch: 2.0}}
+    amplification: {event: BLOCK_ENCHANTMENT_TABLE_USE, volume: 1.0, pitch: 1.2, enabled: true}
+  life: # Life: growth (no Warden, amethyst or anvil)
+    heart-drainer: {event: BLOCK_AZALEA_LEAVES_BREAK, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 1.2}}
+    circle-of-life: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: BLOCK_SWEET_BERRY_BUSH_PICK_BERRIES, volume: 0.7, pitch: 1.3}}
+    vitality-vortex: {event: ENTITY_EVOKER_CAST_SPELL, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_BUBBLE_COLUMN_WHIRLPOOL_INSIDE, volume: 0.7, pitch: 1.0}}
+    siphon: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 0.8, enabled: true}  # the tier 1 power
+  heretic: # Heretic: gore, sculk (the only gem with the Warden heartbeat)
+    bloodsaws: {event: BLOCK_GRINDSTONE_USE, volume: 1.0, pitch: 1.4, enabled: true, layer: {event: ENTITY_PLAYER_ATTACK_SWEEP, volume: 0.9, pitch: 0.6}}
+    bloodsaw-hit: {event: BLOCK_NOTE_BLOCK_PLING, volume: 0.9, pitch: 2.0, enabled: true}
+    spore: {event: BLOCK_SPORE_BLOSSOM_BREAK, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_SCULK_SPREAD, volume: 1.0, pitch: 1.0}}
+    bloodlinking: {event: ENTITY_WARDEN_HEARTBEAT, volume: 1.2, pitch: 1.0, enabled: true}  # on link
+    bloodlink-slam: {event: ITEM_MACE_SMASH_GROUND_HEAVY, volume: 1.0, pitch: 0.9, enabled: true}  # each slam
+  auratus: # Auratus: metal, bells (chains, bells and shields only)
+    chain-throw: {event: BLOCK_CHAIN_PLACE, volume: 0.8, pitch: 1.2, enabled: true}  # at you, any hook
+    chain-hook-enemy: {event: BLOCK_CHAIN_PLACE, volume: 1.3, pitch: 0.7, enabled: true}  # at the enemy: the heavy clink
+    fly-to-hook: {event: BLOCK_CHAIN_HIT, volume: 0.8, pitch: 1.4, enabled: true}
+    reel-arrive: {event: ITEM_ARMOR_EQUIP_CHAIN, volume: 0.7, pitch: 1.3, enabled: true}
+    tug: {event: BLOCK_CHAIN_BREAK, volume: 1.0, pitch: 0.9, enabled: true}  # arriving at an enemy, or a haul ending
+    haul: {event: BLOCK_CHAIN_HIT, volume: 1.2, pitch: 0.6, enabled: true}
+    hook-slides-out: {event: BLOCK_CHAIN_FALL, volume: 0.6, pitch: 1.0, enabled: true}
+    snap: {event: BLOCK_CHAIN_BREAK, volume: 1.0, pitch: 1.3, enabled: true}
+    not-ready: {event: BLOCK_CHAIN_FALL, volume: 0.5, pitch: 1.6, enabled: true}  # you only: a miss, no charge, slam on cooldown
+    aegis: {event: ITEM_TRIDENT_RETURN, volume: 1.0, pitch: 1.5, enabled: true, layer: {event: BLOCK_AMETHYST_BLOCK_RESONATE, volume: 1.0, pitch: 1.3}}
+    aegis-strike: {event: BLOCK_BELL_USE, volume: 0.9, pitch: 1.2, enabled: true}  # the shield hits someone
+    aegis-catch: {event: BLOCK_BELL_USE, volume: 1.0, pitch: 0.7, enabled: true, layer: {event: BLOCK_CHAIN_PLACE, volume: 0.8, pitch: 0.6}}  # the shield catches a pulled enemy
+    aegis-fizzle: {event: BLOCK_CHAIN_FALL, volume: 0.4, pitch: 0.8, enabled: true}  # you only
+    parry: {event: ITEM_SHIELD_BLOCK, volume: 1.0, pitch: 1.3, enabled: true, layer: {event: BLOCK_BELL_USE, volume: 1.0, pitch: 1.6}}  # your pack sound instead: event: blissgems:auratus.parry
+    slam-start: {event: BLOCK_CHAIN_PLACE, volume: 1.0, pitch: 0.5, enabled: true}
+    gilded-slam: {event: ITEM_MACE_SMASH_GROUND_HEAVY, volume: 1.0, pitch: 0.8, enabled: true, layer: {event: ENTITY_FIREWORK_ROCKET_LARGE_BLAST, volume: 0.8, pitch: 1.0}}  # the gold firework makes the blast itself, so the layer only plays with the firework off
+    flagpole: {event: BLOCK_CHAIN_PLACE, volume: 1.2, pitch: 0.6, enabled: true, layer: {event: BLOCK_BELL_USE, volume: 0.6, pitch: 0.8}}
+    flagpole-release: {event: BLOCK_CHAIN_BREAK, volume: 0.8, pitch: 0.9, enabled: true}
+    launch: {event: ENTITY_FIREWORK_ROCKET_LARGE_BLAST, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.3, pitch: 2.0}}
+    shield-jam: {event: ITEM_SHIELD_BREAK, volume: 0.8, pitch: 1.2, enabled: true}  # Hauling Strike drops a shield
+  relay: # Relay: time (low pitch = slowed time)
+    rewind: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 1.4, enabled: true, layer: {event: ITEM_CHORUS_FRUIT_TELEPORT, volume: 0.6, pitch: 1.2}}  # with rewind.ogg in the pack: {event: "blissgems:relay.rewind", volume: 1.0, pitch: 1.0, enabled: true, fallback: <these two>}
+    time-dilate: {event: BLOCK_BEACON_AMBIENT, volume: 0.9, pitch: 0.5, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.5}}  # when the bubble opens; with time_dilate.ogg: event: "blissgems:relay.time_dilate"
+    divinity: {event: BLOCK_END_PORTAL_SPAWN, volume: 0.4, pitch: 0.7, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.6}}  # end portal spawn is loud: keep it low
+    rift-menu: {event: BLOCK_BELL_RESONATE, volume: 0.4, pitch: 1.5, enabled: true}  # you only
+    rift-set-anchor: {event: BLOCK_RESPAWN_ANCHOR_SET_SPAWN, volume: 0.8, pitch: 0.8, enabled: true}
+    rift-channel: {event: BLOCK_PORTAL_TRIGGER, volume: 0.4, pitch: 1.6, enabled: true}  # quiet, for the 5s channel
+    rift-close: {event: BLOCK_GLASS_BREAK, volume: 0.5, pitch: 0.55, enabled: true}  # the tear snapping shut
+    rift-arrival: {event: ENTITY_ENDERMAN_TELEPORT, volume: 0.9, pitch: 0.8, enabled: true, layer: {event: BLOCK_RESPAWN_ANCHOR_DEPLETE, volume: 0.8, pitch: 1.0}}
+    tuned-tag: {event: BLOCK_SCULK_SENSOR_CLICKING, volume: 1.0, pitch: 1.6, enabled: true}  # you only, when you tag a new player
+    tuned-full: {event: BLOCK_AMETHYST_BLOCK_CHIME, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_NOTE_BLOCK_BIT, volume: 0.6, pitch: 2.0}}  # you only, when the bar fills
+  other: # Not gems
+    pedestal-activate: {event: BLOCK_TRIAL_SPAWNER_OMINOUS_ACTIVATE, volume: 0.8, pitch: 1.0, enabled: true}  # the heart pedestal (was the Wither spawn)
 
 mythics:
   enabled: true
@@ -154,6 +238,7 @@ mythics:
       damage-center: 6.0 # x3 = 18 HP (9 hearts) unarmored at the centre
       damage-edge: 3.0 # at the edge of the radius
       launch: 0.45 # upward pop on everyone hit
+      firework: true # a gold firework bursts at the impact (it can't hurt anyone)
     flagpole: # Pull an enemy in (or hook them), then catch them with the Aegis: nothing else = Flagpole, chain again = the launch
       cooldown-seconds: 25 # shared by Flagpole and the launch
       hook-memory-seconds: 5 # the Aegis catches an enemy you hooked or pulled in this recently
@@ -455,9 +540,13 @@ turmoil:
 finale:
   gather-radius: 80.0
   pedestal:
-    distance: 6.0
+    distance: 6.0 # with no spot set: this far either side of the finale center (/turmoil pedestal 1|2 sets exact spots)
     reach: 4.0
     timeout-seconds: 0 # 0 = voluntary drops only; never auto-take gems
+    custom-model: true # the pack's pedestal models; false = the old stacked blocks (for players without the pack)
+  seal: # a golden clock seal on the ground under the merge, spinning faster as the gems close in (pack model)
+    enabled: true
+    size: 7.0 # blocks across
   dome:
     enabled: true
     radius: 8.0

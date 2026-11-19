@@ -14,6 +14,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Color;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -875,7 +876,7 @@ public class GemListener implements Listener {
         cdStart(p, "bounty", cooldownMs("bounty", bountyEnergy));
         setBounty(p, target);
         usedOn(p, "Bounty Hunter", target.getName());
-        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_EYE_DEATH, 1, 1);
+        GemSounds.playTo(plugin, "strength.bounty-hunter", p);
         target.sendMessage(ChatColor.GRAY + "You feel like you are being watched...");
     }
 
@@ -975,7 +976,7 @@ public class GemListener implements Listener {
         if (!EnergyStage.allowsPowers(energy)) {
             if (right || (left && type == GemType.STRENGTH)) {
                 // Silenced — no chat spam
-                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1, 0.5f);
+                GemSounds.playTo(plugin, "general.not-ready", p);
             }
             return;
         }
@@ -1315,7 +1316,7 @@ public class GemListener implements Listener {
                 o.sendMessage(ChatColor.RED + "Nullified: Strength, Speed, and Fire Resistance stripped.");
             }
         }
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.8f, 1.2f);
+        GemSounds.play(plugin, "strength.nullify", p.getLocation());
         usedGroup(p, "Nullify", cleared);
     }
 
@@ -1335,7 +1336,7 @@ public class GemListener implements Listener {
             o.sendMessage(ChatColor.RED + "Chad Strength: your 4th hit deals double damage!");
             allies++;
         }
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 0.7f, 1.1f);
+        GemSounds.play(plugin, "strength.chad-strength", p.getLocation());
         usedGroup(p, "Chad Strength", allies + 1);
     }
 
@@ -1349,7 +1350,7 @@ public class GemListener implements Listener {
             if (cdRemain(p, "fireball") > 0) return; // still cooling down: cannot start a new charge
             fireballChargeStart.put(id, System.currentTimeMillis());
             p.sendMessage(ChatColor.GOLD + "Fireball charging... left-click again to unleash.");
-            p.playSound(p.getLocation(), Sound.ENTITY_BLAZE_AMBIENT, 1, 1);
+            GemSounds.play(plugin, "fire.fireball-charge", p.getLocation());
             showFireballBar(p);
             return;
         }
@@ -1370,7 +1371,7 @@ public class GemListener implements Listener {
             double max = Math.max(min, Math.min(8.0, plugin.getConfig().getDouble("fire.fireball.explosion-power-max", 3.0)));
             fireballPower.put(fb.getUniqueId(), (float) (min + (max - min) * level));
         }
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1, 1);
+        GemSounds.play(plugin, "fire.fireball-launch", p.getLocation());
         used(p, "Fireball");
         cdStart(p, "fireball", cooldownMs("fireball", energy));
     }
@@ -1397,6 +1398,7 @@ public class GemListener implements Listener {
         fireballBars.put(id, bar);
         p.showBossBar(bar);
         new org.bukkit.scheduler.BukkitRunnable() {
+            private int runs;
             @Override public void run() {
                 Long started = fireballChargeStart.get(id);
                 if (started == null || !p.isOnline() || fireballBars.get(id) != bar) {
@@ -1406,6 +1408,7 @@ public class GemListener implements Listener {
                     return;
                 }
                 long elapsed = System.currentTimeMillis() - started;
+                if (++runs % 15 == 0) GemSounds.play(plugin, "fire.fireball-charge", p.getLocation()); // the burn keeps going while charging
                 double level = fireballLevel(p, elapsed);
                 int percent = (int) Math.round(level * 100);
                 boolean fading = level < 1.0 && elapsed > 8000;
@@ -1575,7 +1578,7 @@ public class GemListener implements Listener {
                 }
             }
         }
-        w.playSound(c, Sound.ENTITY_BLAZE_SHOOT, 1, 0.7f);
+        GemSounds.play(plugin, "fire.crisp", c);
         w.spawnParticle(Particle.FLAME, c, 80, radius / 2.0, 2, radius / 2.0, 0.1);
         used(p, "Crisp");
     }
@@ -1620,7 +1623,7 @@ public class GemListener implements Listener {
         int radius = 6;
         campfires.put(p.getUniqueId(), new FireCamp(place.getLocation(), System.currentTimeMillis() + 60_000L, radius));
         p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 200, 1));
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_CAMPFIRE_CRACKLE, 1, 1);
+        GemSounds.play(plugin, "fire.cozy-campfire", p.getLocation());
         used(p, "Cozy Campfire");
     }
 
@@ -1788,7 +1791,7 @@ public class GemListener implements Listener {
         arrow.setCritical(true);
         daggerShots.add(arrow.getUniqueId());
         // Sound & particles
-        w.playSound(launchLoc, Sound.ENTITY_ARROW_SHOOT, 1, 1.5f);
+        GemSounds.play(plugin, "astra.daggers", launchLoc);
         w.spawnParticle(Particle.PORTAL, launchLoc, 10, 0.2, 0.2, 0.2, 0.1);
         // Cooldown between shots
         astraDaggerFireCooldown.put(p.getUniqueId(), System.currentTimeMillis() + 300L);
@@ -1817,7 +1820,7 @@ public class GemListener implements Listener {
             pockets.put(p.getUniqueId(), inv);
         }
         p.openInventory(inv);
-        p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.8f, 1.2f);
+        GemSounds.play(plugin, "wealth.pockets", p.getLocation());
         used(p, "Pockets");
     }
 
@@ -1836,7 +1839,7 @@ public class GemListener implements Listener {
                 locked++;
             }
         }
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_CHEST_LOCKED, 1, 1);
+        GemSounds.play(plugin, "wealth.item-lock", p.getLocation());
         usedGroup(p, "Item Lock", locked);
     }
 
@@ -1853,7 +1856,7 @@ public class GemListener implements Listener {
     private void useRichRush(Player p, int energy) {
         richRushUntil.put(p.getUniqueId(), System.currentTimeMillis() + 8 * 60_000L);
         p.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 8 * 60 * 20, 0, true, false, false));
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0.7f);
+        GemSounds.play(plugin, "wealth.rich-rush", p.getLocation());
         used(p, "Rich Rush");
     }
 
@@ -1870,7 +1873,7 @@ public class GemListener implements Listener {
             if (!t.getUniqueId().equals(caster.getUniqueId())) {
                 t.sendMessage(ChatColor.GREEN + "Amplification: enchants +1 for 30s!");
             }
-            t.getWorld().playSound(t.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1.2f);
+            GemSounds.play(plugin, "wealth.amplification", t.getLocation());
         }
         used(caster, "Amplification");
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1961,7 +1964,7 @@ public class GemListener implements Listener {
         }
         p.teleport(target);
         p.setFallDistance(0);
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 1);
+        GemSounds.play(plugin, "speed.thunderstep", p.getLocation());
         p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 40, 0.5, 1, 0.5, 0.2);
         used(p, "Thunderstep");
     }
@@ -1986,10 +1989,52 @@ public class GemListener implements Listener {
         stormLastStrike.put(p.getUniqueId(), 0L);
         // Store cloud count in a field so subsequent clicks can summon more
         p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 600, 1, true, false, false));
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 1.2f);
+        GemSounds.play(plugin, "speed.speedy-storm", p.getLocation());
         p.sendMessage(ChatColor.AQUA + "Speedy Storm unleashed. Charges left: "
                 + ChargePools.available(plugin, p, "storm") + "/" + ChargePools.maxCharges(plugin, "storm") + ".");
         used(p, "Speedy Storm");
+    }
+
+    /**
+     * Speedy Storm's bolt, drawn in particles: a vanilla lightning bolt (even a visual one) makes the client play
+     * world-wide thunder, which can't be turned down. A jagged white-blue line from a cloud puff down to a spark burst.
+     */
+    private void particleBolt(Location ground) {
+        World w = ground.getWorld();
+        if (w == null) return;
+        double height = 9 + Math.random() * 3;
+        Location top = ground.clone().add(0, height, 0);
+        w.spawnParticle(Particle.CLOUD, top, 14, 0.9, 0.25, 0.9, 0.01);
+        Particle.DustOptions core = new Particle.DustOptions(Color.fromRGB(235, 246, 255), 1.6f);
+        Particle.DustOptions glow = new Particle.DustOptions(Color.fromRGB(140, 205, 255), 1.1f);
+        Location a = top.clone();
+        int segments = 7;
+        for (int i = 1; i <= segments; i++) {
+            double f = i / (double) segments;
+            Location b = i == segments ? ground.clone().add(0, 0.1, 0)
+                    : ground.clone().add((Math.random() - 0.5) * 1.6 * (1 - f), height * (1 - f), (Math.random() - 0.5) * 1.6 * (1 - f));
+            Vector step = b.toVector().subtract(a.toVector());
+            int dots = Math.max(2, (int) (step.length() / 0.22));
+            for (int d = 0; d <= dots; d++) {
+                Location at = a.clone().add(step.clone().multiply(d / (double) dots));
+                w.spawnParticle(Particle.DUST, at, 1, 0, 0, 0, 0, core);
+                if (d % 2 == 0) w.spawnParticle(Particle.DUST, at, 1, 0.08, 0.08, 0.08, 0, glow);
+            }
+            a = b;
+        }
+        w.spawnParticle(Particle.ELECTRIC_SPARK, ground.clone().add(0, 0.3, 0), 30, 0.4, 0.2, 0.4, 0.6);
+        w.spawnParticle(Particle.END_ROD, ground.clone().add(0, 0.2, 0), 10, 0.3, 0.1, 0.3, 0.12);
+    }
+
+    /** A low grey storm cloud hanging over the storm while it lasts. */
+    private void stormClouds(SpeedStorm storm) {
+        World w = storm.loc.getWorld();
+        if (w == null) return;
+        for (int i = 0; i < 6; i++) {
+            Location c = storm.loc.clone().add((Math.random() - 0.5) * storm.radius * 2, 9 + Math.random() * 2, (Math.random() - 0.5) * storm.radius * 2);
+            w.spawnParticle(Particle.CLOUD, c, 6, 1.2, 0.3, 1.2, 0.005);
+            w.spawnParticle(Particle.LARGE_SMOKE, c, 2, 1.0, 0.2, 1.0, 0.002);
+        }
     }
 
     private void stormTick(long now) {
@@ -2004,6 +2049,7 @@ public class GemListener implements Listener {
                 storm.loc = owner.getLocation().clone();
                 owner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 1, true, false, false));
             }
+            stormClouds(storm);
             Long last = stormLastStrike.get(ownerId);
             if (last != null && now - last < 2000) continue;
             stormLastStrike.put(ownerId, now);
@@ -2011,7 +2057,8 @@ public class GemListener implements Listener {
                 Location at = storm.loc.clone().add((Math.random() - 0.5) * storm.radius * 2, 0,
                         (Math.random() - 0.5) * storm.radius * 2);
                 at.setY(w.getHighestBlockYAt(at) + 1);
-                w.strikeLightningEffect(at);
+                particleBolt(at);
+                GemSounds.play(plugin, "speed.storm-bolt", at);
                 for (Entity e : w.getNearbyEntities(at, 3, 4, 3)) {
                     if (!(e instanceof Player o)) continue;
                     if (owner != null && (o.getUniqueId().equals(ownerId) || isTrusted(owner, o))) {
@@ -2054,6 +2101,7 @@ public class GemListener implements Listener {
             p.getWorld().spawnParticle(Particle.PORTAL, at, 30, 0.5, 0.5, 0.5, 0.2);
         }
         blurRuns.put(id, run);
+        GemSounds.play(plugin, "speed.blur", p.getLocation());
         usedOn(p, "Blur", victim.getName());
     }
 
@@ -2132,7 +2180,7 @@ public class GemListener implements Listener {
         jump.setY(0.9);
         p.setVelocity(jump);
         p.setFallDistance(0);
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 0.8f, 1.4f);
+        GemSounds.play(plugin, "puff.double-jump", p.getLocation());
         p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 15, 0.4, 0.2, 0.4, 0.05);
     }
 
@@ -2140,7 +2188,7 @@ public class GemListener implements Listener {
     private void useBreezyHit(Player attacker, LivingEntity victim) {
         victim.setVelocity(new Vector(0, 1.8, 0));
         victim.setFallDistance(0);
-        victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 1, 0.8f);
+        GemSounds.play(plugin, "puff.breezy-bash", victim.getLocation());
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (!victim.isValid()) return;
             victim.setVelocity(new Vector(0, -2.5, 0));
@@ -2168,7 +2216,7 @@ public class GemListener implements Listener {
         }
         // Launch straight up
         target.setVelocity(new Vector(0, 1.8, 0));
-        target.getWorld().playSound(target.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 1, 0.8f);
+        GemSounds.play(plugin, "puff.breezy-bash", target.getLocation());
         // Crash down after a short delay (lambdas need a final copy of the target)
         final Player victim = target;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -2191,7 +2239,7 @@ public class GemListener implements Listener {
         dir.setY(Math.max(dir.getY(), 0.2));
         p.setVelocity(dir);
         p.setFallDistance(0);
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_SHOOT, 1, 1);
+        GemSounds.play(plugin, "puff.dash", p.getLocation());
         double perSecond = Math.max(0.0, plugin.getConfig().getDouble("abilities.dash.damage-per-second", 3.0));
         int seconds = Math.max(1, plugin.getConfig().getInt("abilities.dash.damage-seconds", 3));
         Set<UUID> caught = new HashSet<>();
@@ -2230,7 +2278,7 @@ public class GemListener implements Listener {
         if (plugin.mythics().heldMythicType(p) == GemType.RELAY) return; // Relay: Clean Signal
         gemDisabledUntil.put(p.getUniqueId(), System.currentTimeMillis() + millis);
         p.sendMessage(ChatColor.DARK_PURPLE + "Your gem is disabled (" + reason + ")!");
-        p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 0.7f, 0.6f);
+        GemSounds.playTo(plugin, "general.gem-disabled", p);
     }
 
     /**
@@ -2245,7 +2293,7 @@ public class GemListener implements Listener {
         if (cur == null || cur < until) gemDisabledUntil.put(p.getUniqueId(), until);
         if (!already) {
             p.sendMessage(ChatColor.DARK_PURPLE + "Your gem is disabled (" + reason + ")!");
-            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_SCREAM, 0.7f, 0.6f);
+            GemSounds.playTo(plugin, "general.gem-disabled", p);
         }
     }
 
@@ -2254,7 +2302,7 @@ public class GemListener implements Listener {
         if (tier >= 2) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 100, 4, true, false, false));
             p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 2, true, false, false));
-            p.getWorld().playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1, 1.4f);
+            GemSounds.play(plugin, "astra.dimensional-drift", p.getLocation());
             p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 50, 0.5, 1, 0.5, 0.3);
             used(p, "Dimensional Drift");
             return;
@@ -2324,6 +2372,7 @@ public class GemListener implements Listener {
         body.setCustomName(p.getName() + "'s Body");
         body.setCustomNameVisible(true);
         projectionBody.put(p.getUniqueId(), body);
+        GemSounds.play(plugin, "astra.projection", p.getLocation());
         p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 20 * 130, 0, false, false, false));
         p.setAllowFlight(true);
         p.setFlying(true);
@@ -2359,7 +2408,7 @@ public class GemListener implements Listener {
             disableGem(o, 20_000L, "Astral Void");
             hit++;
         }
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.6f, 1.4f);
+        GemSounds.play(plugin, "astra.astral-void", p.getLocation());
         p.getWorld().spawnParticle(Particle.DRAGON_BREATH, around, 60, 3, 2, 3, 0.1);
         usedGroup(p, "Astral Void", hit);
     }
@@ -2430,7 +2479,7 @@ public class GemListener implements Listener {
         p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, dur * 20, 1));
         p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, dur * 20, 1));
         w.spawnParticle(Particle.HEART, c, 40, 2, 2, 2, 0.1);
-        w.playSound(c, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0.6f);
+        GemSounds.play(plugin, "life.vitality-vortex", c);
         used(p, "Vitality Vortex");
     }
 
@@ -2445,7 +2494,7 @@ public class GemListener implements Listener {
             o.sendMessage(ChatColor.RED + "Heart Drainer: -4 hearts for 20s!");
             hit++;
         }
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_WITHER_HURT, 0.8f, 0.7f);
+        GemSounds.play(plugin, "life.heart-drainer", p.getLocation());
         usedGroup(p, "Heart Drainer", hit);
     }
 
@@ -2470,7 +2519,7 @@ public class GemListener implements Listener {
 
         if (targets.isEmpty()) {
             // No targets: just mended armor, no penalty
-            p.getWorld().playSound(p.getLocation(), Sound.BLOCK_ANVIL_USE, 0.7f, 1.2f);
+            GemSounds.play(plugin, "life.circle-of-life", p.getLocation());
             p.getWorld().spawnParticle(Particle.HEART, p.getLocation(), 10, 1, 1, 1, 0.05);
             used(p, "Circle of Life");
             return;
@@ -2499,7 +2548,7 @@ public class GemListener implements Listener {
         lockHearts(p, userNewMax, 30_000L);
         p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 1, true, false, false));
         p.sendMessage(ChatColor.GREEN + "Circle of Life: Stole 5 hearts from " + stolenFrom + " target(s)!");
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 0.6f);
+        GemSounds.play(plugin, "life.circle-of-life", p.getLocation());
         p.getWorld().spawnParticle(Particle.HEART, p.getLocation(), 30, 2, 1, 2, 0.1);
         usedGroup(p, "Circle of Life", stolenFrom);
     }
@@ -2536,7 +2585,7 @@ public class GemListener implements Listener {
             }
         }
         fluxCharge.put(p.getUniqueId(), 0);
-        p.getWorld().playSound(p.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.3f);
+        GemSounds.play(plugin, "flux.kinetic-burst", p.getLocation());
         p.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation(), 60, 2, 1, 2, 0.2);
         used(p, "Kinetic Burst");
     }
@@ -2564,7 +2613,7 @@ public class GemListener implements Listener {
             }
         }
         fluxAdd(fluxWatts, p.getUniqueId(), -30);
-        w.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.7f, 1.5f);
+        GemSounds.play(plugin, "flux.energy-beam", p.getLocation());
         used(p, "Energy Beam");
     }
 
@@ -2592,7 +2641,7 @@ public class GemListener implements Listener {
         overdriveUntil.put(p.getUniqueId(), System.currentTimeMillis() + 30_000L);
         overdriveTaken.put(p.getUniqueId(), 0);
         overdriveArmed.put(p.getUniqueId(), false);
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.2f);
+        GemSounds.play(plugin, "flux.overdrive", p.getLocation());
         used(p, "Kinetic Overdrive");
     }
 
@@ -2617,7 +2666,7 @@ public class GemListener implements Listener {
         if (main.getAmount() > 1) main.setAmount(main.getAmount() - 1);
         else p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
         fluxAdd(fluxWatts, p.getUniqueId(), gain);
-        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1.2f);
+        GemSounds.playTo(plugin, "flux.ingot-to-watts", p);
         p.sendMessage(ChatColor.YELLOW + "Conduction: +" + gain + " watts (" + fluxOf(fluxWatts, p.getUniqueId()) + "/100).");
         return true;
     }
@@ -2638,7 +2687,7 @@ public class GemListener implements Listener {
                         le.damage(2.0, p);
                     }
                 }
-                p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1);
+                GemSounds.play(plugin, "life.siphon", p.getLocation());
                 p.sendMessage(ChatColor.RED + "Siphon: +" + ((int) heal / 2) + " hearts drained.");
             }
             case PUFF -> useDash(p, energy);
@@ -2674,7 +2723,7 @@ public class GemListener implements Listener {
                 }
             }
             case SPEED -> {
-                p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_WIND_BURST, 0.8f, 1.3f);
+                GemSounds.play(plugin, "speed.speed-boost", p.getLocation());
                 // Silenced — no chat spam
             }
             case WEALTH -> {
@@ -3064,7 +3113,7 @@ public class GemListener implements Listener {
             if (n == 4) {
                 e.setDamage(e.getDamage() * 2.0);
                 p.sendMessage(ChatColor.RED + "CHAD STRENGTH x2! (hit 4)");
-                p.getWorld().playSound(p.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1, 1);
+                GemSounds.play(plugin, "strength.chad-fourth-hit", p.getLocation());
                 n = 0;
             }
             hitCount.put(p.getUniqueId(), n);

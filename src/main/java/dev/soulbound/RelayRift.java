@@ -228,7 +228,7 @@ final class RelayRift implements Listener {
         menu.inventory = Bukkit.createInventory(menu, 9, Component.text("Rift", TextColor.color(0xB0703A)));
         fillMenu(p, menu.inventory);
         p.openInventory(menu.inventory);
-        p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, 0.6f, 0.6f);
+        GemSounds.playTo(plugin, "relay.rift-menu", p);
     }
 
     private void fillMenu(Player p, Inventory inv) {
@@ -331,7 +331,7 @@ final class RelayRift implements Listener {
         save();
         p.sendMessage(RELAY + "Anchor " + NAMES[slot] + " set: §7" + a.describe());
         if (findSpot(a, List.of(), p) == null) p.sendMessage("§6Warning: there is no safe ground near here, so a rift could not land on it.");
-        p.playSound(at, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.PLAYERS, 0.8f, 1.3f);
+        GemSounds.playTo(plugin, "relay.rift-set-anchor", p);
         dust(at.clone().add(0, 1, 0), 12, 0.3, 0.6, RIM);
     }
 
@@ -373,7 +373,7 @@ final class RelayRift implements Listener {
         Cast c = new Cast(id, slot, a, origin.clone(), tear, hold(target));
         casts.put(id, c);
         World w = origin.getWorld();
-        w.playSound(base, Sound.BLOCK_PORTAL_TRIGGER, SoundCategory.PLAYERS, 0.5f, 1.6f);
+        GemSounds.play(plugin, "relay.rift-channel", base);
         p.sendMessage(RELAY + "Opening a rift to " + NAMES[slot] + "… hold still.");
     }
 
@@ -416,8 +416,6 @@ final class RelayRift implements Listener {
         c.closesAt = tick + Math.max(1, Math.round(cfgD("open-seconds", 4) * 20));
         c.tear.open = 1;
         c.tear.tall = 1;
-        World w = c.tear.base.getWorld();
-        w.playSound(c.tear.base, Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 0.5f);
     }
 
     private void endOpen(Cast c) {
@@ -462,10 +460,6 @@ final class RelayRift implements Listener {
                     double s = Math.min(1, (c.age - 10) / (double) Math.max(1, total - 10));
                     c.tear.open = 0.34 + 0.66 * s;
                     c.tear.tall = 0.7 + 0.3 * s;
-                }
-                if (c.age % 10 == 0) {
-                    float pitch = (float) (0.5 + 1.1 * c.age / total);
-                    p.getWorld().playSound(c.tear.base, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, 0.8f, pitch);
                 }
                 c.tear.tick();
                 if (c.age >= total) complete(c, p);
@@ -517,7 +511,6 @@ final class RelayRift implements Listener {
             if (!inside(l.getX() - t.base.getX(), l.getY() - t.base.getY(), l.getZ() - t.base.getZ(),
                     t.forward.getX(), t.forward.getZ(), t.width * t.open, t.height * t.tall, 0.8)) continue;
             followers.put(id, new Follower(id, c.anchor, tick + Math.max(1, cfgI("follow-delay-ticks", 20)), c.landed));
-            w.playSound(l, Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 0.8f, 0.7f);
             dust(l.clone().add(0, 1, 0), 14, 0.3, 0.7, RIM);
         }
     }
@@ -561,9 +554,8 @@ final class RelayRift implements Listener {
             Tear small = new Tear(base, facing.normalize(), cfgD("width", 2.5) * 0.5, cfgD("height", 6.0) * 0.5, false);
             small.life = 20;
             loose.add(small);
-            w.playSound(at, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, SoundCategory.PLAYERS, 1.4f, 0.7f);
         }
-        w.playSound(at, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, holder ? 1.4f : 0.9f, 0.5f);
+        GemSounds.play(plugin, "relay.rift-arrival", at);
     }
 
     // ------------------------------------------------------------------ safe landing
@@ -886,7 +878,7 @@ final class RelayRift implements Listener {
                 apply(lastWidth * k, lastHeight * (0.8 + 0.2 * k), open * k);
                 if (closing >= 5) {
                     World w = base.getWorld();
-                    w.playSound(base, Sound.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 0.7f, 0.55f);
+                    GemSounds.play(plugin, "relay.rift-close", base);
                     Location mid = base.clone().add(0, height * tall / 2, 0);
                     w.spawnParticle(Particle.DUST, mid, 18, width * 0.3, height * 0.25, width * 0.3, 0, new Particle.DustOptions(RIM, 1.3f));
                     remove();
@@ -902,7 +894,6 @@ final class RelayRift implements Listener {
                 joltScale = 0.9 + random.nextDouble() * 0.16;
                 jolt = 2;
                 nextStutter = tick + 14 + random.nextInt(16);
-                base.getWorld().playSound(base, Sound.BLOCK_CAMPFIRE_CRACKLE, SoundCategory.PLAYERS, 0.8f, 0.6f + random.nextFloat() * 0.4f);
             }
             if (jolt > 0) { jitter = joltScale; heightJolt = 0.97 + (joltScale - 1) * 0.4; jolt--; }
             lastWidth = width * open * jitter;

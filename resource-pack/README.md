@@ -27,6 +27,8 @@ Not verified in a Minecraft client.
 | Time Dilate colours | `temporal_brown/bronze/gold.png` | now #B0703A / #8C5530 / #F0C48C |
 | The Revenant (mace) | `assets/blissgems/items/revenant_mace.json`, `models/item/revenant_mace.json`, `textures/item/revenant_mace.png` (16x16, supplied) | item model `blissgems:revenant_mace`, parent `minecraft:item/handheld_mace` |
 | Revenant HUD icons | `assets/blissgems/textures/icons/revenant_plunge.png`, `revenant_rising.png`, `revenant_undertow.png` (33x20) | font glyphs `U+E046` Plunge, `U+E047` Rising, `U+E048` Undertow |
+| Finale pedestals | `assets/blissgems/items/finale_pedestal_auratus.json`, `finale_pedestal_heretic.json` and their models (vanilla blackstone, gold and amethyst textures) | item models `blissgems:finale_pedestal_auratus` / `_heretic`, about 1.9 blocks tall |
+| Finale seal | `assets/blissgems/textures/item/finale_seal.png` (128x128), model `finale_seal` | a flat clock face on the ground under the merge, scaled to 7 blocks |
 
 Rebuild with `tools/pack/rift_frames.py` then `tools/pack/relay_pack_assets.py`. The display items are plain paper with an `item_model`, so no custom model data numbers are used.
 

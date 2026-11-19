@@ -73,7 +73,7 @@ public final class RelayGem implements Listener {
         if (n - lastChargeNotice.getOrDefault(id, 0L) >= 2000) {
             lastChargeNotice.put(id, n);
             p.sendMessage("§x§B§8§9§3§5§8Tuned In isn't full yet §7(" + charge(id) + "/" + maxCharge() + "). §8Land hits to fill it.");
-            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.PLAYERS, 0.6f, 0.6f);
+            GemSounds.playTo(plugin, "general.not-ready", p);
         }
         return false;
     }
@@ -131,7 +131,6 @@ public final class RelayGem implements Listener {
         if (!flow.start(p)) return;
         spend(id, cost);
         dilationReady.put(id, n + Math.max(0, cfgL("temporal.dilate.cooldown-seconds", 65)) * 1000);
-        Sfx.play(plugin, p.getLocation(), "relay.dilation", 1, 1);
     }
     private void useDivinity(Player p) {
         UUID id = p.getUniqueId(); long n = now();
@@ -278,8 +277,7 @@ public final class RelayGem implements Listener {
         for (PotionEffectType t : CLEANSE) {
             if (t != null) p.removePotionEffect(t);
         }
-        p.getWorld().playSound(to, Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.6f);
-        Sfx.play(plugin, to, "relay.rewind", 1.0f, 1.0f);
+        GemSounds.play(plugin, "relay.rewind", to);
         p.getWorld().spawnParticle(Particle.REVERSE_PORTAL, to.clone().add(0, 1, 0), 40, 0.4, 0.8, 0.4, 0.2);
     }
 
@@ -327,7 +325,10 @@ public final class RelayGem implements Listener {
             long cutoff = now() - cfgL("temporal.charge.afk-timeout-seconds", 30) * 1000;
             if (lastActive.getOrDefault(v.getUniqueId(), 0L) < cutoff || lastActive.getOrDefault(attacker.getUniqueId(), 0L) < cutoff) return;
             gain(v, cfgI("temporal.charge.received", 4));
-            if (holds(attacker)) tags.computeIfAbsent(attacker.getUniqueId(), k -> new HashMap<>()).put(v.getUniqueId(), now() + cfgL("passives.tag-duration-ms", 30000));
+            if (holds(attacker)) {
+                Long was = tags.computeIfAbsent(attacker.getUniqueId(), k -> new HashMap<>()).put(v.getUniqueId(), now() + cfgL("passives.tag-duration-ms", 30000));
+                if (was == null || was <= now()) GemSounds.playTo(plugin, "relay.tuned-tag", attacker); // a newly tagged player
+            }
         } else if (!cfgB("temporal.charge.allow-mobs", false)) return;
         gain(attacker, hitGain());
     }
@@ -336,7 +337,9 @@ public final class RelayGem implements Listener {
         UUID id = p.getUniqueId(); long n = now();
         lastCombat.put(id, n);
         if (n - lastGain.getOrDefault(id, 0L) < Math.max(50, cfgL("temporal.charge.minimum-spacing-ms", 400))) return;
-        tunedCharge.put(id, Math.min(maxCharge(), charge(id) + value)); lastGain.put(id, n);
+        int before = charge(id);
+        tunedCharge.put(id, Math.min(maxCharge(), before + value)); lastGain.put(id, n);
+        if (before < maxCharge() && charge(id) >= maxCharge()) GemSounds.playTo(plugin, "relay.tuned-full", p); // the bar just filled
     }
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void active(PlayerMoveEvent e) {

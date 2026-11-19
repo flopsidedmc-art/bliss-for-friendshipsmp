@@ -32,7 +32,7 @@ commands:
     permission-message: You lack permission.
   turmoil:
     description: Manage The Signal world turmoil and Relay finale.
-    usage: /turmoil <start|stop|status|spawn|setspawn|overlay|finale>
+    usage: /turmoil <start|stop|status|spawn|setspawn|pedestal <1|2|clear>|overlay|finale>
     permission: soulbound.turmoil
   revenant:
     description: The Revenant, the final boss weapon.

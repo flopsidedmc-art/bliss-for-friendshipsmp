@@ -22,6 +22,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.block.Block;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.TextDisplay;
@@ -113,6 +114,13 @@ public final class Finale implements Listener {
     private int bothAt = -1;
     private ItemDisplay gemAuratus;
     private ItemDisplay gemHeretic;
+    /** Between the two pedestals, on the ground: where the gems orbit, merge and the Relay forms. */
+    private Location mergeBase;
+    private double mergeRadius = 6, mergeAngle = Math.PI;
+    private Location startAuratus, startHeretic;
+    /** The golden clock seal on the ground under the merge (pack model blissgems:finale_seal). */
+    private ItemDisplay seal;
+    private float sealSpin;
     private int flashUntil = -1;
     private final List<org.bukkit.entity.Entity> pedestalParts = new ArrayList<>();
     private final List<ItemDisplay> displays = new ArrayList<>();
@@ -172,13 +180,62 @@ public final class Finale implements Listener {
     }
 
     public void setCenter(Location loc) {
-        YamlConfiguration y = new YamlConfiguration();
-        y.set("center", loc);
+        saveSpot("center", loc);
+    }
+
+    /** Saves one location in turmoil.yml, keeping the others (the center and the two pedestal spots). */
+    private void saveSpot(String key, Location loc) {
+        YamlConfiguration y = centerFile.exists() ? YamlConfiguration.loadConfiguration(centerFile) : new YamlConfiguration();
+        y.set(key, loc);
         try {
             y.save(centerFile);
         } catch (IOException ex) {
             plugin.getLogger().warning("Could not save turmoil.yml: " + ex.getMessage());
         }
+    }
+
+    private Location savedSpot(String key) {
+        if (!centerFile.exists()) return null;
+        Location l = YamlConfiguration.loadConfiguration(centerFile).getLocation(key);
+        return l != null && l.getWorld() != null ? l : null;
+    }
+
+    private static String spotKey(boolean auratus) { return auratus ? "pedestal-auratus" : "pedestal-heretic"; }
+
+    /** /turmoil pedestal 1|2: the pedestal stands here (on the ground) in the next finale. Returns where it will be. */
+    public Location setPedestal(boolean auratus, Location at) {
+        Location spot = onGround(at);
+        saveSpot(spotKey(auratus), spot);
+        return spot;
+    }
+
+    /** /turmoil pedestal clear: both pedestals go back to Spawn +- finale.pedestal.distance. */
+    public void clearPedestals() {
+        saveSpot(spotKey(true), null);
+        saveSpot(spotKey(false), null);
+    }
+
+    /** /turmoil pedestal: where each pedestal will stand, and whether it was set or is automatic. */
+    public String pedestalInfo() {
+        StringBuilder out = new StringBuilder();
+        for (boolean aur : new boolean[]{true, false}) {
+            Location l = pedestalLoc(aur, center == null ? center() : center);
+            out.append(aur ? "Pedestal 1 (Auratus): " : " | Pedestal 2 (Heretic): ")
+                    .append(l.getBlockX()).append(' ').append(l.getBlockY()).append(' ').append(l.getBlockZ())
+                    .append(savedSpot(spotKey(aur)) != null ? " (set)" : " (automatic)");
+        }
+        return out.toString();
+    }
+
+    /** The first open block above solid ground in this column: down from the sky, or up out of the ground. */
+    static Location onGround(Location l) {
+        World w = l.getWorld();
+        int x = l.getBlockX(), z = l.getBlockZ();
+        int y = FinaleMath.surfaceY(l.getBlockY(), w.getMinHeight() + 1, w.getMaxHeight() - 2, yy -> {
+            Block b = w.getBlockAt(x, yy, z);
+            return b.getType().isSolid() && !b.isPassable();
+        });
+        return new Location(w, x + 0.5, y, z + 0.5);
     }
 
     // ------------------------------------------------------------------ starting
@@ -376,9 +433,25 @@ public final class Finale implements Listener {
         return a + (b - a) * u;
     }
 
-    private Location pedestalLoc(boolean auratus) {
+    /** Where a pedestal stands: the spot set with /turmoil pedestal, or Spawn +- finale.pedestal.distance; always on the ground. */
+    private Location pedestalLoc(boolean auratus, Location around) {
+        Location saved = savedSpot(spotKey(auratus));
+        if (saved != null) return onGround(saved);
         double d = cfgD("pedestal.distance", 6.0);
-        return center.clone().add(auratus ? -d : d, 0, 0);
+        return onGround(around.clone().add(auratus ? -d : d, 0, 0));
+    }
+
+    private boolean customPedestals() { return cfgB("pedestal.custom-model", true); }
+
+    /** How high above the pedestal's base a placed gem floats. */
+    private double gemHeight() { return customPedestals() ? 2.35 : 1.7; }
+
+    private ItemStack packModel(String model) {
+        ItemStack it = new ItemStack(Material.PAPER);
+        ItemMeta m = it.getItemMeta();
+        m.setItemModel(new NamespacedKey("blissgems", model));
+        it.setItemMeta(m);
+        return it;
     }
 
     private void pedestalPart(Location at, Material m, float sx, float sy, float sz, float y) {
@@ -392,10 +465,19 @@ public final class Finale implements Listener {
     }
 
     private void buildPedestal(Location at, boolean auratus) {
-        pedestalPart(at, Material.POLISHED_BLACKSTONE_BRICKS, 1.3f, 0.45f, 1.3f, 0.0f);
-        pedestalPart(at, Material.CHISELED_POLISHED_BLACKSTONE, 0.8f, 0.85f, 0.8f, 0.45f);
-        pedestalPart(at, auratus ? Material.GOLD_BLOCK : Material.AMETHYST_BLOCK, 1.0f, 0.18f, 1.0f, 1.3f);
-        TextDisplay label = at.getWorld().spawn(at.clone().add(0, 2.6, 0), TextDisplay.class, d -> {
+        if (customPedestals()) {
+            // The pack's pedestal model (blackstone with gold or amethyst trim and a four-prong cradle), base on the ground.
+            ItemStack model = packModel(auratus ? "finale_pedestal_auratus" : "finale_pedestal_heretic");
+            pedestalParts.add(at.getWorld().spawn(at.clone().add(0, 0.5, 0), ItemDisplay.class, d -> {
+                d.setItemStack(model);
+                d.setPersistent(false);
+            }));
+        } else {
+            pedestalPart(at, Material.POLISHED_BLACKSTONE_BRICKS, 1.3f, 0.45f, 1.3f, 0.0f);
+            pedestalPart(at, Material.CHISELED_POLISHED_BLACKSTONE, 0.8f, 0.85f, 0.8f, 0.45f);
+            pedestalPart(at, auratus ? Material.GOLD_BLOCK : Material.AMETHYST_BLOCK, 1.0f, 0.18f, 1.0f, 1.3f);
+        }
+        TextDisplay label = at.getWorld().spawn(at.clone().add(0, gemHeight() + 0.9, 0), TextDisplay.class, d -> {
             d.text(Component.text(auratus ? "AURATUS" : "HERETIC")
                     .color(auratus ? NamedTextColor.GOLD : NamedTextColor.LIGHT_PURPLE)
                     .decorate(TextDecoration.BOLD));
@@ -410,8 +492,14 @@ public final class Finale implements Listener {
         bothAt = -1;
         placedAuratus = false;
         placedHeretic = false;
-        pedAuratus = pedestalLoc(true);
-        pedHeretic = pedestalLoc(false);
+        pedAuratus = pedestalLoc(true, center);
+        pedHeretic = pedestalLoc(false, center);
+        double[] f = FinaleMath.mergeFrame(pedAuratus.getX(), pedAuratus.getZ(), pedHeretic.getX(), pedHeretic.getZ());
+        mergeBase = onGround(new Location(center.getWorld(), f[0], (pedAuratus.getY() + pedHeretic.getY()) / 2, f[1]));
+        mergeBase.setX(f[0]);
+        mergeBase.setZ(f[1]);
+        mergeRadius = Math.max(1.5, f[2]);
+        mergeAngle = f[3];
         buildPedestal(pedAuratus, true);
         buildPedestal(pedHeretic, false);
         playAll(Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 0.6f);
@@ -443,7 +531,7 @@ public final class Finale implements Listener {
         World w = base.getWorld();
         Particle.DustOptions d = new Particle.DustOptions(c, 1.6f);
         for (int i = 0; i < 12; i++) {
-            w.spawnParticle(Particle.DUST, base.clone().add(0, 1.6 + i * 0.5, 0), 1, 0.05, 0, 0.05, 0, d);
+            w.spawnParticle(Particle.DUST, base.clone().add(0, gemHeight() - 0.1 + i * 0.5, 0), 1, 0.05, 0, 0.05, 0, d);
         }
     }
 
@@ -499,15 +587,17 @@ public final class Finale implements Listener {
     private void place(GemType type, String who) {
         boolean aur = type == GemType.AURATUS;
         Location ped = aur ? pedAuratus : pedHeretic;
-        Location top = ped.clone().add(0, 1.7, 0);
+        Location top = ped.clone().add(0, gemHeight(), 0);
         ItemDisplay d = spawnDisplay(top, gems.createMythic(type));
         displays.add(d);
         if (aur) {
             placedAuratus = true;
             gemAuratus = d;
+            startAuratus = top.clone();
         } else {
             placedHeretic = true;
             gemHeretic = d;
+            startHeretic = top.clone();
         }
         World w = ped.getWorld();
         w.spawnParticle(Particle.END_ROD, top, 40, 0.3, 0.3, 0.3, 0.1);
@@ -559,6 +649,7 @@ public final class Finale implements Listener {
         phase = Phase.MERGE;
         phaseTicks = 0;
         startSky();
+        spawnSeal();
         Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "Both champions have given up their gems...");
     }
 
@@ -580,11 +671,16 @@ public final class Finale implements Listener {
         flashUntil = skyTicks + hold + fade;
     }
 
+    /** The point the gems merge at: 4 blocks above the ground between the two pedestals. */
+    private Location mergeHub() {
+        return (mergeBase != null ? mergeBase : center).clone().add(0, 4, 0);
+    }
+
     /** A brown spider-web cocoon: spokes plus sagging rings, closing over the gems from the top down. */
     private void drawWeb(double growth) {
         if (growth <= 0.02) return;
         World w = center.getWorld();
-        Location hub = center.clone().add(0, 4, 0);
+        Location hub = mergeHub();
         double r = cfgD("web.radius", 3.2);
         Particle.DustOptions strand = new Particle.DustOptions(Color.fromRGB(126, 84, 44), 1.1f);
         Particle.DustOptions dark = new Particle.DustOptions(Color.fromRGB(78, 50, 26), 1.0f);
@@ -623,9 +719,12 @@ public final class Finale implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) p.playSound(p.getLocation(), sound, SoundCategory.MASTER, volume, pitch);
     }
 
-    private void orbit(ItemDisplay d, double angle, double radius, double y) {
+    /** Orbits a gem around the merge point; while it lifts off, it eases out of the spot it sat on. */
+    private void orbit(ItemDisplay d, Location from, double lift, double angle, double radius, double y) {
         if (d == null || !d.isValid()) return;
-        Location pos = center.clone().add(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+        Location base = mergeBase != null ? mergeBase : center;
+        Location pos = base.clone().add(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
+        if (from != null && lift < 1) pos = lerp(from, pos, lift);
         d.teleport(pos);
         center.getWorld().spawnParticle(Particle.END_ROD, pos, 2, 0.1, 0.1, 0.1, 0.0);
     }
@@ -633,19 +732,20 @@ public final class Finale implements Listener {
     private void mergeTick() {
         phaseTicks++;
         World w = center.getWorld();
-        Location hub = center.clone().add(0, 4, 0);
+        Location hub = mergeHub();
         int t = phaseTicks;
+        tickSeal(t);
 
         if (t == 1) playAll(Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.6f);
 
         if (t < MERGE_AT) {
             double rise = smooth(t / (double) RISE_TICKS);
             double su = t <= RISE_TICKS ? 0.0 : (t - RISE_TICKS) / (double) (MERGE_AT - RISE_TICKS);
-            double radius = mix(cfgD("pedestal.distance", 6.0), 3.0, rise) * (1.0 - 0.92 * smooth(su));
-            double y = mix(1.7, 4.0, rise) + 0.25 * Math.sin(t * 0.2);
+            double radius = mix(mergeRadius, 3.0, rise) * (1.0 - 0.92 * smooth(su));
+            double y = mix(gemHeight(), 4.0, rise) + 0.25 * Math.sin(t * 0.2);
             double phi = 0.04 * t + 0.30 * (MERGE_AT - RISE_TICKS) * su * su * su / 3.0;
-            orbit(gemAuratus, Math.PI + phi, radius, y);
-            orbit(gemHeretic, phi, radius, y);
+            orbit(gemAuratus, startAuratus, rise, mergeAngle + phi, radius, y);
+            orbit(gemHeretic, startHeretic, rise, mergeAngle + Math.PI + phi, radius, y);
             if (t % 10 == 0) playAll(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.2f, 0.6f + 0.8f * (float) (t / (double) MERGE_AT));
         }
         if (t == MERGE_AT) collide(hub);
@@ -656,6 +756,66 @@ public final class Finale implements Listener {
         }
         if (t == FORM_AT) form(hub);
         if (t >= MERGE_TOTAL_TICKS) startFlight(hub);
+    }
+
+    // ---- the seal: a golden clock face on the ground under the merge, spinning faster as the gems close in
+
+    private void spawnSeal() {
+        removeSeal();
+        if (!cfgB("seal.enabled", true) || mergeBase == null) return;
+        ItemStack model = packModel("finale_seal");
+        seal = mergeBase.getWorld().spawn(mergeBase.clone().add(0, 0.06, 0), ItemDisplay.class, d -> {
+            d.setItemStack(model);
+            d.setPersistent(false);
+            d.setBrightness(new Display.Brightness(15, 15));
+            d.setInterpolationDuration(2);
+        });
+        sealSpin = 0;
+        layFlat(seal, 0.05f, 0);
+    }
+
+    private void tickSeal(int t) {
+        if (seal == null || !seal.isValid()) return;
+        double size = cfgD("seal.size", 7.0);
+        float scale = (float) (size * smooth(t / 40.0));
+        if (t >= MERGE_AT && t < MERGE_AT + 6) scale *= 1.0f + 0.12f * (MERGE_AT + 6 - t); // the collision kicks it outward
+        double speed = t < MERGE_AT ? 0.01 + 0.22 * Math.pow(t / (double) MERGE_AT, 2) : 0.05;
+        sealSpin += (float) speed;
+        layFlat(seal, Math.max(0.05f, scale), sealSpin);
+        if (t % 4 == 0 && t < MERGE_AT) {
+            World w = seal.getWorld();
+            for (int i = 0; i < 12; i++) {
+                double a = sealSpin + i * Math.PI / 6;
+                w.spawnParticle(Particle.DUST, mergeBase.clone().add(Math.cos(a) * scale * 0.45, 0.15, Math.sin(a) * scale * 0.45), 1, 0, 0, 0, 0,
+                        new Particle.DustOptions(Color.fromRGB(240, 196, 140), 1.2f));
+            }
+        }
+    }
+
+    /** The Relay forms: the seal bursts into dust and is gone. */
+    private void shatterSeal() {
+        if (seal != null && seal.isValid()) {
+            double r = cfgD("seal.size", 7.0) * 0.45;
+            World w = seal.getWorld();
+            for (int i = 0; i < 48; i++) {
+                double a = i * Math.PI / 24;
+                w.spawnParticle(Particle.DUST, mergeBase.clone().add(Math.cos(a) * r, 0.2, Math.sin(a) * r), 3, 0.15, 0.1, 0.15, 0,
+                        new Particle.DustOptions(i % 3 == 0 ? Color.fromRGB(240, 196, 140) : Color.fromRGB(176, 112, 58), 1.6f));
+            }
+        }
+        removeSeal();
+    }
+
+    private void removeSeal() {
+        if (seal != null && seal.isValid()) seal.remove();
+        seal = null;
+    }
+
+    /** Lays a flat pack model level at the display's height, scaled and turned. */
+    private static void layFlat(ItemDisplay d, float scale, float spin) {
+        d.setInterpolationDelay(0);
+        d.setTransformation(new org.bukkit.util.Transformation(new Vector3f(0, 0.5f * scale, 0),
+                new org.joml.Quaternionf().rotationY(spin), new Vector3f(scale, scale, scale), new org.joml.Quaternionf()));
     }
 
     /** The two gems collide: they vanish into a core, the screen can flash, and the web starts closing. */
@@ -676,6 +836,7 @@ public final class Finale implements Listener {
     private void form(Location hub) {
         World w = hub.getWorld();
         removePedestals();
+        shatterSeal();
         flashScreen();
         relayFly = spawnDisplay(hub, gems.createMythic(GemType.RELAY));
         w.spawnParticle(Particle.EXPLOSION_EMITTER, hub, 3, 1.0, 1.0, 1.0, 0.0);
@@ -706,7 +867,7 @@ public final class Finale implements Listener {
     private void flightTick() {
         phaseTicks++;
         World w = center.getWorld();
-        Location hub = center.clone().add(0, 4, 0);
+        Location hub = mergeHub();
         Player t = target == null ? null : Bukkit.getPlayer(target);
         Location dest = t != null && !t.isDead() && t.getWorld().equals(w) ? t.getLocation().add(0, 1.2, 0) : hub;
 
@@ -1113,6 +1274,9 @@ public final class Finale implements Listener {
         for (ItemDisplay d : displays) d.remove();
         displays.clear();
         removePedestals();
+        removeSeal();
+        mergeBase = null;
+        startAuratus = startHeretic = null;
         if (relayFly != null) relayFly.remove();
         relayFly = null;
 

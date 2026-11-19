@@ -1,3 +1,80 @@
+# Sound overhaul; finale pedestals on the ground, settable, and with custom models
+
+## Sounds (your spec)
+
+- **Every gem sound now comes from `config.yml`:** `sounds.<gem>.<ability>` with `event`, `volume`, `pitch`, `enabled`, and at most one `layer`.
+  - 71 abilities, 99 sound parts in all. The full table is in SOUNDS.md.
+  - `sounds.custom-enabled` and `sounds.volume` stay; `sounds.enabled-events` is gone.
+  - Unknown sound names are listed in the console at startup.
+- **Your table, as written:** Strength, Fire, Speed, Puff, Astra, Flux, Nullify, Wealth, Life, Heretic, Auratus, Relay and gem disable.
+- **Removed everywhere:** Elder Guardian curse, Wither spawn (Astral Void and the heart pedestal), lightning thunder (Speedy Storm and Energy Beam), portal travel (Divinity) and the XP orb.
+- **Speedy Storm** no longer strikes real lightning, which made world-wide thunder for every bolt. Its bolts are now jagged particle lines from a cloud puff to a spark burst, with a low storm cloud over the area, and the bolts make no thunder.
+- **Gilded Slam** bursts a gold firework (large ball, #FFC846 fading to #FFF0B4). It's tagged so it never hurts anyone. It makes its own large-blast sound, so the configured layer is skipped while it's on (`mythics.auratus.slam.firework`).
+- **Auratus** is down to one sound plus at most one layer for every moment. A chain hook used to play 5 sounds, the launch 4, Flagpole 3 and the parry 3.
+- **Pack sounds replace instead of layering.** Put `blissgems:...` as an event (your `auratus.parry` included) and it plays instead of the vanilla one.
+- **Sounds that didn't exist before:** Blur, Projection, the fireball's burn (repeating every 1.5 s while charging), Tuned In tag (on a newly tagged player) and Tuned In full.
+- **My picks where your table had none:**
+
+  | Ability | Sound |
+  |---|---|
+  | Bounty Hunter | ravager ambient |
+  | Chad's 4th hit | mace smash |
+  | Speed tier-2 click | copper bulb |
+  | Astral Void cast | low amethyst hit |
+  | Life Siphon | bone meal |
+  | Flux ingot pickup | short conduit hum |
+  | Rift menu | quiet bell |
+  | Rift set anchor | respawn anchor set-spawn |
+  | Heart pedestal | trial spawner ominous activate |
+  | Auratus extras | chains and bells only |
+
+- **Rewind and Time Dilate** use your fallback sounds until `rewind.ogg` and `time_dilate.ogg` arrive, because they weren't attached.
+- **Left as they were:** the fireball explosion's own boom, the Revenant, and non-gem sounds (items, menus, the finale).
+
+## Finale
+
+- **Pedestals stand on the ground.** They were built at the spawn point's height 6 blocks either side, so they floated wherever the ground was lower. Now each one drops to the ground below its spot, or climbs out if the spot is inside a hill.
+- **`/turmoil pedestal 1` and `/turmoil pedestal 2`** set where the Auratus and Heretic pedestals stand: wherever you're standing, on the ground. `/turmoil pedestal` shows both, and `/turmoil pedestal clear` goes back to automatic. The spots are saved in `turmoil.yml` with the finale center.
+- **The gems orbit, merge and form the Relay between the two pedestals,** wherever they are, easing up out of their cradles.
+- **Custom models:**
+  - **Pedestals:** blackstone with gold (Auratus) or amethyst (Heretic) trim and a four-prong cradle the gem floats over. They're built from vanilla block textures. `finale.pedestal.custom-model: false` brings back the old stacked blocks for players without the pack.
+  - **Clock seal:** a golden clock face, 7 blocks across, on the ground under the merge. It grows in as the gems lift, spins faster as they close in, kicks outward when they collide, and bursts into dust when the Relay forms (`finale.seal`).
+
+## Files
+
+- **New:**
+  - `GemSounds.java` and `GemSoundsTest.java`
+  - `FinaleMath.java` and `FinaleMathTest.java`
+  - `SOUNDS.md`
+  - pack models `finale_pedestal_auratus`, `finale_pedestal_heretic`, `finale_seal` (plus the seal texture)
+- **Removed:** `Sfx.java`, replaced by `GemSounds`.
+- **Changed:**
+  - `GemListener` (standard gems, Storm bolts)
+  - `MythicListener` (Heretic)
+  - `AuratusGem` (sounds, slam firework)
+  - `RelayGem`, `RelayRift`, `TemporalFlow`, `TemporalDomain` (Relay)
+  - `Pedestal` (heart pedestal)
+  - `SoulboundGemsPlugin` (startup sound check)
+  - `Finale`, `TurmoilCommand`, `plugin.yml` (pedestals, seal, command)
+  - `config.yml` (the sounds section, `finale.pedestal.custom-model`, `finale.seal`)
+  - `tools/pack/relay_pack_assets.py` (the models)
+
+## Tested / not tested
+
+- **Tested here:**
+  - It compiles against Paper 1.21.11, and 56 unit tests pass (9 new).
+  - **Sound rules (GemSoundsTest):** every configured sound name exists in 1.21.11, pitches are within 0.5 to 2.0, no banned sound is used, at most one layer, and nothing is shared between gems except the five pairs the spec lists.
+  - **Finale placement (FinaleMathTest):** pedestals drop to the ground, climb out of hills, stay on platforms and keep their height over the void; the merge point and orbit sit between the pedestals.
+  - The pack JSON parses and the new models' references resolve.
+- **Not tested (nothing was run in a game):**
+  - how any of the sounds actually sound or how loud they feel;
+  - the particle storm bolts;
+  - the slam firework, and that it never hurts anyone;
+  - the pedestal models' look and size;
+  - the seal;
+  - the reworked merge path;
+  - `/turmoil pedestal`.
+
 # Action bars say "Ready!" again; Auratus shows just chain and Aegis
 
 - **Every gem's action bar** (and the Revenant's) is back to "icon Ready!" when an ability is ready. Ability and gem names stay gone.

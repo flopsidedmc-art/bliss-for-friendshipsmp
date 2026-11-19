@@ -7,6 +7,7 @@ import io.papermc.paper.event.entity.EntityPushedByEntityAttackEvent;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.FireworkEffect;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -26,6 +27,7 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Firework;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -47,7 +49,9 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionEffectTypeCategory;
@@ -89,6 +93,7 @@ final class AuratusGem implements Listener {
     private final GemManager gems;
     private final NamespacedKey reachKey = new NamespacedKey("soulbound-gems", "auratus_reach");
     private final NamespacedKey hoistKey = new NamespacedKey("soulbound-gems", "auratus_hoist");
+    private final NamespacedKey fireworkKey = new NamespacedKey("soulbound-gems", "auratus_slam_firework");
 
     private final Map<UUID, Charges> chains = new HashMap<>();
     private final Map<UUID, Long> aegisReady = new HashMap<>(), slamReady = new HashMap<>(), flagReady = new HashMap<>();
@@ -198,7 +203,7 @@ final class AuratusGem implements Listener {
         long n = now();
         if (n - lastHint.getOrDefault(p.getUniqueId(), 0L) < 600) return;
         lastHint.put(p.getUniqueId(), n);
-        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.PLAYERS, 0.6f, 0.6f);
+        GemSounds.playTo(plugin, "auratus.not-ready", p);
     }
 
     private ItemStack model(int cmd) {
@@ -308,7 +313,7 @@ final class AuratusGem implements Listener {
         long n = now();
         Charges c = charges(p);
         if (c.ready(n) == 0) {
-            p.playSound(p.getLocation(), Sound.BLOCK_CHAIN_STEP, SoundCategory.PLAYERS, 0.7f, 0.6f);
+            GemSounds.playTo(plugin, "auratus.not-ready", p);
             return;
         }
         Target t = aim(p);
@@ -334,7 +339,7 @@ final class AuratusGem implements Listener {
         double ed = eh == null ? Double.MAX_VALUE : eye.distance(eh.getHitPosition().toLocation(w));
         double bd = bh == null ? Double.MAX_VALUE : eye.distance(bh.getHitPosition().toLocation(w));
         if (eh == null && bh == null) { // nothing out there: a rattle, no charge
-            p.playSound(p.getLocation(), Sound.BLOCK_CHAIN_STEP, SoundCategory.PLAYERS, 0.7f, 0.8f);
+            GemSounds.playTo(plugin, "auratus.not-ready", p);
             return null;
         }
         if (eh != null && ed < bd) {
@@ -370,7 +375,7 @@ final class AuratusGem implements Listener {
                 hooks.put(id, new Hook(v.getUniqueId(), now()));
                 plugin.listener().abilityHit(v, cfgD("chain.hit-damage", 3.0), p);
                 grasp(v, cfgD("passives.angels-grasp-chain-seconds", 2));
-                w.playSound(tip, Sound.ENTITY_PLAYER_ATTACK_STRONG, SoundCategory.PLAYERS, 1.0f, 1.1f);
+                GemSounds.play(plugin, "auratus.chain-hook-enemy", tip); // the heavy clink, at them
                 w.spawnParticle(Particle.ENCHANTED_HIT, tip, 16, 0.3, 0.4, 0.3, 0.3);
             }
         } else {
@@ -379,10 +384,7 @@ final class AuratusGem implements Listener {
             if (t.anchor()) removeAnchor(id); // the Echo Anchor is used up
         }
         tethers.put(id, h);
-        w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.1f, 0.7f);
-        w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_THROW, SoundCategory.PLAYERS, 0.6f, 1.5f);
-        w.playSound(tip, Sound.BLOCK_CHAIN_HIT, SoundCategory.PLAYERS, 1.2f, 0.8f);
-        Sfx.play(plugin, p.getLocation(), "auratus.chain", 0.9f, 1.0f);
+        GemSounds.play(plugin, "auratus.chain-throw", p.getLocation()); // the lighter throw, at you
         w.spawnParticle(Particle.CRIT, tip, 10, 0.15, 0.15, 0.15, 0.25);
         dust(w, tip, 10, 0.25, GOLD, 1.2f);
     }
@@ -413,10 +415,11 @@ final class AuratusGem implements Listener {
         boolean arrived = dist <= (le != null ? 2.4 : 1.6);
         if (arrived || landed || r.age >= cfgD("chain.max-reel-ticks", 40)) {
             stopReel(id);
-            if (le != null && r.hooked && dist < 3.5 && isEnemy(p, le)) tug(p, le);
+            boolean tugged = le != null && r.hooked && dist < 3.5 && isEnemy(p, le);
+            if (tugged) tug(p, le); // its clank is the arrival sound
             if (!landed) p.setVelocity(r.carry.clone().multiply(cfgD("chain.arrival-momentum", 0.45) * scale)); // keep some speed, no dead stop
             p.setFallDistance(0);
-            p.getWorld().playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_CHAIN, SoundCategory.PLAYERS, 0.8f, 1.3f);
+            if (!tugged) GemSounds.play(plugin, "auratus.reel-arrive", p.getLocation());
             return;
         }
         Vector v = dist > 1e-6 ? to.normalize() : new Vector();
@@ -435,7 +438,7 @@ final class AuratusGem implements Listener {
         if (pull.lengthSquared() > 1e-4) v.setVelocity(pull.normalize().multiply(0.45).setY(0.2));
         World w = v.getWorld();
         Location at = v.getLocation().add(0, v.getHeight() * 0.6, 0);
-        w.playSound(at, Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.0f, 0.9f);
+        GemSounds.play(plugin, "auratus.tug", at);
         dust(w, at, 8, 0.3, GOLD, 1.1f);
     }
 
@@ -450,7 +453,7 @@ final class AuratusGem implements Listener {
         r.point = t.point;
         r.hooked = t.victim != null;
         reels.put(id, r);
-        p.getWorld().playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.0f, 1.2f);
+        GemSounds.play(plugin, "auratus.fly-to-hook", p.getLocation());
     }
 
     /** Swap hands (F) while a hook is in a creature: haul them to you. Never swaps your items while it's in. */
@@ -464,8 +467,7 @@ final class AuratusGem implements Listener {
         t.hauling = true;
         t.age = 0;
         Entity v = Bukkit.getEntity(t.victim);
-        if (v != null) v.getWorld().playSound(v.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.2f, 0.6f);
-        p.getWorld().playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 0.8f, 0.8f);
+        if (v != null) GemSounds.play(plugin, "auratus.haul", v.getLocation());
     }
 
     private void tickTether(Player p, Tether t) {
@@ -507,7 +509,7 @@ final class AuratusGem implements Listener {
             return;
         }
         if (now() >= t.until) { // left alone: the hook slides out
-            p.getWorld().playSound(tip, Sound.BLOCK_CHAIN_FALL, SoundCategory.PLAYERS, 0.8f, 1.0f);
+            GemSounds.play(plugin, "auratus.hook-slides-out", tip);
             stopTether(id);
         }
     }
@@ -529,7 +531,7 @@ final class AuratusGem implements Listener {
     private void snap(Player p, Chain c, Location at) {
         c.clear();
         World w = p.getWorld();
-        w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.1f, 1.3f);
+        GemSounds.play(plugin, "auratus.snap", p.getLocation());
         w.spawnParticle(Particle.CRIT, p.getLocation().add(0, 1.2, 0), 8, 0.2, 0.2, 0.2, 0.2);
         dust(w, at, 6, 0.2, DEEP, 1.0f);
     }
@@ -595,9 +597,7 @@ final class AuratusGem implements Listener {
         facing(a.halo, a.dir, 0.3f, 0);
         aegis.put(id, a);
         World w = p.getWorld();
-        w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1.0f, 1.5f);
-        w.playSound(a.at, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.PLAYERS, 1.0f, 1.3f);
-        Sfx.play(plugin, p.getLocation(), "auratus.aegis", 1.0f, 1.0f);
+        GemSounds.play(plugin, "auratus.aegis", p.getLocation());
         strikeShield(p, a);
     }
 
@@ -636,19 +636,21 @@ final class AuratusGem implements Listener {
             plugin.listener().abilityHit(v, cfgD("aegis.strike-damage", 5.0), p);
             World w = v.getWorld();
             Location at = v.getLocation().add(0, v.getHeight() * 0.6, 0);
-            w.playSound(at, Sound.BLOCK_BELL_USE, SoundCategory.PLAYERS, 1.0f, 1.2f);
             w.spawnParticle(Particle.ENCHANTED_HIT, at, 14, 0.3, 0.4, 0.3, 0.3);
             Hook h = hooks.get(id);
             long n = now();
             if (h == null || !h.victim().equals(v.getUniqueId()) || n - h.at() > ms("flagpole.hook-memory-seconds", 5)
-                    || flagReady.getOrDefault(id, 0L) > n || hoists.containsKey(v.getUniqueId()) || combos.containsKey(id)) continue;
+                    || flagReady.getOrDefault(id, 0L) > n || hoists.containsKey(v.getUniqueId()) || combos.containsKey(id)) {
+                GemSounds.play(plugin, "auratus.aegis-strike", at);
+                continue;
+            }
             hooks.remove(id);
             stopTether(id);
             Combo c = new Combo();
             c.victim = v.getUniqueId();
             c.until = n + Math.max(50, plugin.getConfig().getLong(path("flagpole.window-ms"), 750));
             combos.put(id, c);
-            w.playSound(at, Sound.BLOCK_ANVIL_LAND, SoundCategory.PLAYERS, 0.7f, 1.6f);
+            GemSounds.play(plugin, "auratus.aegis-catch", at);
             dust(w, at, 20, 0.5, PALE, 1.4f);
         }
     }
@@ -664,7 +666,7 @@ final class AuratusGem implements Listener {
         if (now() < a.until) return;
         aegis.remove(p.getUniqueId());
         if (a.halo != null && a.halo.isValid()) a.halo.remove();
-        if (!a.parried) p.getWorld().playSound(p.getLocation(), Sound.BLOCK_AMETHYST_CLUSTER_BREAK, SoundCategory.PLAYERS, 0.6f, 0.7f);
+        if (!a.parried && a.struck.isEmpty()) GemSounds.playTo(plugin, "auratus.aegis-fizzle", p);
     }
 
     /** A melee hit or a projectile during the window is parried: blocked, partly sent back, and rewarded once. */
@@ -687,9 +689,8 @@ final class AuratusGem implements Listener {
         if (away.lengthSquared() > 1e-4) attacker.setVelocity(away.normalize().multiply(0.7).setY(0.25));
         attacker.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) Math.round(cfgD("aegis.attacker-slow-seconds", 1.5) * 20), 1, false, true, true));
         if (attacker instanceof Player ap && e.getDamager() == ap) wearWeapon(ap);
-        w.playSound(p.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.PLAYERS, 1.0f, 1.3f);
         w.spawnParticle(Particle.END_ROD, p.getLocation().add(0, 1.1, 0), 18, 0.3, 0.4, 0.3, 0.08);
-        if (a.parried) return;
+        if (a.parried) { GemSounds.playMain(plugin, "auratus.parry", p.getLocation()); return; }
         a.parried = true;
         // Reward, once per Aegis: heal, speed, a cleanse (Divine Purity) and an Echo Anchor above you.
         double heal = Math.max(0, cfgD("aegis.heal-hp", 5.0));
@@ -698,8 +699,7 @@ final class AuratusGem implements Listener {
         cleanse(p);
         aegisReady.put(p.getUniqueId(), a.castAt + AuratusMath.aegisCooldownMs(true, cfgD("aegis.cooldown-seconds", 15), cfgD("aegis.success-cooldown-seconds", 10)));
         spawnAnchor(p);
-        w.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, SoundCategory.PLAYERS, 1.0f, 1.6f);
-        Sfx.play(plugin, p.getLocation(), "auratus.parry", 1.0f, 1.0f);
+        GemSounds.play(plugin, "auratus.parry", p.getLocation());
         dust(w, p.getLocation().add(0, 1, 0), 30, 0.6, GOLD, 1.4f);
     }
 
@@ -766,8 +766,7 @@ final class AuratusGem implements Listener {
         flat(d.decal, 0.4f, 0);
         dives.put(id, d);
         World w = p.getWorld();
-        w.playSound(p.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.2f, 0.5f);
-        w.playSound(p.getLocation(), Sound.ITEM_MACE_SMASH_AIR, SoundCategory.PLAYERS, 1.0f, 0.8f);
+        GemSounds.play(plugin, "auratus.slam-start", p.getLocation());
     }
 
     /** Where you look if that is ground below you within range, otherwise straight down. */
@@ -834,9 +833,12 @@ final class AuratusGem implements Listener {
         }
         fallGrace.put(id, now() + 1500);
         p.setFallDistance(0);
-        w.playSound(at, Sound.ITEM_MACE_SMASH_GROUND_HEAVY, SoundCategory.PLAYERS, 1.3f, 0.8f);
-        w.playSound(at, Sound.BLOCK_BELL_RESONATE, SoundCategory.PLAYERS, 0.9f, 1.4f);
-        Sfx.play(plugin, at, "auratus.slam", 1.0f, 1.0f);
+        if (cfgB("slam.firework", true)) {
+            slamFirework(at); // its own large blast is the layer
+            GemSounds.playMain(plugin, "auratus.gilded-slam", at);
+        } else {
+            GemSounds.play(plugin, "auratus.gilded-slam", at);
+        }
         Block ground = at.getBlock().getRelative(BlockFace.DOWN);
         if (ground.getType().isSolid()) w.spawnParticle(Particle.BLOCK, at.clone().add(0, 0.2, 0), 50, radius * 0.4, 0.1, radius * 0.4, 0.2, ground.getBlockData());
         w.spawnParticle(Particle.END_ROD, at.clone().add(0, 0.3, 0), 24, radius * 0.3, 0.2, radius * 0.3, 0.12);
@@ -851,6 +853,28 @@ final class AuratusGem implements Listener {
             }, 1L + i * 2L);
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (decal != null && decal.isValid()) decal.remove(); }, 12L);
+    }
+
+    /**
+     * A gold firework (large ball, #FFC846 fading to #FFF0B4) bursting at the slam. It's tagged so it never hurts anyone
+     * (onSlamFirework), and it makes its own large-blast sound, which stands in for gilded-slam's layer.
+     */
+    private void slamFirework(Location at) {
+        Firework fw = at.getWorld().spawn(at.clone().add(0, 0.5, 0), Firework.class, f -> {
+            FireworkMeta m = f.getFireworkMeta();
+            m.clearEffects();
+            m.addEffect(FireworkEffect.builder().with(FireworkEffect.Type.BALL_LARGE)
+                    .withColor(Color.fromRGB(0xFFC846)).withFade(Color.fromRGB(0xFFF0B4)).build());
+            m.setPower(0);
+            f.setFireworkMeta(m);
+            f.getPersistentDataContainer().set(fireworkKey, PersistentDataType.BYTE, (byte) 1);
+        });
+        fw.detonate();
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSlamFirework(EntityDamageByEntityEvent e) {
+        if (e.getDamager() instanceof Firework f && f.getPersistentDataContainer().has(fireworkKey, PersistentDataType.BYTE)) e.setCancelled(true);
     }
 
     private void stopDive(UUID id) {
@@ -898,9 +922,7 @@ final class AuratusGem implements Listener {
         setModifier(v, Attribute.GRAVITY, hoistKey, -1);
         grasp(v, hs.left / 20.0 + 1);
         World w = v.getWorld();
-        w.playSound(v.getLocation(), Sound.BLOCK_CHAIN_PLACE, SoundCategory.PLAYERS, 1.3f, 0.6f);
-        w.playSound(v.getLocation(), Sound.BLOCK_BELL_USE, SoundCategory.PLAYERS, 0.9f, 0.8f);
-        w.playSound(p.getLocation(), Sound.ITEM_TRIDENT_RIPTIDE_1, SoundCategory.PLAYERS, 0.7f, 1.4f);
+        GemSounds.play(plugin, "auratus.flagpole", v.getLocation());
     }
 
     /**
@@ -932,10 +954,7 @@ final class AuratusGem implements Listener {
                 if (v.isValid() && !v.isDead() && v.getVelocity().getY() < up * 0.8) v.setVelocity(new Vector(0, up, 0));
             });
         }
-        w.playSound(to, Sound.ITEM_MACE_SMASH_GROUND_HEAVY, SoundCategory.PLAYERS, 1.4f, 0.7f);
-        w.playSound(to, Sound.ENTITY_FIREWORK_ROCKET_BLAST, SoundCategory.PLAYERS, 1.2f, 0.8f);
-        w.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, SoundCategory.PLAYERS, 1.0f, 0.6f);
-        Sfx.play(plugin, to, "auratus.slam", 1.0f, 1.2f);
+        GemSounds.play(plugin, "auratus.launch", to);
         w.spawnParticle(Particle.END_ROD, to, 40, 0.3, 1.5, 0.3, 0.25);
         dust(w, to, 30, 0.6, GOLD, 1.6f);
     }
@@ -964,7 +983,7 @@ final class AuratusGem implements Listener {
         clearModifier(v, Attribute.GRAVITY, hoistKey);
         if (v.isValid()) {
             v.setVelocity(new Vector(0, -0.1, 0));
-            v.getWorld().playSound(v.getLocation(), Sound.BLOCK_CHAIN_BREAK, SoundCategory.PLAYERS, 1.0f, 0.9f);
+            GemSounds.play(plugin, "auratus.flagpole-release", v.getLocation());
         }
     }
 
@@ -1003,7 +1022,7 @@ final class AuratusGem implements Listener {
                 if (!v.isOnline()) return;
                 v.setCooldown(Material.SHIELD, Math.max(v.getCooldown(Material.SHIELD), jam));
                 v.clearActiveItem();
-                v.getWorld().playSound(v.getLocation(), Sound.ITEM_SHIELD_BREAK, SoundCategory.PLAYERS, 0.8f, 1.2f);
+                GemSounds.play(plugin, "auratus.shield-jam", v.getLocation());
             });
         }
     }

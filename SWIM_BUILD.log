@@ -13,7 +13,7 @@
 [INFO] 
 [INFO] --- compiler:3.13.0:compile (default-compile) @ soulbound-gems ---
 [INFO] Recompiling the module because of changed source code.
-[INFO] Compiling 37 source files with javac [debug target 21] to target/classes
+[INFO] Compiling 38 source files with javac [debug target 21] to target/classes
 [INFO] Annotation processing is enabled because one or more processors were found
   on the class path. A future release of javac may disable annotation processing
   unless at least one processor is specified by name (-processor), or a search
@@ -21,11 +21,12 @@
   processing is enabled explicitly (-proc:only, -proc:full).
   Use -Xlint:-options to suppress this message.
   Use -proc:none to disable annotation processing.
-[WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/Finale.java:[1026,43] setSize(double,long) in org.bukkit.WorldBorder has been deprecated and marked for removal
+[WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/Finale.java:[1187,43] setSize(double,long) in org.bukkit.WorldBorder has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[101,33] DO_DAYLIGHT_CYCLE in org.bukkit.GameRule has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[101,83] DO_WEATHER_CYCLE in org.bukkit.GameRule has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/TemporalDomain.java:[102,33] DO_MOB_SPAWNING in org.bukkit.GameRule has been deprecated and marked for removal
 [WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/BlissOpCommand.java:[207,31] setSize(double,long) in org.bukkit.WorldBorder has been deprecated and marked for removal
+[WARNING] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/GemSounds.java:[105,35] key() in org.bukkit.Sound has been deprecated and marked for removal
 [INFO] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/AuratusGem.java: Some input files use or override a deprecated API.
 [INFO] /home/user/bliss-for-friendshipsmp/src/main/java/dev/soulbound/AuratusGem.java: Recompile with -Xlint:deprecation for details.
 [INFO] 
@@ -34,7 +35,7 @@
 [INFO] 
 [INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ soulbound-gems ---
 [INFO] Recompiling the module because of changed dependency.
-[INFO] Compiling 7 source files with javac [debug target 21] to target/test-classes
+[INFO] Compiling 9 source files with javac [debug target 21] to target/test-classes
 [INFO] Annotation processing is enabled because one or more processors were found
   on the class path. A future release of javac may disable annotation processing
   unless at least one processor is specified by name (-processor), or a search
@@ -50,23 +51,27 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.HudStatusTest
-[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.075 s -- in dev.soulbound.HudStatusTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.051 s -- in dev.soulbound.HudStatusTest
 [INFO] Running dev.soulbound.HudTextTest
-[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.035 s -- in dev.soulbound.HudTextTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in dev.soulbound.HudTextTest
 [INFO] Running dev.soulbound.RelayRiftTest
 [INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in dev.soulbound.RelayRiftTest
+[INFO] Running dev.soulbound.FinaleMathTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.024 s -- in dev.soulbound.FinaleMathTest
 [INFO] Running dev.soulbound.RevenantMathTest
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in dev.soulbound.RevenantMathTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in dev.soulbound.RevenantMathTest
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.098 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.078 s -- in dev.soulbound.AirSwimTest
 [INFO] Running dev.soulbound.AuratusMathTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in dev.soulbound.AuratusMathTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in dev.soulbound.AuratusMathTest
 [INFO] Running dev.soulbound.SmallCapsTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in dev.soulbound.SmallCapsTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in dev.soulbound.SmallCapsTest
+[INFO] Running dev.soulbound.GemSoundsTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.198 s -- in dev.soulbound.GemSoundsTest
 [INFO] 
 [INFO] Results:
 [INFO] 
-[INFO] Tests run: 47, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 56, Failures: 0, Errors: 0, Skipped: 0
 [INFO] 
 [INFO] 
 [INFO] --- jar:3.4.1:jar (default-jar) @ soulbound-gems ---
@@ -78,6 +83,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  8.654 s
-[INFO] Finished at: 2026-11-19T21:16:32Z
+[INFO] Total time:  4.884 s
+[INFO] Finished at: 2026-11-19T22:33:59Z
 [INFO] ------------------------------------------------------------------------

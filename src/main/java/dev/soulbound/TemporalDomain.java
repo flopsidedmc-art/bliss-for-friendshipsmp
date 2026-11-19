@@ -150,7 +150,7 @@ final class TemporalDomain implements Listener {
                 if(!teleport(p,destination))throw new IOException("Entry teleport cancelled for "+p.getName());
                 p.setFallDistance(0);p.setVelocity(new Vector());p.setCollidable(false);
                 if(p.isGliding())p.setGliding(false);
-                p.playSound(p.getLocation(),Sound.BLOCK_PORTAL_TRAVEL,0.35f,1.7f);
+                GemSounds.playTo(plugin,"relay.divinity",p);
                 p.getWorld().spawnParticle(Particle.REVERSE_PORTAL,p.getLocation().add(0,1,0),18,0.3,0.5,0.3,0.02);
                 if(p.equals(owner)) {
                     // Air-swimming, not native flight: gravity off, AirSwim drives velocity every tick (see tick()).

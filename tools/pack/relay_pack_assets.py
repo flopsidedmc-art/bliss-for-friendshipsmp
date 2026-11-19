@@ -136,6 +136,90 @@ for name, rows in REVENANT_ICONS.items():
             ic.putpixel((7 + x, 2 + y), RV[ch] + (255,))
     ic.save(os.path.join(icons, name + ".png"))
 
+# ---- Finale: two pedestal models (vanilla blackstone with gold or amethyst trim, a four-prong cradle on top) and
+# the clock seal drawn on the ground under the merge. Pedestals use vanilla block textures, so nothing new to load.
+def box(frm, to, tex, faces=("north", "south", "east", "west", "up", "down")):
+    w, h, d = to[0] - frm[0], to[1] - frm[1], to[2] - frm[2]
+    f = {}
+    for face in faces:
+        if face in ("up", "down"):
+            uv = [0, 0, min(16, w), min(16, d)]
+        else:
+            span = w if face in ("north", "south") else d
+            uv = [0, max(0, 16 - h), min(16, span), 16]
+        f[face] = {"uv": uv, "texture": "#" + tex}
+    return {"from": frm, "to": to, "faces": f}
+
+SIDES = ("north", "south", "east", "west")
+def pedestal(accent):
+    els = [
+        box([-4, 0, -4], [20, 4, 20], "base"),                                  # plinth
+        box([-4.5, 3, -4.5], [20.5, 4, 20.5], "accent", SIDES),                 # trim band
+        box([-1, 4, -1], [17, 7, 17], "top", SIDES + ("up",)),                  # step
+        box([3, 7, 3], [13, 23, 13], "pillar", SIDES),                          # column
+    ]
+    for x, z in ((2, 2), (12, 2), (2, 12), (12, 12)):                           # gold / amethyst corner strips
+        els.append(box([x, 7, z], [x + 2, 23, z + 2], "accent", SIDES))
+    els += [
+        box([0, 23, 0], [16, 26, 16], "top"),                                   # capital
+        box([-0.5, 24, -0.5], [16.5, 25, 16.5], "accent", SIDES),               # capital trim
+        box([5, 26, 5], [11, 26.5, 11], "accent", ("up",)),                     # the plate the gem floats over
+    ]
+    for x, z in ((1, 1), (13, 1), (1, 13), (13, 13)):                           # cradle prongs
+        els.append(box([x, 26, z], [x + 2, 30, z + 2], "accent"))
+    return {"ambientocclusion": False, "textures": {
+        "base": "minecraft:block/polished_blackstone_bricks", "pillar": "minecraft:block/chiseled_polished_blackstone",
+        "top": "minecraft:block/polished_blackstone", "accent": accent, "particle": "minecraft:block/polished_blackstone_bricks"},
+        "elements": els}
+
+for name, accent in (("finale_pedestal_auratus", "minecraft:block/gold_block"), ("finale_pedestal_heretic", "minecraft:block/amethyst_block")):
+    write_json(os.path.join(A, "blissgems/models/item/%s.json" % name), pedestal(accent))
+    write_json(os.path.join(A, "blissgems/items/%s.json" % name), {"model": {"type": "minecraft:model", "model": "blissgems:item/" + name}})
+
+# The seal: a clock face in the Relay's browns and golds (128x128), drawn large and scaled down for smooth curves.
+from PIL import ImageDraw
+Z = 4
+big = Image.new("RGBA", (128 * Z, 128 * Z), (0, 0, 0, 0))
+g = ImageDraw.Draw(big)
+C = 64 * Z
+GOLD, RIM_C, DEEP_C, PALE_C = (255, 214, 140, 255), RIM + (255,), DEEP + (255,), PALE + (255,)
+def ring(r, width, col):
+    g.ellipse([C - r * Z, C - r * Z, C + r * Z, C + r * Z], outline=col, width=int(width * Z))
+def spoke(a, r0, r1, width, col):
+    g.line([C + math.cos(a) * r0 * Z, C + math.sin(a) * r0 * Z, C + math.cos(a) * r1 * Z, C + math.sin(a) * r1 * Z], fill=col, width=int(width * Z))
+ring(63, 1.2, DEEP_C); ring(61, 2.6, RIM_C); ring(55, 1.2, PALE_C)
+for i in range(60):                                                             # minute dots
+    a = i * math.pi / 30
+    x, y = C + math.cos(a) * 58 * Z, C + math.sin(a) * 58 * Z
+    g.ellipse([x - 0.8 * Z, y - 0.8 * Z, x + 0.8 * Z, y + 0.8 * Z], fill=DEEP_C)
+for i in range(12):                                                             # hour marks, the four quarters long and gold
+    a = i * math.pi / 6 - math.pi / 2
+    spoke(a, 44 if i % 3 == 0 else 48, 54, 3 if i % 3 == 0 else 2, GOLD if i % 3 == 0 else PALE_C)
+ring(40, 1.6, RIM_C)
+for i in range(24):                                                             # a dashed band of runes
+    a0, a1 = i * math.pi / 12 + 0.05, i * math.pi / 12 + 0.20
+    g.arc([C - 32 * Z, C - 32 * Z, C + 32 * Z, C + 32 * Z], math.degrees(a0), math.degrees(a1), fill=PALE_C if i % 2 else RIM_C, width=int(2 * Z))
+    a = i * math.pi / 12
+    x, y = C + math.cos(a) * 36 * Z, C + math.sin(a) * 36 * Z
+    g.ellipse([x - 0.9 * Z, y - 0.9 * Z, x + 0.9 * Z, y + 0.9 * Z], fill=DEEP_C)
+ring(22, 1.6, RIM_C)
+spoke(-math.pi * 0.62, 0, 34, 2.4, PALE_C)                                       # the hands (the whole seal turns)
+spoke(math.pi * 0.10, 0, 20, 3.0, GOLD)
+for k in range(8):                                                              # an eight-point star at the centre
+    a = k * math.pi / 4
+    r = 15 if k % 2 == 0 else 9
+    g.polygon([(C, C), (C + math.cos(a - 0.22) * 5 * Z, C + math.sin(a - 0.22) * 5 * Z), (C + math.cos(a) * r * Z, C + math.sin(a) * r * Z),
+               (C + math.cos(a + 0.22) * 5 * Z, C + math.sin(a + 0.22) * 5 * Z)], fill=GOLD if k % 2 == 0 else PALE_C)
+g.ellipse([C - 3 * Z, C - 3 * Z, C + 3 * Z, C + 3 * Z], fill=(255, 245, 220, 255))
+big.resize((128, 128), Image.LANCZOS).save(os.path.join(tex, "finale_seal.png"))
+write_json(os.path.join(A, "blissgems/models/item/finale_seal.json"), {
+    "textures": {"0": "blissgems:item/finale_seal", "particle": "blissgems:item/finale_seal"},
+    "elements": [{"from": [0, 0, 0], "to": [16, 0, 16], "shade": False, "faces": {
+        "up": {"uv": [0, 0, 16, 16], "texture": "#0"},
+        "down": {"uv": [0, 16, 16, 0], "texture": "#0"}}}]})
+write_json(os.path.join(A, "blissgems/items/finale_seal.json"),
+           {"model": {"type": "minecraft:model", "model": "blissgems:item/finale_seal"}})
+
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
 if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):

@@ -47,6 +47,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
+        for (String bad : GemSounds.unknown(this)) getLogger().warning("config.yml: unknown sound " + bad + " (it will be silent)");
         saveConfig();
         energy = new EnergyManager(this);
         gemManager = new GemManager(this);
