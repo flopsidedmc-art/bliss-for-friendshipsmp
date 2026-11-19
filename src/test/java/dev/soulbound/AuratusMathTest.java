@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Auratus' numbers: slam falloff, reel ramp, anchor cone, Flagpole hover, Divine Purity, Aegis cooldown, chain charges. */
+/** Auratus' numbers: slam falloff, reel ramp, anchor cone, Flagpole hover, Divine Purity, Aegis cooldown, the one-shot combo, chain charges. */
 class AuratusMathTest {
     @Test void slamFallsOffFromCentreToEdge() {
         assertEquals(6, AuratusMath.slamDamage(6, 3, 0, 5), 1e-9);
@@ -47,6 +47,25 @@ class AuratusMathTest {
         assertEquals(15_000, AuratusMath.aegisCooldownMs(false, 15, 10));
         assertEquals(10_000, AuratusMath.aegisCooldownMs(true, 15, 10));
         assertEquals(15_000, AuratusMath.aegisCooldownMs(true, 15, 20), "a parry never makes it longer");
+    }
+
+    @Test void theLaunchComboKillsFullProt4Diamond() {
+        // Full Prot IV diamond: armor 20, toughness 8, EPF 16. Default config: ability damage x3.
+        double bite = AuratusMath.afterArmor(3.0 * 3, 20, 8, 16);       // the chain hook
+        double strike = AuratusMath.afterArmor(5.0 * 3, 20, 8, 16);     // the Aegis shield
+        double finisher = AuratusMath.afterArmor(72, 20, 8, 16);        // the launch (raw, no cap)
+        assertTrue(finisher >= 20, "the launch alone kills from full health: " + finisher);
+        assertTrue(bite + strike + finisher >= 24, "the whole combo gets through a golden apple's absorption too: " + (bite + strike + finisher));
+        assertTrue(AuratusMath.afterArmor(72, 0, 0, 0) == 72, "unarmored takes it all");
+        assertTrue(AuratusMath.afterArmor(9, 20, 8, 16) < 1.5, "a single chain hit stays small through diamond");
+        assertEquals(30, RevenantMath.apexHeight(RevenantMath.leapSpeedFor(30)), 0.3, "thrown about 30 blocks up");
+    }
+
+    @Test void armorMathMatchesVanilla() {
+        // 10 damage against full diamond, no Protection: armor cuts 20 - 10/4 = 17.5 points -> 70%.
+        assertEquals(3.0, AuratusMath.afterArmor(10, 20, 8, 0), 1e-9);
+        // Huge hits bottom out at armor / 5 (16% for 20 armor); Protection never goes past 80%.
+        assertEquals(1000 * 0.84 * 0.2, AuratusMath.afterArmor(1000, 20, 8, 99), 1e-6);
     }
 
     @Test void chainChargesAreIndependent() {

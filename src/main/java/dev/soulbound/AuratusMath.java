@@ -40,6 +40,17 @@ final class AuratusMath {
         return Math.max(1, (int) Math.round(ticks * Math.max(0, Math.min(1, multiplier))));
     }
 
+    /**
+     * Damage left after vanilla armor and Protection (1.21): armor reduces by clamp(armor - raw / (2 + toughness / 4),
+     * armor / 5, 20) / 25, then Protection by 4% per point of EPF (4 per Prot IV piece), at most 80%. Used to check the
+     * Auratus combo against full Prot IV diamond (armor 20, toughness 8, EPF 16).
+     */
+    static double afterArmor(double raw, double armor, double toughness, int protectionEpf) {
+        double cut = Math.max(armor / 5, Math.min(20, armor - raw / (2 + toughness / 4))) / 25;
+        double afterArmor = raw * (1 - cut);
+        return afterArmor * (1 - Math.min(20, Math.max(0, protectionEpf)) * 0.04);
+    }
+
     /** Aegis cooldown: a parry that caught a hit comes back sooner than a missed one. */
     static long aegisCooldownMs(boolean parried, double cooldownSeconds, double successCooldownSeconds) {
         double s = parried ? Math.min(successCooldownSeconds, cooldownSeconds) : cooldownSeconds;

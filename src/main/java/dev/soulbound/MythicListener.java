@@ -707,6 +707,7 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.aegis.window-ms", Material.TOTEM_OF_UNDYING, "Aegis Window", SettingKind.LONG, 250, 1000, 100, 10000, null),
             new MythicSetting("mythics.auratus.aegis.reflect", Material.CACTUS, "Aegis Reflect Share", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 2.0, null),
             new MythicSetting("mythics.auratus.aegis.heal-hp", Material.GOLDEN_APPLE, "Aegis Heal (HP)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
+            new MythicSetting("mythics.auratus.aegis.strike-damage", Material.GOLDEN_SWORD, "Aegis Strike Damage", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 20.0, null),
             new MythicSetting("mythics.auratus.aegis.anchor-seconds", Material.BEACON, "Echo Anchor (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             // Auratus slam
             new MythicSetting("mythics.auratus.slam.cooldown-seconds", Material.ANVIL, "Slam Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
@@ -716,7 +717,9 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.slam.min-height", Material.SCAFFOLDING, "Slam Min Height", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
             new MythicSetting("mythics.auratus.slam.dive-speed", Material.RABBIT_FOOT, "Slam Dive Speed", SettingKind.DOUBLE, 0.1, 0.5, 0.3, 6.0, null),
             // Auratus Flagpole
-            new MythicSetting("mythics.auratus.flagpole.combo-ms", Material.LEVER, "Flagpole Combo Window", SettingKind.LONG, 25, 100, 25, 1000, null),
+            new MythicSetting("mythics.auratus.flagpole.window-ms", Material.LEVER, "Catch Window (Flagpole / Launch)", SettingKind.LONG, 50, 250, 50, 3000, null),
+            new MythicSetting("mythics.auratus.flagpole.finisher-damage", Material.NETHERITE_SWORD, "Launch Hit (raw HP)", SettingKind.DOUBLE, 1.0, 10.0, 0.0, 200.0, null),
+            new MythicSetting("mythics.auratus.flagpole.finisher-launch-height", Material.FIREWORK_ROCKET, "Launch Height", SettingKind.DOUBLE, 1.0, 5.0, 1.0, 60.0, null),
             new MythicSetting("mythics.auratus.flagpole.cooldown-seconds", Material.WHITE_BANNER, "Flagpole Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
             new MythicSetting("mythics.auratus.flagpole.hold-seconds", Material.PHANTOM_MEMBRANE, "Flagpole Hold (s)", SettingKind.DOUBLE, 0.5, 1.0, 0.5, 10.0, null),
             new MythicSetting("mythics.auratus.flagpole.height", Material.LADDER, "Flagpole Height", SettingKind.DOUBLE, 0.5, 1.0, 1.0, 12.0, null),

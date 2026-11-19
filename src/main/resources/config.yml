@@ -97,9 +97,11 @@ mythics:
       max-slams: 3
       max-victims: 2
 
-  # Auratus (rebuilt, on the old controls; see AURATUS.md). Gem in the main hand: left-click chains, right-click
-  # Aegis, sneak + left-click in the air Gilded Slam, left + right-click together Flagpole. Off hand: right-click chains,
-  # sneak + right-click Aegis (or the slam, in the air). Damage numbers are before ability-damage.multiplier and its cap.
+  # Auratus (rebuilt; see AURATUS.md). Main hand: left-click throws a chain, right-click Aegis (or, while a hook is in,
+  # goes there), sneak + left-click in the air Gilded Slam. Off hand: right-click throws / goes, sneak + right-click Aegis
+  # (or the slam, in the air). Swap hands (F) hauls a hooked creature in. Pull an enemy in, catch them with the Aegis:
+  # nothing else = Flagpole, chain again = the launch. Damage numbers are before ability-damage.multiplier and its cap,
+  # except flagpole.finisher-damage.
   # Servers upgrading from the old Auratus get this section fresh once; Feathered Fall and the chain model settings are kept.
   auratus:
     passives:
@@ -110,8 +112,8 @@ mythics:
       angels-grasp-seconds: 4 # slam and Flagpole victims can't ender pearl, wind charge, eat chorus fruit or use a trident
       angels-grasp-chain-seconds: 2 # the same from a chain hook (shorter, so two charges can't lock someone down); 0 = none
       divine-purity-multiplier: 0.5 # harmful effects on you last this fraction as long; a parry also cleanses them
-    chain: # Venerated Perforators. A chain that hits an enemy stays in them: chain again to fly to them,
-      # swap hands (F) to haul them to you, or leave it. It snaps if a wall gets between you.
+    chain: # Venerated Perforators. A chain hooks whatever it hits (an enemy, a creature, a block, the Echo Anchor) and
+      # stays: right-click to go there, swap hands (F) to haul a creature to you, or leave it. It snaps on a wall.
       charges: 2
       recharge-seconds: 8 # each charge on its own timer
       range: 40.0
@@ -121,7 +123,7 @@ mythics:
       max-reel-ticks: 40
       arrival-momentum: 0.45 # share of the reel speed you keep when you arrive
       hit-damage: 3.0 # when the hook bites an enemy (x3 = 9 HP, 4.5 hearts unarmored); once per hook
-      hook-seconds: 6 # how long the hook stays in them if you do nothing
+      hook-seconds: 6 # how long the hook stays if you do nothing
       haul-speed: 1.0 # top speed hauling them to you (F), blocks/tick
       haul-max-ticks: 30
       show-models: true # chain links + hook from the pack (echo shard models 12348/12349); false = gold dust
@@ -139,6 +141,10 @@ mythics:
       anchor-height: 8.0 # the Echo Anchor appears up to this high above you
       anchor-seconds: 5
       anchor-cone-degrees: 35 # throw a chain within this angle of the anchor and it latches on
+      distance: 3.0 # the shield appears this far ahead where you look (closer if a wall is nearer)
+      strike-radius: 1.3 # anyone this close to the shield takes a hit
+      strike-damage: 5.0 # x3 = 15 HP (7.5 hearts unarmored, ~1 heart through full Prot IV diamond)
+      strike-ticks: 6 # the shield keeps catching arrivals this many ticks
     slam: # Gilded Slam: sneak + chain while 4+ blocks up (costs no chain charge)
       cooldown-seconds: 0 # like the old slam, none: getting back up costs chains
       min-height: 4.0 # blocks above the ground needed; lower down, sneak + chain is just a chain
@@ -148,11 +154,12 @@ mythics:
       damage-center: 6.0 # x3 = 18 HP (9 hearts) unarmored at the centre
       damage-edge: 3.0 # at the edge of the radius
       launch: 0.45 # upward pop on everyone hit
-    flagpole: # Flagpole: left + right-click together to hoist the enemy your chain just hooked
-      combo-ms: 100 # how close together the two clicks must be
-      cooldown-seconds: 25
-      hook-memory-seconds: 5 # works on an enemy your chain latched onto this recently
-      range: 24
+    flagpole: # Pull an enemy in (or hook them), then catch them with the Aegis: nothing else = Flagpole, chain again = the launch
+      cooldown-seconds: 25 # shared by Flagpole and the launch
+      hook-memory-seconds: 5 # the Aegis catches an enemy you hooked or pulled in this recently
+      window-ms: 750 # after the catch: chain within this for the launch, otherwise Flagpole
+      finisher-damage: 72 # the launch's hit, raw (no ability multiplier or cap): ~22 HP through full Prot IV diamond, a kill from full health
+      finisher-launch-height: 30 # blocks they're thrown straight up (the fall comes on top)
       height: 5.0 # lifted this high (less under a ceiling)
       hold-seconds: 2.5
 

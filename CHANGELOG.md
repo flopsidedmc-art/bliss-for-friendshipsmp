@@ -1,3 +1,16 @@
+# Auratus: hooks on everything, right-click to go, the Aegis shield, Flagpole and the launch
+
+- **Chains hook whatever they hit and stay:** enemies (who take the hit at once), other creatures, blocks and the Echo Anchor. **Right-click goes there** in either hand; sneak + right-click still parries while hooked. **F** hauls a hooked creature to you. Left alone, the hook slides out after 6 s.
+- **Aegis:** the gold parry halo now stands 3 blocks ahead where you look, facing you. It hits any enemy there (15 HP, about 1 heart through Prot IV diamond) as well as parrying.
+- **Flagpole:** hook → F (pull them in) → Aegis catches them → nothing else → they're hoisted. The left + right click combo is gone.
+- **The launch:** same, but chain again within 0.75 s. No Flagpole: they're thrown about 30 blocks straight up with one raw 72-damage hit.
+  - That's about 21.8 HP through full Prot IV diamond, a kill from full health.
+  - The whole combo is 24.6 HP, enough to beat a golden apple. A unit test checks it with vanilla's armor formula; 70 turned out 0.002 HP short, so it's 72.
+  - Flagpole and the launch share the 25 s cooldown.
+- **New settings:** `aegis.distance`, `aegis.strike-radius`, `aegis.strike-damage`, `aegis.strike-ticks`, `flagpole.window-ms`, `flagpole.finisher-damage`, `flagpole.finisher-launch-height`.
+- **Removed settings:** `flagpole.combo-ms` and `flagpole.range`.
+- 47 unit tests pass. Not run in a game.
+
 # Auratus chains: the hook stays in, walls snap it, shorter grasp
 
 - **The hook stays in an enemy.** A chain that hits an enemy bites straight away (the 4.5-heart hit, once per hook) and stays in them. Then you choose:
