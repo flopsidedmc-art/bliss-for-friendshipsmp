@@ -42,6 +42,11 @@ class GemSoundsTest {
                 if (s == null) continue;
                 out.computeIfAbsent(gem, k -> new java.util.ArrayList<>()).add(s);
                 if (s.isConfigurationSection("layer")) out.get(gem).add(s.getConfigurationSection("layer"));
+                ConfigurationSection fb = s.getConfigurationSection("fallback"); // played when pack sounds are off
+                if (fb != null) {
+                    out.get(gem).add(fb);
+                    if (fb.isConfigurationSection("layer")) out.get(gem).add(fb.getConfigurationSection("layer"));
+                }
             }
         }
         return out;
@@ -81,6 +86,15 @@ class GemSoundsTest {
             assertNotNull(allowed, e.getKey() + " is shared by " + e.getValue());
             assertTrue(allowed.containsAll(e.getValue()), e.getKey() + " is shared by " + e.getValue() + ", allowed " + allowed);
         }
+    }
+
+    @Test void relayUsesItsOwnPackSoundsWithFallbacks() {
+        ConfigurationSection relay = sounds().getConfigurationSection("relay");
+        assertEquals("blissgems:relay.rewind", relay.getString("rewind.event"));
+        assertEquals("blissgems:relay.time_dilate", relay.getString("time-dilate.event"));
+        assertEquals("BLOCK_BEACON_DEACTIVATE", relay.getString("rewind.fallback.event"));
+        assertEquals("BLOCK_BEACON_AMBIENT", relay.getString("time-dilate.fallback.event"));
+        assertFalse(relay.isConfigurationSection("rewind.layer"), "the pack sound plays on its own");
     }
 
     @Test void packSoundsAndPitch() {

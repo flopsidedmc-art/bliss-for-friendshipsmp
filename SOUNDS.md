@@ -16,7 +16,7 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 
 **Pack sounds:** an `event` can also be a pack sound such as `blissgems:auratus.parry`. It then replaces the vanilla sound. Give it a `fallback: {event: ..., volume: ..., pitch: ...}` for when `sounds.custom-enabled` is false.
 
-**Relay's custom sounds:** Rewind and Time Dilate use your fallback sounds until `rewind.ogg` and `time_dilate.ogg` are in the pack. The comments in `config.yml` show the line to switch to.
+**Relay's custom sounds:** Rewind and Time Dilate play your `rewind.ogg` and `time_dilate.ogg` (`blissgems:relay.rewind` and `blissgems:relay.time_dilate`). When `sounds.custom-enabled` is false, they fall back to the vanilla pairs listed below.
 
 | Gem | Ability | Event | Volume | Pitch | Heard by |
 |---|---|---|---|---|---|
@@ -103,10 +103,12 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 | Auratus | launch | `ENTITY_FIREWORK_ROCKET_LARGE_BLAST` | 1.0 | 1.0 | everyone near |
 | Auratus | launch (+ layer) | `ENTITY_WARDEN_SONIC_BOOM` | 0.3 | 2.0 | everyone near |
 | Auratus | shield-jam | `ITEM_SHIELD_BREAK` | 0.8 | 1.2 | everyone near |
-| Relay | rewind | `BLOCK_BEACON_DEACTIVATE` | 0.8 | 1.4 | everyone near |
-| Relay | rewind (+ layer) | `ITEM_CHORUS_FRUIT_TELEPORT` | 0.6 | 1.2 | everyone near |
-| Relay | time-dilate | `BLOCK_BEACON_AMBIENT` | 0.9 | 0.5 | everyone near |
-| Relay | time-dilate (+ layer) | `BLOCK_BELL_RESONATE` | 0.8 | 0.5 | everyone near |
+| Relay | rewind | `blissgems:relay.rewind` | 1.0 | 1.0 | everyone near |
+| Relay | rewind (fallback, pack sounds off) | `BLOCK_BEACON_DEACTIVATE` | 0.8 | 1.4 | everyone near |
+| Relay | rewind (fallback + layer) | `ITEM_CHORUS_FRUIT_TELEPORT` | 0.6 | 1.2 | everyone near |
+| Relay | time-dilate | `blissgems:relay.time_dilate` | 1.0 | 1.0 | everyone near |
+| Relay | time-dilate (fallback, pack sounds off) | `BLOCK_BEACON_AMBIENT` | 0.9 | 0.5 | everyone near |
+| Relay | time-dilate (fallback + layer) | `BLOCK_BELL_RESONATE` | 0.8 | 0.5 | everyone near |
 | Relay | divinity | `BLOCK_END_PORTAL_SPAWN` | 0.4 | 0.7 | everyone near |
 | Relay | divinity (+ layer) | `BLOCK_BELL_RESONATE` | 0.8 | 0.6 | everyone near |
 | Relay | rift-menu | `BLOCK_BELL_RESONATE` | 0.4 | 1.5 | you only |

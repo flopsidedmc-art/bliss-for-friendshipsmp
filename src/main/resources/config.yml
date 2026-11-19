@@ -134,8 +134,8 @@ sounds:
     launch: {event: ENTITY_FIREWORK_ROCKET_LARGE_BLAST, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.3, pitch: 2.0}}
     shield-jam: {event: ITEM_SHIELD_BREAK, volume: 0.8, pitch: 1.2, enabled: true}  # Hauling Strike drops a shield
   relay: # Relay: time (low pitch = slowed time)
-    rewind: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 1.4, enabled: true, layer: {event: ITEM_CHORUS_FRUIT_TELEPORT, volume: 0.6, pitch: 1.2}}  # with rewind.ogg in the pack: {event: "blissgems:relay.rewind", volume: 1.0, pitch: 1.0, enabled: true, fallback: <these two>}
-    time-dilate: {event: BLOCK_BEACON_AMBIENT, volume: 0.9, pitch: 0.5, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.5}}  # when the bubble opens; with time_dilate.ogg: event: "blissgems:relay.time_dilate"
+    rewind: {event: "blissgems:relay.rewind", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 1.4, layer: {event: ITEM_CHORUS_FRUIT_TELEPORT, volume: 0.6, pitch: 1.2}}}  # your rewind.ogg; the fallback plays when custom-enabled is false
+    time-dilate: {event: "blissgems:relay.time_dilate", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_AMBIENT, volume: 0.9, pitch: 0.5, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.5}}}  # your time_dilate.ogg when the bubble opens
     divinity: {event: BLOCK_END_PORTAL_SPAWN, volume: 0.4, pitch: 0.7, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.6}}  # end portal spawn is loud: keep it low
     rift-menu: {event: BLOCK_BELL_RESONATE, volume: 0.4, pitch: 1.5, enabled: true}  # you only
     rift-set-anchor: {event: BLOCK_RESPAWN_ANCHOR_SET_SPAWN, volume: 0.8, pitch: 0.8, enabled: true}

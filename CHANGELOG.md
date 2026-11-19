@@ -1,3 +1,13 @@
+# Relay: your Rewind and Time Dilate sounds
+
+- **Your sound files are in the pack:** `rewind.ogg` and `time_dilate.ogg` are at `assets/blissgems/sounds/relay/` and registered in `sounds.json` as `relay.rewind` ("Time rewinds") and `relay.time_dilate` ("Time slows").
+  - Both are mono Ogg Vorbis at 48 kHz, so they fade with distance like any other sound.
+  - Rewind is 3.6 s and Time Dilate is 4.0 s. They're kept exactly as sent. Copies live in `tools/pack/source/sounds/` so the pack script rebuilds them.
+- **The config now plays them:** `sounds.relay.rewind` and `sounds.relay.time-dilate` use `blissgems:relay.rewind` and `blissgems:relay.time_dilate`.
+  - With `sounds.custom-enabled: false` they fall back to the spec's vanilla pairs (beacon deactivate and chorus fruit; beacon ambient and bell resonate).
+  - Each pack sound plays on its own, with no extra vanilla layer.
+- **Tests:** `GemSoundsTest` also checks the fallbacks, and that Relay uses its pack sounds. 57 unit tests pass. Not played in game.
+
 # Heretic pedestal in red
 
 - The Heretic's finale pedestal has red trim (the vanilla redstone block texture) instead of amethyst. Its floating label, guide beam and arrow text are red too. The old block pedestals (`finale.pedestal.custom-model: false`) use a redstone block.

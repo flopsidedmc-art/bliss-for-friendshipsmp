@@ -220,6 +220,17 @@ write_json(os.path.join(A, "blissgems/models/item/finale_seal.json"), {
 write_json(os.path.join(A, "blissgems/items/finale_seal.json"),
            {"model": {"type": "minecraft:model", "model": "blissgems:item/finale_seal"}})
 
+# ---- Relay's own sounds: rewind.ogg (a reversed bell with a hard cut) and time_dilate.ogg, both mono Ogg Vorbis
+snd = os.path.join(A, "blissgems/sounds/relay")
+os.makedirs(snd, exist_ok=True)
+for name in ("rewind", "time_dilate"):
+    shutil.copyfile(os.path.join(HERE, "source", "sounds", name + ".ogg"), os.path.join(snd, name + ".ogg"))
+sounds_path = os.path.join(A, "blissgems/sounds.json")
+sounds = json.load(open(sounds_path, encoding="utf-8")) if os.path.exists(sounds_path) else {}
+sounds["relay.rewind"] = {"sounds": ["blissgems:relay/rewind"], "subtitle": "Time rewinds"}
+sounds["relay.time_dilate"] = {"sounds": ["blissgems:relay/time_dilate"], "subtitle": "Time slows"}
+write_json(sounds_path, sounds)
+
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
 if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):

@@ -3,5 +3,17 @@
     "sounds": [
       "blissgems:auratus/parry"
     ]
+  },
+  "relay.rewind": {
+    "sounds": [
+      "blissgems:relay/rewind"
+    ],
+    "subtitle": "Time rewinds"
+  },
+  "relay.time_dilate": {
+    "sounds": [
+      "blissgems:relay/time_dilate"
+    ],
+    "subtitle": "Time slows"
   }
 }
