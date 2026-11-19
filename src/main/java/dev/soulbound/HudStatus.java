@@ -1,11 +1,10 @@
 package dev.soulbound;
 
 /**
- * Ability status on the action bar without words: the icon itself says it all.
+ * Ability status on the action bar: each ability's icon, and no names.
  *
- * Ready: the icon, bright. Recharging: the icon dimmed, with a timer. Active: the icon with "\u2026". Charges: bright
- * while at least one is ready (with the next refill timer in a softer colour until they are all back), dimmed with
- * a timer when none are.
+ * Ready: the icon, bright, with "Ready!". Recharging: the icon dimmed, with a timer. Active: the icon with "\u2026".
+ * Charges: "Ready!" while at least one is ready, dimmed with the time to the next one when none are.
  */
 final class HudStatus {
     private HudStatus() {}
@@ -13,13 +12,14 @@ final class HudStatus {
     static String entry(String icon, long remainMs, boolean active) {
         if (active) return "§f" + icon + " §e\u2026";
         if (remainMs > 0) return "§7" + icon + " §b" + time(remainMs);
-        return "§f" + icon;
+        return "§f" + icon + " " + READY;
     }
+
+    static final String READY = "§aReady!";
 
     static String charges(String icon, int ready, int max, long nextMs) {
         if (ready <= 0) return "§7" + icon + " §b" + time(nextMs);
-        if (ready < max && nextMs > 0) return "§f" + icon + " §3" + time(nextMs);
-        return "§f" + icon;
+        return "§f" + icon + " " + READY;
     }
 
     /** 8s, 1m 5s, 1h 2m. */

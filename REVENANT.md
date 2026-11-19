@@ -84,10 +84,10 @@ Because right-click is Plunge, the holder can't open doors or chests with the ma
 
 ## HUD
 
-While he holds the mace, the action bar shows his powers instead of the gem HUD, with no words, like every gem's action bar:
+While he holds the mace, the action bar shows his powers instead of the gem HUD, in the same style as every gem's action bar:
 
-- each icon is bright when ready, and dimmed with a timer while recharging;
-- Plunge stays bright while a charge is left, with the next refill timer;
+- each icon is bright with "Ready!" when ready, and dimmed with a timer while recharging;
+- Plunge says "Ready!" while a charge is left;
 - an active power shows "…";
 - while suspended, an hourglass and its timer come first.
 

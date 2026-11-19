@@ -191,7 +191,7 @@ final class RelayRift implements Listener {
 
     /** Status for the Relay HUD, or null when Rift is switched off. */
     /**
-     * The Rift's action-bar entry without words (see HudStatus): bright when ready, dimmed with a timer while it
+     * The Rift's action-bar entry (see HudStatus): bright with "Ready!" when ready, dimmed with a timer while it
      * recharges, an orange timer while combat makes it unstable, dark while the finale seals it, "…" while channelling.
      * {@code ascii}: for the slot beside the hotbar, whose font only has ASCII, so "…" is written "...". Null when off.
      */
@@ -204,7 +204,7 @@ final class RelayRift implements Listener {
         if (cd > 0) return "§7" + icon + " §b" + fmt(cd);
         long combat = combatLeft(id);
         if (combat > 0) return "§7" + icon + " §6" + fmt(combat);
-        return "§f" + icon;
+        return "§f" + icon + " " + HudStatus.READY;
     }
 
     private static String fmt(long ms) {

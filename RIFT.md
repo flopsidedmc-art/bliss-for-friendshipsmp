@@ -43,7 +43,7 @@ Sneak + left-click never fires Rewind or Dilate: the click goes to the menu, and
 
 ## Rift HUD slot
 
-The Rift icon and its status, then the Tuned In meter, are drawn just right of the hotbar, vertically centred on it, at any GUI scale. The status has no words: the icon is bright when ready, dimmed with a countdown while recharging or with an orange timer in combat, dark while the finale seals it, and shows "..." while channelling. The rest of the Relay HUD is icons and timers only.
+The Rift icon and its status, then the Tuned In meter, are drawn just right of the hotbar, vertically centred on it, at any GUI scale. The status: the icon is bright with "Ready!" when ready, dimmed with a countdown while recharging or with an orange timer in combat, dark while the finale seals it, and shows "..." while channelling. The rest of the Relay HUD is icons and timers only.
 
 - **How:** it is still part of the action bar. That part uses the pack font `blissgems:hud_low`, which draws the same icon and letters lower, and invisible spacing characters move the pen there and back. So the action bar keeps its width and the rest of the Relay HUD doesn't move.
 - **Widths:** placing it needs the pixel width of the text before it. The plugin uses vanilla's letter widths, measured from Minecraft's own font sheet (your pack doesn't replace it), and your Relay icons' widths (`HudText.java`).

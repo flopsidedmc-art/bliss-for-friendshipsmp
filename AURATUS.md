@@ -27,7 +27,7 @@ The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt undern
 | Hook an enemy → **F** (pull them in) → **Aegis** → nothing else | **Flagpole**: they're hoisted 5 blocks and held 2.5 s |
 | Hook an enemy → **F** → **Aegis** → **chain again** within 0.75 s | **The launch**: thrown straight up about 30 blocks with a hit that kills a full-health player in full Prot IV diamond |
 
-The Aegis "catches" them when its shield (3 blocks ahead, where you look) touches an enemy you hooked or pulled in the last 5 seconds. Pulling with F is the easy way to get them there: the haul stops them about 2.5 blocks in front of you. Flagpole and the launch share one 25-second cooldown, shown as `⚑` on the action bar.
+The Aegis "catches" them when its shield (3 blocks ahead, where you look) touches an enemy you hooked or pulled in the last 5 seconds. Pulling with F is the easy way to get them there: the haul stops them about 2.5 blocks in front of you. Flagpole and the launch share one 25-second cooldown (not shown on the action bar, which only has the chain and Aegis).
 
 Notes on the controls:
 
@@ -99,15 +99,13 @@ You asked for this one to be able to one-shot players in diamond armor. Against 
 - **Angels Grasp:** slam, Flagpole and launch victims can't use an ender pearl, wind charge, chorus fruit or trident for 4 s. A chain hook does it for only 2 s, so two charges can't lock someone down. Gold "shackles" show at their feet.
 - **Divine Purity:** harmful effects on you last half as long, and a parry clears them.
 
-## Action bar (the old icons, no words)
+## Action bar
 
-The main pack's chain and Aegis icons (`⊵ ⊴`) with no words, like every gem's bar:
+Just the main pack's chain and Aegis icons (`⊵ ⊴`), no names:
 
-- **Ready:** the icon is bright.
-- **Recharging:** it's dimmed, with a timer.
-- **Active:** it's followed by "…". The chain icon shows "…" while a hook is in or during a slam.
-- **Chains** stay bright while a charge is left, with the next refill timer in darker blue.
-- **Gold symbols**, only while they matter: `⚑ 20s` (Flagpole/launch cooldown), `▲ 4s` (Echo Anchor up) and `▼ 3s` (only if you give the slam a cooldown).
+- **Ready:** the icon is bright, with "Ready!". Chains say "Ready!" while at least one charge is left.
+- **Recharging:** the icon is dimmed, with a timer.
+- **Active:** the icon is followed by "…" (a hook is in, a slam, or the Aegis is up).
 
 ## Damage overview
 
@@ -140,7 +138,7 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 - `AuratusGem.java`: the whole gem: controls, hooks, the Aegis shield, the combos, the passives, visuals, the action bar, cleanup and the one-time config upgrade.
 - `AuratusMath.java`: slam falloff, reel ramp, anchor cone, Flagpole hover, Divine Purity, the Aegis cooldown, and vanilla's armor formula for the diamond check.
 - `Charges.java`: independent charges, shared with the Revenant.
-- `HudStatus.java`: the word-free action bar shared by every gem.
+- `HudStatus.java`: the action bar style shared by every gem (icon, "Ready!" or a timer, no names).
 - `AuratusMathTest.java` (9 tests) and `HudStatusTest.java` (4).
 
 **Changed**
@@ -157,11 +155,11 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 
 You need a second player (or a friend) in full Prot IV diamond, the new JAR and the merged pack.
 
-1. `/blissop mythic auratus`. The action bar shows the old chain and Aegis icons, bright, no words.
+1. `/blissop mythic auratus`. The action bar shows the chain and Aegis icons, each with "Ready!".
 2. Left-click a far wall: a chain hooks it and stays. Right-click: you fly there. Hook it again and do nothing: it slides out after 6 s. Hook it and walk behind a pillar: it snaps.
 3. Left-click the other player from 10 blocks: the hook bites (about half a heart through their armor; no pearls for 2 s) and stays. Right-click: you fly to them.
 4. Hook them again and press F: they're hauled to about 2.5 blocks in front of you. Your hotbar doesn't swap.
-5. Right-click right after: the gold shield appears 3 blocks ahead, hits them (about 1 heart through armor) and pins them. Do nothing: after 0.75 s they're hoisted for 2.5 s. The bar shows `⚑ 25s`.
+5. Right-click right after: the gold shield appears 3 blocks ahead, hits them (about 1 heart through armor) and pins them. Do nothing: after 0.75 s they're hoisted for 2.5 s.
 6. After the cooldown, hook → F → right-click → left-click quickly: they're launched about 30 blocks up and **die from full health in full Prot IV diamond**. Try again after they eat a golden apple: they still die.
 7. Right-click with nobody near: you get a fizzle and a 15 s cooldown. Right-click as they hit you: the hit is blocked and you heal. A gold ring appears above you; throw a chain at it, then right-click to fly up to it.
 8. Chain up 6+ blocks, sneak + left-click: you slam with no fall damage. 2 blocks up: just a chain.
@@ -178,7 +176,7 @@ You need a second player (or a friend) in full Prot IV diamond, the new JAR and 
   - vanilla's armor formula;
   - the launch height;
   - slam falloff, the reel ramp, the anchor cone, Flagpole's hover, Divine Purity, the Aegis cooldown and chain charges;
-  - the word-free action bar.
+  - the action bar format.
 - The pack font still points at existing files, including the old Auratus icons.
 
 **Not tested:** everything in game. That includes:

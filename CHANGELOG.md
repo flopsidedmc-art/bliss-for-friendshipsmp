@@ -1,3 +1,13 @@
+# Action bars say "Ready!" again; Auratus shows just chain and Aegis
+
+- **Every gem's action bar** (and the Revenant's) is back to "icon Ready!" when an ability is ready. Ability and gem names stay gone.
+  - Recharging is still a dimmed icon with a timer; active is still "…".
+  - Abilities with charges say "Ready!" while at least one is left.
+  - The Rift slot by the hotbar says "Ready!" too.
+- **Auratus:** the bar is just the chain and Aegis icons. The ⚑ Flagpole/launch cooldown and ▲ Echo Anchor symbols are gone.
+- The simulator page shows the same.
+- 47 unit tests pass. Not run in a game.
+
 # Auratus: hooks on everything, right-click to go, the Aegis shield, Flagpole and the launch
 
 - **Chains hook whatever they hit and stay:** enemies (who take the hit at once), other creatures, blocks and the Echo Anchor. **Right-click goes there** in either hand; sneak + right-click still parries while hooked. **F** hauls a hooked creature to you. Left alone, the hook slides out after 6 s.

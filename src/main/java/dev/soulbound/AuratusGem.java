@@ -1138,9 +1138,8 @@ final class AuratusGem implements Listener {
     private static final String GLYPH_PERFORATORS = "\u22B5", GLYPH_AEGIS = "\u22B4";
 
     /**
-     * The old Auratus action bar, without words: the main pack's chain and Aegis icons, each bright when ready and
-     * dimmed with a timer while recharging (HudStatus). Flagpole and slam cooldowns and the Echo Anchor appear as
-     * small gold symbols only while they matter.
+     * The Auratus action bar: just the main pack's chain and Aegis icons, each bright with "Ready!" when ready, dimmed
+     * with a timer while recharging, and "\u2026" while active (HudStatus).
      */
     Component hudComponent(Player p) {
         UUID id = p.getUniqueId();
@@ -1149,15 +1148,8 @@ final class AuratusGem implements Listener {
         String chains = dives.containsKey(id) || tethers.containsKey(id) ? HudStatus.entry(GLYPH_PERFORATORS, 0, true)
                 : HudStatus.charges(GLYPH_PERFORATORS, c.ready(n), c.max(), c.nextIn(n));
         String guard = HudStatus.entry(GLYPH_AEGIS, aegisReady.getOrDefault(id, 0L) - n, aegis.containsKey(id));
-        StringBuilder msg = new StringBuilder(chains + "  " + guard);
-        long slamLeft = slamReady.getOrDefault(id, 0L) - n, flagLeft = flagReady.getOrDefault(id, 0L) - n;
-        if (slamLeft > 0) msg.append("  §7\u25BC §b").append(HudStatus.time(slamLeft));
-        if (flagLeft > 0) msg.append("  §7\u2691 §b").append(HudStatus.time(flagLeft));
-        Anchor an = anchors.get(id);
-        if (an != null && an.until > n) msg.append("  §6\u25B2 §e").append(HudStatus.time(an.until - n));
-        return LEGACY.deserialize(msg.toString());
+        return LEGACY.deserialize(chains + "  " + guard);
     }
-
 
     private void cleanup(Player p) {
         UUID id = p.getUniqueId();
