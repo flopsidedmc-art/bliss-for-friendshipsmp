@@ -190,16 +190,21 @@ final class RelayRift implements Listener {
     boolean busy(UUID id) { return casts.containsKey(id); }
 
     /** Status for the Relay HUD, or null when Rift is switched off. */
-    String hudStatus(Player p) {
+    /**
+     * The Rift's action-bar entry without words (see HudStatus): bright when ready, dimmed with a timer while it
+     * recharges, an orange timer while combat makes it unstable, dark while the finale seals it, "…" while channelling.
+     * {@code ascii}: for the slot beside the hotbar, whose font only has ASCII, so "…" is written "...". Null when off.
+     */
+    String hudEntry(Player p, String icon, boolean ascii) {
         if (!enabled()) return null;
         UUID id = p.getUniqueId();
-        if (casts.containsKey(id)) return "§cActive…";
-        if (finaleRunning()) return "§8Sealed";
+        if (casts.containsKey(id)) return "§f" + icon + (ascii ? " §e..." : " §e\u2026");
+        if (finaleRunning()) return "§8" + icon;
         long cd = cooldownLeft(id);
-        if (cd > 0) return "§b" + fmt(cd);
+        if (cd > 0) return "§7" + icon + " §b" + fmt(cd);
         long combat = combatLeft(id);
-        if (combat > 0) return "§6Unstable " + fmt(combat);
-        return "§aReady";
+        if (combat > 0) return "§7" + icon + " §6" + fmt(combat);
+        return "§f" + icon;
     }
 
     private static String fmt(long ms) {

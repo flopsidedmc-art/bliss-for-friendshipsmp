@@ -68,7 +68,7 @@ Because right-click is Plunge, the holder can't open doors or chests with the ma
 
 ## The Relay counters him
 
-- **Time Dilate:** the field slows him like anyone else (its normal 10%). Plunge's leap and slam are scaled by the field, and **Rising can't be cast** while he stands in one ("Time holds you here…"). The HUD shows Rising as "Slowed".
+- **Time Dilate:** the field slows him like anyone else (its normal 10%). Plunge's leap and slam are scaled by the field, and **Rising can't be cast** while he stands in one ("Time holds you here…"). On the action bar the Rising icon goes dark.
 - **Temporal Divinity never takes him to the void.** Everyone else it catches goes as usual. He is **suspended** instead:
   - he's frozen up to 3 blocks above where he stood (less if there's a ceiling);
   - it lasts 5 seconds, or 3 in phase 2;
@@ -84,7 +84,14 @@ Because right-click is Plunge, the holder can't open doors or chests with the ma
 
 ## HUD
 
-While he holds the mace, the action bar shows his powers instead of the gem HUD, for example `▼ 2/2   ▲ Ready   ◎ 12s`. The icons are pack glyphs, 33x20, matching the Relay icons: dark iron frame with teal art.
+While he holds the mace, the action bar shows his powers instead of the gem HUD, with no words, like every gem's action bar:
+
+- each icon is bright when ready, and dimmed with a timer while recharging;
+- Plunge stays bright while a charge is left, with the next refill timer;
+- an active power shows "…";
+- while suspended, an hourglass and its timer come first.
+
+The icons are pack glyphs, 33x20, matching the Relay icons: dark iron frame with teal art.
 
 | Codepoint | Icon | File |
 |---|---|---|

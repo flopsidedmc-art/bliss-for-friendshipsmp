@@ -634,10 +634,14 @@ public final class MythicListener implements Listener {
         UUID id = p.getUniqueId();
         String msg;
         if (type == GemType.HERETIC) {
-            String sawA = mythicStatus(slotRemain(id, 0, n), hasLiveBloodsaw(id, 0), GLYPH_BLOODSAWS);
-            String sawB = mythicStatus(slotRemain(id, 1, n), hasLiveBloodsaw(id, 1), GLYPH_BLOODSAWS);
-            String link = mythicStatus(cooldown(hereticBloodlinkCooldown, id), bloodlinks.containsKey(id) || bloodlinkSlamCounts.containsKey(id), GLYPH_BLOODLINKING);
-            msg = "§f" + GLYPH_BLOODSAWS + " §bHeretic " + sawA + " §7| " + sawB + " §7➜ §f" + GLYPH_BLOODLINKING + " " + link;
+            // Icons and timers only: the saws as one icon with two charges, then Bloodlinking.
+            int ready = (slotRemain(id, 0, n) <= 0 ? 1 : 0) + (slotRemain(id, 1, n) <= 0 ? 1 : 0);
+            long next = Math.min(slotRemain(id, 0, n) > 0 ? slotRemain(id, 0, n) : Long.MAX_VALUE,
+                    slotRemain(id, 1, n) > 0 ? slotRemain(id, 1, n) : Long.MAX_VALUE);
+            String saws = HudStatus.charges(GLYPH_BLOODSAWS, ready, 2, next == Long.MAX_VALUE ? 0 : next);
+            String link = HudStatus.entry(GLYPH_BLOODLINKING, cooldown(hereticBloodlinkCooldown, id),
+                    bloodlinks.containsKey(id) || bloodlinkSlamCounts.containsKey(id));
+            msg = saws + "  " + link;
         } else if (type == GemType.AURATUS) {
             return plugin.auratus().hudComponent(p);
         } else if (type == GemType.RELAY) {
@@ -648,31 +652,10 @@ public final class MythicListener implements Listener {
         return LegacyComponentSerializer.legacySection().deserialize(msg);
     }
 
-    private String mythicStatus(long remainMs, boolean active, String icon) {
-        if (active) return "§cActive...";
-        if (remainMs <= 0) return "§aReady!";
-        return "§b" + format(remainMs);
-    }
-
-    private String format(long ms) {
-        long totalSeconds = Math.max(1L, (ms + 999L) / 1000L);
-        long hours = totalSeconds / 3600L;
-        long minutes = (totalSeconds % 3600L) / 60L;
-        long seconds = totalSeconds % 60L;
-        if (hours > 0) return hours + "h" + (minutes > 0 ? " " + minutes + "m" : "") + (seconds > 0 ? " " + seconds + "s" : "");
-        if (minutes > 0) return minutes + "m" + (seconds > 0 ? " " + seconds + "s" : "");
-        return seconds + "s";
-    }
-
     private long slotRemain(UUID id, int slot, long n) {
         long[] slots = bloodsawSlots.get(id);
         if (slots == null || slot < 0 || slot >= slots.length) return 0;
         return Math.max(0, slots[slot] - n);
-    }
-
-    private boolean hasLiveBloodsaw(UUID ownerId, int slot) {
-        return bloodsaws.values().stream().anyMatch(s -> ownerId.equals(s.owner) && s.slot == slot
-                && s.entity != null && s.entity.isValid());
     }
 
     // ---------- /mythicconfig: in-depth live tuner for every mythic number ----------

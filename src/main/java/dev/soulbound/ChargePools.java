@@ -78,16 +78,15 @@ public final class ChargePools {
         return Math.max(0, (times.getFirst() + window - System.currentTimeMillis()) / 1000L);
     }
 
-    /** HUD segment like the showcase: "1/3 16s", or plain "Ready!" at full pool. */
-    public static String hud(dev.soulbound.SoulboundGemsPlugin plugin, Player player, String ability) {
+    /** HUD entry without words: the icon, bright while a charge is ready, with the next refill timer (see HudStatus). */
+    public static String hud(dev.soulbound.SoulboundGemsPlugin plugin, Player player, String ability, String icon) {
         int max = maxCharges(plugin, ability);
-        int have = available(plugin, player, ability);
-        long secs = nextRefillIn(plugin, player, ability);
-        if (have > 0 && secs <= 0) {
-            return org.bukkit.ChatColor.RED.toString() + have + "/" + max + " " + org.bukkit.ChatColor.WHITE + "Ready!";
-        }
-        return org.bukkit.ChatColor.RED.toString() + have + "/" + max
-                + " " + org.bukkit.ChatColor.AQUA + (secs > 0 ? secs + "s" : "Ready!");
+        int have = available(plugin, player, ability); // also drops charges that have come back
+        Map<String, Deque<Long>> mine = POOLS.get(player.getUniqueId());
+        Deque<Long> times = mine == null ? null : mine.get(ability);
+        long nextMs = times == null || times.isEmpty() ? 0
+                : Math.max(0, times.getFirst() + rechargeMs(plugin, ability) - System.currentTimeMillis());
+        return HudStatus.charges(icon, have, max, nextMs);
     }
 
     public static void clear(UUID playerId) {

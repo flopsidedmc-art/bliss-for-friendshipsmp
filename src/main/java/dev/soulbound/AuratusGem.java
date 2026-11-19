@@ -67,8 +67,8 @@ import java.util.UUID;
 /**
  * The Auratus gem, rebuilt: the same chains, Aegis, slam and Flagpole, on the old Auratus controls.
  *
- * Gem in the main hand: left-click Venerated Perforators (chains), sneak + right-click Echoing Aegis, sneak + chain
- * in the air Gilded Slam, left + right-click together Flagpole. Gem in the off hand: right-click chains, sneak +
+ * Gem in the main hand: left-click Venerated Perforators (chains), right-click Echoing Aegis, sneak + chain in the
+ * air Gilded Slam, left + right-click together Flagpole. Gem in the off hand: right-click chains, sneak +
  * right-click Aegis (or the slam, in the air). Passives while holding it in either hand: Feathered Fall, Hauling
  * Strike, Angels Grasp, Divine Purity.
  *
@@ -89,7 +89,6 @@ final class AuratusGem implements Listener {
     private final Map<UUID, Charges> chains = new HashMap<>();
     private final Map<UUID, Long> aegisReady = new HashMap<>(), slamReady = new HashMap<>(), flagReady = new HashMap<>();
     private final Map<UUID, Long> lastLeft = new HashMap<>(), lastRight = new HashMap<>(), lastHint = new HashMap<>();
-    private final Map<UUID, String> hintText = new HashMap<>();
     private final Map<UUID, Aegis> aegis = new HashMap<>();
     private final Map<UUID, Anchor> anchors = new HashMap<>();
     private final Map<UUID, Reel> reels = new HashMap<>();
@@ -184,12 +183,12 @@ final class AuratusGem implements Listener {
         return v instanceof Enemy;
     }
 
-    private void hint(Player p, String text) {
+    /** "Not now" (no hook for Flagpole, slam on cooldown): a soft click only you hear. No words on the action bar. */
+    private void deny(Player p) {
         long n = now();
-        if (n - lastHint.getOrDefault(p.getUniqueId(), 0L) < 1500) return;
+        if (n - lastHint.getOrDefault(p.getUniqueId(), 0L) < 600) return;
         lastHint.put(p.getUniqueId(), n);
-        hintText.put(p.getUniqueId(), text); // the HUD shows it instead of the timers for a moment
-        p.sendActionBar(Component.text(text, net.kyori.adventure.text.format.TextColor.color(0xFFC846)));
+        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.PLAYERS, 0.6f, 0.6f);
     }
 
     private ItemStack model(int cmd) {
@@ -264,8 +263,7 @@ final class AuratusGem implements Listener {
         lastRight.put(id, n);
         if (main) {
             if (n - lastLeft.getOrDefault(id, 0L) <= combo) { flagpole(p); return; }
-            if (p.isSneaking()) aegis(p);
-            // A plain right-click does nothing: the old long-reach poke is Hauling Strike's +1 reach on every hit now.
+            aegis(p); // right-click, sneaking or not
             return;
         }
         // Off hand: right-click is the chain, so sneak + right-click is the slam in the air and the Aegis otherwise.
@@ -578,7 +576,7 @@ final class AuratusGem implements Listener {
         long n = now();
         if (dives.containsKey(id)) return;
         long wait = slamReady.getOrDefault(id, 0L) - n;
-        if (wait > 0) { hint(p, "Slam ready in " + fmt(wait)); return; }
+        if (wait > 0) { deny(p); return; }
         Location target = slamTarget(p);
         if (target == null) return;
         slamReady.put(id, n + ms("slam.cooldown-seconds", 0));
@@ -692,13 +690,13 @@ final class AuratusGem implements Listener {
         if (flagReady.getOrDefault(id, 0L) > n) return;
         Hook h = hooks.get(id);
         if (h == null || n - h.at() > ms("flagpole.hook-memory-seconds", 5)) {
-            if (!swingingAtSomeone(p)) hint(p, "Hook someone with your chain first"); // a sneaking melee hit stays quiet
+            if (!swingingAtSomeone(p)) deny(p); // a melee hit stays quiet
             return;
         }
         Entity e = Bukkit.getEntity(h.victim());
         if (!(e instanceof LivingEntity v) || !v.isValid() || v.isDead() || !v.getWorld().equals(p.getWorld())
                 || v.getLocation().distance(p.getLocation()) > cfgD("flagpole.range", 24) || !isEnemy(p, v) || hoists.containsKey(v.getUniqueId())) {
-            hint(p, "They're out of reach");
+            deny(p);
             return;
         }
         flagReady.put(id, n + ms("flagpole.cooldown-seconds", 25));
@@ -911,28 +909,26 @@ final class AuratusGem implements Listener {
     private static final String GLYPH_PERFORATORS = "\u22B5", GLYPH_AEGIS = "\u22B4";
 
     /**
-     * The old Auratus action bar: chains and Aegis with the pack's own icons. Flagpole's cooldown, a slam cooldown (if
-     * one is set) and the Echo Anchor are added only while they matter.
+     * The old Auratus action bar, without words: the main pack's chain and Aegis icons, each bright when ready and
+     * dimmed with a timer while recharging (HudStatus). Flagpole and slam cooldowns and the Echo Anchor appear as
+     * small gold symbols only while they matter.
      */
     Component hudComponent(Player p) {
         UUID id = p.getUniqueId();
         long n = now();
-        String h = hintText.get(id);
-        if (h != null && n - lastHint.getOrDefault(id, 0L) < 1500) return Component.text(h, net.kyori.adventure.text.format.TextColor.color(0xFFC846));
         Charges c = charges(p);
-        String chains = dives.containsKey(id) ? "§cActive..." : c.ready(n) > 0 ? "§aReady!" : "§b" + fmt(c.nextIn(n));
-        long aegisLeft = aegisReady.getOrDefault(id, 0L) - n;
-        String guard = aegis.containsKey(id) ? "§cActive..." : aegisLeft > 0 ? "§b" + fmt(aegisLeft) : "§aReady!";
-        StringBuilder msg = new StringBuilder("§f" + GLYPH_PERFORATORS + " §bAuratus " + chains + " §7➜ §f" + GLYPH_AEGIS + " " + guard);
+        String chains = dives.containsKey(id) ? HudStatus.entry(GLYPH_PERFORATORS, 0, true)
+                : HudStatus.charges(GLYPH_PERFORATORS, c.ready(n), c.max(), c.nextIn(n));
+        String guard = HudStatus.entry(GLYPH_AEGIS, aegisReady.getOrDefault(id, 0L) - n, aegis.containsKey(id));
+        StringBuilder msg = new StringBuilder(chains + "  " + guard);
         long slamLeft = slamReady.getOrDefault(id, 0L) - n, flagLeft = flagReady.getOrDefault(id, 0L) - n;
-        if (slamLeft > 0) msg.append(" §7| §6Slam §b").append(fmt(slamLeft));
-        if (flagLeft > 0) msg.append(" §7| §6Flagpole §b").append(fmt(flagLeft));
+        if (slamLeft > 0) msg.append("  §7\u25BC §b").append(HudStatus.time(slamLeft));
+        if (flagLeft > 0) msg.append("  §7\u2691 §b").append(HudStatus.time(flagLeft));
         Anchor an = anchors.get(id);
-        if (an != null && an.until > n) msg.append(" §7| §6Anchor §b").append(fmt(an.until - n));
+        if (an != null && an.until > n) msg.append("  §6\u25B2 §e").append(HudStatus.time(an.until - n));
         return LEGACY.deserialize(msg.toString());
     }
 
-    private static String fmt(long ms) { return Math.max(1, (ms + 999) / 1000) + "s"; }
 
     private void cleanup(Player p) {
         UUID id = p.getUniqueId();
@@ -946,7 +942,6 @@ final class AuratusGem implements Listener {
             if (en.getValue().owner.equals(id)) release(en.getKey(), Bukkit.getEntity(en.getKey()) instanceof LivingEntity l ? l : null);
         hooks.remove(id);
         fullSwing.remove(id);
-        hintText.remove(id);
     }
 
     @EventHandler

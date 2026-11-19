@@ -2,14 +2,14 @@
 
 **Status: compiled and unit-tested, NOT played.** No Minecraft server or client was run. Everything below about how it looks and plays in game is the design, not an observation.
 
-The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt underneath, on the **old Auratus controls** and with the **old action bar**. Hidden combos stay hidden. Feathered Fall is exactly as it was.
+The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt underneath, on the **old Auratus controls** (with the Aegis on plain right-click) and the **old action bar icons, with no words**. Hidden combos stay hidden. Feathered Fall is exactly as it was.
 
 ## Controls (the old ones)
 
 | Gem in **main hand** | Power |
 |---|---|
 | Left-click | **Venerated Perforators** (chains), 2 charges |
-| Sneak + right-click | **Echoing Aegis** (parry) |
+| Right-click | **Echoing Aegis** (parry) |
 | Sneak + left-click, 4+ blocks up in the air | **Gilded Slam** (sneak + chain) |
 | Left + right-click together (within 0.1 s) | **Flagpole** (after a chain hook) |
 
@@ -24,7 +24,7 @@ Notes on the controls:
 - **Off hand:** your main hand's own right-click still wins, so bows, food, pearls and placing blocks work normally.
 - **Doors and chests** still open with a plain right-click.
 - **Melee range:** a left-click on an enemy within melee reach is just a hit; it never wastes a chain.
-- **Plain right-click with the gem in the main hand** used to do a long-reach poke. It now does nothing, because Hauling Strike's +1 reach applies to every normal hit instead.
+- **Plain right-click with the gem in the main hand** used to do a long-reach poke and the Aegis needed sneak. Now right-click is the Aegis. The poke is covered by Hauling Strike's +1 reach on every normal hit.
 
 ## Powers
 
@@ -68,14 +68,16 @@ Notes on the controls:
 - **Angels Grasp:** anything your chain, slam or Flagpole hits can't use an ender pearl, wind charge, chorus fruit or trident for 4 s. Gold "shackles" show at their feet.
 - **Divine Purity:** harmful effects on you last half as long, and a parry clears them.
 
-## Action bar (the old one)
+## Action bar (the old icons, no words)
 
-`⊵ Auratus Ready! ➜ ⊴ Ready!`, using the main pack's own chain and Aegis icons, as before.
+The main pack's own chain and Aegis icons (`⊵ ⊴`) with no words, like every gem's bar now:
 
-- **Chains** shows "Ready!" while at least one charge is left, otherwise the time to the next one. It shows "Active..." during a slam.
-- **Aegis** shows "Active...", a timer, or "Ready!".
-- **Extra sections**, added only while they matter: `| Flagpole 20s`, `| Anchor 4s`, and `| Slam 3s` if you give the slam a cooldown.
-- **Hints** such as "Hook someone with your chain first" replace the bar for a moment.
+- **Ready:** the icon is bright.
+- **Recharging:** it's dimmed, with a timer.
+- **Active:** it's followed by "…".
+- **Chains** stay bright while a charge is left, with the next refill timer in darker blue. They show "…" during a slam.
+- **Gold symbols**, only while they matter: `⚑ 20s` (Flagpole cooldown), `▲ 4s` (Echo Anchor up) and `▼ 3s` (only if you give the slam a cooldown).
+- **"Not now"** (Flagpole with no hook, slam on cooldown) is a soft click only you hear. No text.
 
 ## What changed from the old Auratus
 
@@ -139,7 +141,8 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 
 - `MythicListener.java`: the old Auratus code is removed (about 800 lines). Its clicks and action bar now go to `AuratusGem`, and the tuner lists the new settings.
 - `GemListener.java`: `abilityHit` lets mythic powers use the standard ability-damage scaling.
-- `GemManager.java`: Auratus lore with the passives explained and the two powers' buttons (hidden combos stay hidden). Lore version 6, so existing gems update their lore once.
+- `GemManager.java`: Auratus lore with the passives explained and the two powers' buttons (hidden combos stay hidden). Lore version 7, so existing gems update their lore once.
+- `HudStatus.java` (new, with `HudStatusTest`): the word-free action-bar style shared by every gem.
 - `GemType.java`: the Auratus description.
 - `SoulboundGemsPlugin.java`: wiring, tick, shutdown.
 - `RevenantMace.java`, `RevenantMath.java`, `RevenantMathTest.java`: use the shared `Charges`. No behaviour change.
@@ -149,12 +152,12 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 
 You need a second player (or a friend), the new JAR and the merged pack.
 
-1. `/blissop mythic auratus`. The action bar reads `⊵ Auratus Ready! ➜ ⊴ Ready!` with the old icons.
-2. Left-click a far wall: you're reeled to it. Click the sky: no charge is used and you hear a rattle. Throw both chains, then watch "Ready!" come back 8 s after the first.
+1. `/blissop mythic auratus`. The action bar shows just the old chain and Aegis icons, bright, with no words.
+2. Left-click a far wall: you're reeled to it. Click the sky: no charge is used and you hear a rattle. Throw both chains: the chain icon dims with a timer, and brightens again 8 s after the first.
 3. Left-click the other player from 10 blocks: you fly to them and they take about 4.5 hearts unarmored, less in armor. They can't pearl or wind-charge for 4 s.
-4. Within 5 s, click left and right together: they float 5 blocks up for 2.5 s in a gold spiral, then drop. The bar shows `| Flagpole 25s`.
-5. Sneak + right-click as they hit you: the hit is blocked, they take half back and are slowed, and you heal with Speed II. A gold ring appears above you and the bar shows `| Anchor 5s`. Throw a chain toward it: you latch on. The Aegis comes back in about 10 s.
-6. Sneak + right-click with nobody hitting you: you get a fizzle and a 15 s cooldown.
+4. Within 5 s, click left and right together: they float 5 blocks up for 2.5 s in a gold spiral, then drop. The bar shows `⚑ 25s`.
+5. Right-click as they hit you: the hit is blocked, they take half back and are slowed, and you heal with Speed II. A gold ring appears above you and the bar shows `▲ 5s`. Throw a chain toward it: you latch on. The Aegis comes back in about 10 s.
+6. Right-click with nobody hitting you: you get a fizzle and a 15 s cooldown (the Aegis icon dims).
 7. Chain up a wall to 6+ blocks, look at the ground nearby and sneak + left-click: you dive, a ring grows below, and the impact hurts players within 5 blocks with no fall damage to you. Do it again right away: no cooldown. Sneak + left-click 2 blocks up: just a normal chain.
 8. Hit with full-strength swings: the target is pulled toward you, not knocked away. Hit a raised shield: it drops and can't be raised for 5 s. Hit from 4 blocks away: it lands.
 9. Drink a Slowness potion while holding the gem: it lasts half as long.

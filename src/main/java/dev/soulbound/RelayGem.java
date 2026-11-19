@@ -389,20 +389,21 @@ public final class RelayGem implements Listener {
         UUID id=p.getUniqueId(); long n=now(); int max=Math.max(1,cfgI("rewind.charges",2)), ready=0; long next=Long.MAX_VALUE;
         long[] slots=rewindSlots.get(id);
         for(int i=0;i<max;i++) { long t=slots!=null && i<slots.length?slots[i]:0; if(t<=n)ready++; else next=Math.min(next,t-n); }
-        String rw=ready>0?"§b"+ready+"/"+max:"§b"+fmt(next);
-        String dl=flow.active(id)?"§cActive…":status(dilationReady.getOrDefault(id,0L)-n);
-        String dv=domain.contains(id)?"§cActive…":status(divinityReady.getOrDefault(id,0L)-n);
-        String rs=rift.hudStatus(p);
         boolean glyphs=cfgB("temporal.hud.use-glyphs",true);
         String rg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rewind-glyph","\uE040"):"Rewind";
         String dg=glyphs?plugin.getConfig().getString("mythics.relay.hud.dilation-glyph","\uE041"):"Dilate";
         String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):"Rift";
         String dvg=glyphs?plugin.getConfig().getString("mythics.relay.hud.divinity-glyph","\uE044"):"Divinity";
         String meter=glyphs?tunedGlyph(id):null;
-        String inlineRift=rs==null||byHotbar("rift")?"":"  §f"+rfg+" "+rs;
-        // With the pack's icons the bar shows icons and timers only: no ability names, and Tuned In is just its meter.
+        // Icons and timers only, no words (HudStatus): bright when ready, dimmed with a timer while recharging.
+        String rw=HudStatus.charges(rg,ready,max,next==Long.MAX_VALUE?0:next);
+        String dl=HudStatus.entry(dg,dilationReady.getOrDefault(id,0L)-n,flow.active(id));
+        String dv=HudStatus.entry(dvg,divinityReady.getOrDefault(id,0L)-n,domain.contains(id));
+        String rs=byHotbar("rift")?null:rift.hudEntry(p,rfg,false);
+        String inlineRift=rs==null?"":"  "+rs;
+        // Tuned In is just its meter; without the pack's icons it falls back to a number.
         String tuned=meter!=null?(byHotbar("tuned")?"":"  §f"+meter):"  §fTuned In §b"+charge(id)+"/"+maxCharge();
-        return "§f"+rg+" "+rw+"  §f"+dg+" "+dl+inlineRift+"  §f"+dvg+" "+dv+tuned;
+        return rw+"  "+dl+inlineRift+"  "+dv+tuned;
     }
     /** Rift and Tuned In sit beside the hotbar unless glyphs are off (no pack) or their *-position is "inline". */
     private boolean byHotbar(String slot) {
@@ -425,9 +426,8 @@ public final class RelayGem implements Listener {
         var legacy=net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection();
         var bar=legacy.deserialize(main);
         List<String> parts=new ArrayList<>();
-        String rs=rift.hudStatus(p);
-        // Beside the hotbar the in-combat status is just its orange timer, to stay on narrow screens.
-        if(rs!=null&&byHotbar("rift"))parts.add("§f\uE043 "+rs.replace("\u2026","...").replace("Unstable ",""));
+        String rs=byHotbar("rift")?rift.hudEntry(p,"\uE043",true):null;
+        if(rs!=null)parts.add(rs);
         String meter=tunedGlyph(p.getUniqueId());
         if(meter!=null&&byHotbar("tuned"))parts.add("§f"+meter);
         if(parts.isEmpty())return bar;
@@ -439,5 +439,4 @@ public final class RelayGem implements Listener {
         String s=HudText.shift(toIcon)+slots+HudText.shift(-(toIcon+HudText.width(slots)));
         return bar.append(legacy.deserialize(s).font(net.kyori.adventure.key.Key.key("blissgems","hud_low")));
     }
-    private String status(long ms) { return ms>0?"§b"+fmt(ms):"§aReady"; }
 }

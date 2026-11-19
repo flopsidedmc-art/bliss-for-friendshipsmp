@@ -311,7 +311,10 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
     }
 
     private boolean busy(Player p) {
-        if (suspension != null) { p.sendActionBar(Component.text("Suspended in the moment before the fall…", TEAL_COLOR)); return true; }
+        if (suspension != null) { // no words on the action bar: a dull click, and the boss bar already says SUSPENDED
+            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, SoundCategory.PLAYERS, 0.6f, 0.6f);
+            return true;
+        }
         return plungeRun != null || sinkRun != null;
     }
 
@@ -839,18 +842,17 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         String ug = glyphs ? plugin.getConfig().getString(cfgPath("hud.undertow-glyph"), "\uE048") : "Undertow";
         plunge.resize(cfgI("plunge.charges", 2));
         int ready = plunge.ready(n);
-        String ps = plungeRun != null ? "§cActive…" : ready > 0 ? "§b" + ready + "/" + plunge.max() : "§b" + fmt(plunge.nextIn(n));
-        String rs = sinkRun != null ? "§cActive…" : plugin.relay().timeScale(h.getLocation(), h.getUniqueId()) < 1 ? "§6Slowed"
-                : status(risingReady - n);
-        String us = status(undertowReady - n);
-        String msg = "§f" + pg + " " + ps + "  §f" + rg + " " + rs + "  §f" + ug + " " + us;
-        if (suspension != null) msg = "§6Suspended §7" + fmt(suspension.remaining * 50L) + "  " + msg;
+        // Icons and timers only, no words (HudStatus). Rising can't be cast in a Time Dilate field: its icon goes dark.
+        String ps = plungeRun != null ? HudStatus.entry(pg, 0, true) : HudStatus.charges(pg, ready, plunge.max(), plunge.nextIn(n));
+        String rs = sinkRun != null ? HudStatus.entry(rg, 0, true)
+                : plugin.relay().timeScale(h.getLocation(), h.getUniqueId()) < 1 ? "§8" + rg : HudStatus.entry(rg, risingReady - n, false);
+        String us = HudStatus.entry(ug, undertowReady - n, false);
+        String msg = ps + "  " + rs + "  " + us;
+        if (suspension != null) msg = "§6\u231B §e" + HudStatus.time(suspension.remaining * 50L) + "  " + msg; // suspended: an hourglass and its timer
         h.sendActionBar(LEGACY.deserialize(msg));
     }
 
-    private static String status(long ms) { return ms > 0 ? "§b" + fmt(ms) : "§aReady"; }
 
-    private static String fmt(long ms) { return Math.max(1, (ms + 999) / 1000) + "s"; }
 
     // ------------------------------------------------------------------ tick
 

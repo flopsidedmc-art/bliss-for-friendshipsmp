@@ -533,7 +533,7 @@ public class GemListener implements Listener {
             case SPEED -> {
                 if (t2) {
                     bar.add(hudEntry(icon(type, "left"), cdRemain(p, "blur"), blurRuns.containsKey(id)));
-                    bar.add("§f" + icon(type, "right") + " " + ChargePools.hud(plugin, p, "storm"));
+                    bar.add(ChargePools.hud(plugin, p, "storm", icon(type, "right")));
                 }
                 bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "thunderstep"), false));
             }
@@ -577,44 +577,25 @@ public class GemListener implements Listener {
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(String.join("  ", bar)));
     }
 
+    /** One ability on the action bar: icons and timers only, no words (HudStatus). */
     private String hudEntry(String icon, long remainMs, boolean active) {
-        return "§f" + icon + " " + hudStatus(remainMs, active);
+        return HudStatus.entry(icon, remainMs, active);
     }
 
     private void sendFluxActionbar(Player p, long now) {
         UUID id = p.getUniqueId();
-        String beam = hudStatus(remain(fluxBeamCooldown, id), false);
+        String beam = hudEntry(icon(GemType.FLUX, "left"), remain(fluxBeamCooldown, id), false);
         int charge = fluxOf(fluxCharge, id);
         long burstCooldown = remain(fluxBurstCooldown, id);
-        String burst = burstCooldown > 0 ? hudStatus(burstCooldown, false)
-                : (charge >= 100 ? "§aReady!" : "§b" + charge);
-        String watts = "§3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
-        String overdrive = hudStatus(remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
+        String burstIcon = icon(GemType.FLUX, "ability");
+        // Kinetic Burst: a timer while it cools down, then its charge in % (dimmed) until it is full.
+        String burst = burstCooldown > 0 ? hudEntry(burstIcon, burstCooldown, false)
+                : (charge >= 100 ? hudEntry(burstIcon, 0, false) : "§7" + burstIcon + " §b" + charge + "%");
+        String watts = "§f" + tier2Glyph() + " §3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
+        String overdrive = hudEntry(icon(GemType.FLUX, "right"), remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
 
-        String msg = "§f" + icon(GemType.FLUX, "left") + " " + beam
-                + "  §f" + icon(GemType.FLUX, "ability") + " " + burst
-                + "  §f" + tier2Glyph() + " " + watts
-                + "  §f" + icon(GemType.FLUX, "right") + " " + overdrive;
+        String msg = beam + "  " + burst + "  " + watts + "  " + overdrive;
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
-    }
-
-    private String hudStatus(long remainMs, boolean active) {
-        if (active) return "§cActive...";
-        if (remainMs <= 0) return "§aReady!";
-        return "§b" + formatCooldown(remainMs);
-    }
-
-    private String formatCooldown(long remainMs) {
-        long totalSeconds = Math.max(1L, (remainMs + 999L) / 1000L);
-        long hours = totalSeconds / 3600L;
-        long minutes = (totalSeconds % 3600L) / 60L;
-        long seconds = totalSeconds % 60L;
-        if (hours > 0) {
-            return hours + "h" + (minutes > 0 ? " " + minutes + "m" : "")
-                    + (seconds > 0 ? " " + seconds + "s" : "");
-        }
-        if (minutes > 0) return minutes + "m" + (seconds > 0 ? " " + seconds + "s" : "");
-        return seconds + "s";
     }
 
     private String tier2Glyph() {

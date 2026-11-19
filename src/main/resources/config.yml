@@ -97,7 +97,7 @@ mythics:
       max-slams: 3
       max-victims: 2
 
-  # Auratus (rebuilt, on the old controls; see AURATUS.md). Gem in the main hand: left-click chains, sneak + right-click
+  # Auratus (rebuilt, on the old controls; see AURATUS.md). Gem in the main hand: left-click chains, right-click
   # Aegis, sneak + left-click in the air Gilded Slam, left + right-click together Flagpole. Off hand: right-click chains,
   # sneak + right-click Aegis (or the slam, in the air). Damage numbers are before ability-damage.multiplier and its cap.
   # Servers upgrading from the old Auratus get this section fresh once; Feathered Fall and the chain model settings are kept.

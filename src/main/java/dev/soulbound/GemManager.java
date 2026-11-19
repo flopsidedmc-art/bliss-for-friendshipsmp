@@ -25,8 +25,8 @@ public class GemManager {
     private final Plugin plugin;
     /** Which lore lettering and lore version a gem was last written in, so styleLore only rebuilds on a change. */
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
-    /** Bump when gem lore text changes, so existing gems rebuild their lore once (6: the Auratus on its old controls). */
-    private static final int LORE_VERSION = 6;
+    /** Bump when gem lore text changes, so existing gems rebuild their lore once (7: Auratus' Aegis on right-click). */
+    private static final int LORE_VERSION = 7;
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -541,7 +541,7 @@ public class GemManager {
             lore.add("");
             lore.add("§6♦ §bPOWERS");
             lore.add("§7— §6⛓ VENERATED PERFORATORS §8[Left-click]");
-            lore.add("§7— §e✧ ECHOING AEGIS §8[Sneak + right-click]");
+            lore.add("§7— §e✧ ECHOING AEGIS §8[Right-click]");
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         } else if (type == GemType.RELAY) {

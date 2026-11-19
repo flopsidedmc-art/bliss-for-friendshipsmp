@@ -1,3 +1,21 @@
+# No words on any action bar; Auratus' Aegis on right-click
+
+- **Every gem's action bar is now icons and timers only:** standard gems, Flux, Heretic, Auratus, the Relay (including the Rift slot by the hotbar), and the Revenant's too. There's no "Ready!", "Active...", gem name, "Slowed", "Suspended" or "x/y Ready!" any more.
+  - **Ready:** the icon, bright.
+  - **Recharging:** the icon dimmed, with a timer.
+  - **Active:** the icon followed by "…".
+  - **Abilities with charges** (Speedy Storm, Bloodsaws, chains, Rewind, Plunge): bright while one is left, with the next refill timer in darker blue; dimmed with a timer when none are.
+  - **Flux Kinetic Burst** shows its charge as a dimmed icon with a %. Watts stay a number.
+  - **Rift:** an orange timer while unstable in combat, dark while the finale seals it.
+  - **The Revenant:** Rising goes dark inside Time Dilate, and a suspension shows an hourglass and its timer.
+  - Shared in `HudStatus.java`, with 4 unit tests.
+- **Auratus:**
+  - The Aegis is plain right-click with the gem in your main hand. The off hand is unchanged: right-click chains, sneak + right-click Aegis (or the slam in the air). Lore version 7.
+  - The action bar is the old chain and Aegis icons with no words. Flagpole and slam cooldowns and the Echo Anchor show as small gold ⚑, ▼ and ▲ symbols only while they matter.
+  - Hints that used to flash text ("Hook someone first", "Slam ready in…") are now a soft click only you hear. So is the Revenant's "Suspended…" message.
+- **Unchanged (not part of the HUD):** one-off messages such as the Bounty Hunter tracking lines, "GEM DISABLED", the finale's pedestal instructions and the Prismatic Edge weapon's own bar.
+- 45 unit tests pass. Not run in a game.
+
 # Auratus: the old controls and action bar are back
 
 - **Controls:** left-click chains, sneak + right-click Aegis, left + right-click together Flagpole, as before. Off hand: right-click chains, sneak + right-click Aegis. Hidden combos stay hidden; the lore lists only the two powers.
