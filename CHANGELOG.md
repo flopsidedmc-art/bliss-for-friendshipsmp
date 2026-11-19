@@ -1,3 +1,10 @@
+# Relay sounds boosted to vanilla level
+
+- `rewind.ogg` and `time_dilate.ogg` are peak-normalised to about -1 dB, where vanilla sounds sit, with a little headroom so nothing clips. It's a straight volume increase (Rewind +8 dB, Time Dilate +12.7 dB), so the sound itself is the same.
+- Still mono Ogg Vorbis at 48 kHz, same length.
+- Your untouched originals are in `tools/pack/source/sounds/original/`.
+- Pack only; the plugin is unchanged.
+
 # Relay: your Rewind and Time Dilate sounds
 
 - **Your sound files are in the pack:** `rewind.ogg` and `time_dilate.ogg` are at `assets/blissgems/sounds/relay/` and registered in `sounds.json` as `relay.rewind` ("Time rewinds") and `relay.time_dilate` ("Time slows").
