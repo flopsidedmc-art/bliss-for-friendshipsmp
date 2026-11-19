@@ -1,3 +1,13 @@
+# Auratus: the old controls and action bar are back
+
+- **Controls:** left-click chains, sneak + right-click Aegis, left + right-click together Flagpole, as before. Off hand: right-click chains, sneak + right-click Aegis. Hidden combos stay hidden; the lore lists only the two powers.
+- **Gilded Slam is sneak + chain while 4+ blocks up** (off hand: sneak + right-click in the air). It costs no chain charge and has no cooldown, like the old slam. Lower down, sneak + chain is just a chain. `slam.cooldown-seconds` can add a cooldown.
+- **Flagpole's combo window** is `flagpole.combo-ms` (100, as before). It needs a chain hook in the last 5 s.
+- **Plain right-click with the gem in the main hand does nothing.** The old long-reach poke is covered by Hauling Strike's +1 reach on every hit.
+- **Action bar:** the old `⊵ Auratus Ready! ➜ ⊴ Ready!` with the main pack's icons. Flagpole's cooldown and the Echo Anchor are added only while they matter.
+- **Pack:** the four new gold icons (U+E049-E04C) are removed from the pack and the font.
+- Lore version 6. 41 unit tests pass. Not run in a game.
+
 # Auratus, rebuilt
 
 Same powers, rebuilt from scratch: chains, Aegis, slam, Flagpole and the passives, with one clean button each, new visuals and sounds, HUD icons and new damage numbers. Feathered Fall is unchanged. Details, damage table, test plan and decisions: AURATUS.md.

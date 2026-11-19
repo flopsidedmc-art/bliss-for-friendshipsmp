@@ -985,42 +985,6 @@
       "chars": [
         "\ue048"
       ]
-    },
-    {
-      "type": "bitmap",
-      "file": "blissgems:icons/auratus_chain.png",
-      "ascent": 17,
-      "height": 20,
-      "chars": [
-        "\ue049"
-      ]
-    },
-    {
-      "type": "bitmap",
-      "file": "blissgems:icons/auratus_aegis.png",
-      "ascent": 17,
-      "height": 20,
-      "chars": [
-        "\ue04a"
-      ]
-    },
-    {
-      "type": "bitmap",
-      "file": "blissgems:icons/auratus_slam.png",
-      "ascent": 17,
-      "height": 20,
-      "chars": [
-        "\ue04b"
-      ]
-    },
-    {
-      "type": "bitmap",
-      "file": "blissgems:icons/auratus_flagpole.png",
-      "ascent": 17,
-      "height": 20,
-      "chars": [
-        "\ue04c"
-      ]
     }
   ]
 }

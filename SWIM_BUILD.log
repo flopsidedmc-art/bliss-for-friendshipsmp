@@ -50,17 +50,17 @@
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running dev.soulbound.HudTextTest
-[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.056 s -- in dev.soulbound.HudTextTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.077 s -- in dev.soulbound.HudTextTest
 [INFO] Running dev.soulbound.RelayRiftTest
-[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in dev.soulbound.RelayRiftTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.051 s -- in dev.soulbound.RelayRiftTest
 [INFO] Running dev.soulbound.RevenantMathTest
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in dev.soulbound.RevenantMathTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.020 s -- in dev.soulbound.RevenantMathTest
 [INFO] Running dev.soulbound.AirSwimTest
-[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s -- in dev.soulbound.AirSwimTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.119 s -- in dev.soulbound.AirSwimTest
 [INFO] Running dev.soulbound.AuratusMathTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in dev.soulbound.AuratusMathTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.020 s -- in dev.soulbound.AuratusMathTest
 [INFO] Running dev.soulbound.SmallCapsTest
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in dev.soulbound.SmallCapsTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in dev.soulbound.SmallCapsTest
 [INFO] 
 [INFO] Results:
 [INFO] 
@@ -76,6 +76,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.080 s
-[INFO] Finished at: 2026-11-19T17:21:46Z
+[INFO] Total time:  7.899 s
+[INFO] Finished at: 2026-11-19T17:26:45Z
 [INFO] ------------------------------------------------------------------------

@@ -731,6 +731,7 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.slam.min-height", Material.SCAFFOLDING, "Slam Min Height", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
             new MythicSetting("mythics.auratus.slam.dive-speed", Material.RABBIT_FOOT, "Slam Dive Speed", SettingKind.DOUBLE, 0.1, 0.5, 0.3, 6.0, null),
             // Auratus Flagpole
+            new MythicSetting("mythics.auratus.flagpole.combo-ms", Material.LEVER, "Flagpole Combo Window", SettingKind.LONG, 25, 100, 25, 1000, null),
             new MythicSetting("mythics.auratus.flagpole.cooldown-seconds", Material.WHITE_BANNER, "Flagpole Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
             new MythicSetting("mythics.auratus.flagpole.hold-seconds", Material.PHANTOM_MEMBRANE, "Flagpole Hold (s)", SettingKind.DOUBLE, 0.5, 1.0, 0.5, 10.0, null),
             new MythicSetting("mythics.auratus.flagpole.height", Material.LADDER, "Flagpole Height", SettingKind.DOUBLE, 0.5, 1.0, 1.0, 12.0, null),

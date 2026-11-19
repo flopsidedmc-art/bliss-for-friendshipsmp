@@ -136,38 +136,6 @@ for name, rows in REVENANT_ICONS.items():
             ic.putpixel((7 + x, 2 + y), RV[ch] + (255,))
     ic.save(os.path.join(icons, name + ".png"))
 
-# ---- Auratus HUD icons U+E049 chains, U+E04A Aegis, U+E04B Gilded Slam, U+E04C Flagpole: the same 20x20 frame
-# recoloured gold, with gold art inside (33x20 like the other mythic icons).
-GOLDFRAME = {(154, 115, 63): (214, 160, 40), (92, 61, 31): (120, 80, 20)}
-AU = {".": (0, 0, 0), "G": (255, 200, 70), "g": (200, 140, 30), "W": (255, 240, 180), "s": (110, 75, 20)}
-AURATUS_ICONS = {
-    "auratus_chain": ["................", "......GGGG......", ".....G....G.....", ".....G....G.....", "......GgWG......",
-                      ".......gW.......", "......GgWG......", ".....G....G.....", ".....G....G.....", "......GgWG......",
-                      ".......gW.......", ".......gW...g...", ".......gW...G...", "........GW.GG...", ".........GGG....", "................"],
-    "auratus_aegis": ["................", "......WWWW......", "....WG....GW....", "...G..GGGG..G...", "..W..G....G..W..",
-                      "..G.G..WW..G.G..", ".W..G.WGGW.G..W.", ".G..G.GGGG.G..G.", ".G..G.GGGG.G..G.", ".W..G.WGGW.G..W.",
-                      "..G.G..WW..G.G..", "..W..G....G..W..", "...G..GGGG..G...", "....WG....GW....", "......WWWW......", "................"],
-    "auratus_slam": ["................", ".......GG.......", ".......GG.......", ".......GG.......", ".......GG.......",
-                     "....GGGGGGGG....", ".....GGGGGG.....", "......GGGG......", ".......GG.......", "..W....WW....W..",
-                     "...W.gGWWGg.W...", "..gG........Gg..", ".g............g.", "..gG........Gg..", "....gGGGGGGg....", "................"],
-    "auratus_flagpole": ["................", "....WGGGG.......", "....GGGGGGG.....", "....GGGGG.......", "....g...........",
-                         "....g.....W.....", "....g....WWW....", "....g...W.W.W...", "....g.....W.....", "....g....GGG....",
-                         "....g....GGG....", "....g...GgGgG...", "....g....gGg....", "....g....G.G....", "..sgggs.........", "................"],
-}
-for name, rows in AURATUS_ICONS.items():
-    ic = frame.copy()
-    for y in range(20):
-        for x in range(33):
-            px = ic.getpixel((x, y))
-            if px[3] and px[:3] in GOLDFRAME:
-                ic.putpixel((x, y), GOLDFRAME[px[:3]] + (255,))
-    assert len(rows) == 16, name
-    for y, row in enumerate(rows):
-        assert len(row) == 16, (name, y)
-        for x, ch in enumerate(row):
-            ic.putpixel((7 + x, 2 + y), AU[ch] + (255,))
-    ic.save(os.path.join(icons, name + ".png"))
-
 font_path = os.path.join(A, "minecraft/font/default.json")
 font = json.load(open(font_path, encoding="utf-8"))
 if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):
@@ -176,8 +144,7 @@ if not any(p.get("chars") == ["\ue043"] for p in font["providers"]):
 if not any(p.get("chars") == ["\ue044"] for p in font["providers"]):
     at = next(i for i, p in enumerate(font["providers"]) if p.get("chars") == ["\ue043"]) + 1
     font["providers"].insert(at, {"type": "bitmap", "file": "blissgems:icons/relay_divinity.png", "ascent": 17, "height": 20, "chars": ["\ue044"]})
-for code, name in ((0xE046, "revenant_plunge"), (0xE047, "revenant_rising"), (0xE048, "revenant_undertow"),
-                   (0xE049, "auratus_chain"), (0xE04A, "auratus_aegis"), (0xE04B, "auratus_slam"), (0xE04C, "auratus_flagpole")):
+for code, name in ((0xE046, "revenant_plunge"), (0xE047, "revenant_rising"), (0xE048, "revenant_undertow")):
     if not any(p.get("chars") == [chr(code)] for p in font["providers"]):
         font["providers"].append({"type": "bitmap", "file": "blissgems:icons/" + name + ".png", "ascent": 17, "height": 20, "chars": [chr(code)]})
 with open(font_path, "w", encoding="utf-8") as f:

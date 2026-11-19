@@ -65,11 +65,12 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The Auratus gem, rebuilt: the same chains, Aegis, slam and Flagpole, with one clean button each.
+ * The Auratus gem, rebuilt: the same chains, Aegis, slam and Flagpole, on the old Auratus controls.
  *
- * Gem in the main hand: left-click Venerated Perforators (chains), right-click Echoing Aegis, sneak + right-click
- * in the air Gilded Slam, sneak + left-click Flagpole. Gem in the off hand: right-click chains, sneak + right-click
- * Aegis. Passives while holding it in either hand: Feathered Fall, Hauling Strike, Angels Grasp, Divine Purity.
+ * Gem in the main hand: left-click Venerated Perforators (chains), sneak + right-click Echoing Aegis, sneak + chain
+ * in the air Gilded Slam, left + right-click together Flagpole. Gem in the off hand: right-click chains, sneak +
+ * right-click Aegis (or the slam, in the air). Passives while holding it in either hand: Feathered Fall, Hauling
+ * Strike, Angels Grasp, Divine Purity.
  *
  * Damage goes through the same ability-damage scaling and cap as the standard gems, so it hurts unarmored
  * players a lot and armored ones within reason. Nothing is random.
@@ -87,7 +88,7 @@ final class AuratusGem implements Listener {
 
     private final Map<UUID, Charges> chains = new HashMap<>();
     private final Map<UUID, Long> aegisReady = new HashMap<>(), slamReady = new HashMap<>(), flagReady = new HashMap<>();
-    private final Map<UUID, Long> lastInput = new HashMap<>(), lastHint = new HashMap<>();
+    private final Map<UUID, Long> lastLeft = new HashMap<>(), lastRight = new HashMap<>(), lastHint = new HashMap<>();
     private final Map<UUID, String> hintText = new HashMap<>();
     private final Map<UUID, Aegis> aegis = new HashMap<>();
     private final Map<UUID, Anchor> anchors = new HashMap<>();
@@ -232,7 +233,7 @@ final class AuratusGem implements Listener {
 
     // ------------------------------------------------------------------ input
 
-    /** Called by MythicListener for every click while the Auratus is held. */
+    /** Called by MythicListener for every click while the Auratus is held. The old Auratus controls. */
     void handleInput(PlayerInteractEvent e) {
         Player p = e.getPlayer();
         Action a = e.getAction();
@@ -248,15 +249,35 @@ final class AuratusGem implements Listener {
         if (clicked != null && e.useInteractedBlock() == Event.Result.DENY) return; // a protection plugin said no
         e.setCancelled(true);
         if (p.isDead() || !enabled()) return;
+        UUID id = p.getUniqueId();
         long n = now();
-        if (n - lastInput.getOrDefault(p.getUniqueId(), 0L) < 200) return; // one click can arrive as two events
-        lastInput.put(p.getUniqueId(), n);
-        if (main) {
-            if (left) { if (p.isSneaking()) flagpole(p); else chain(p); }
-            else { if (p.isSneaking()) slam(p); else aegis(p); }
-        } else {
-            if (p.isSneaking()) aegis(p); else chain(p);
+        long combo = Math.max(0, plugin.getConfig().getLong(path("flagpole.combo-ms"), 100));
+        if (left) {
+            if (n - lastLeft.getOrDefault(id, 0L) < 150) return; // one click can arrive as two events
+            lastLeft.put(id, n);
+            if (main && n - lastRight.getOrDefault(id, 0L) <= combo) { flagpole(p); return; } // left + right together
+            if (p.isSneaking() && slamPosition(p)) { slam(p); return; } // sneak + chain in the air
+            chain(p);
+            return;
         }
+        if (n - lastRight.getOrDefault(id, 0L) < 150) return;
+        lastRight.put(id, n);
+        if (main) {
+            if (n - lastLeft.getOrDefault(id, 0L) <= combo) { flagpole(p); return; }
+            if (p.isSneaking()) aegis(p);
+            // A plain right-click does nothing: the old long-reach poke is Hauling Strike's +1 reach on every hit now.
+            return;
+        }
+        // Off hand: right-click is the chain, so sneak + right-click is the slam in the air and the Aegis otherwise.
+        if (!p.isSneaking()) chain(p);
+        else if (slamPosition(p)) slam(p);
+        else aegis(p);
+    }
+
+    /** High enough in the air for Gilded Slam: sneaking with the chain there slams instead of throwing a chain. */
+    private boolean slamPosition(Player p) {
+        return !p.isOnGround() && !p.isInWater() && !p.isFlying()
+                && heightAboveGround(p.getLocation(), 64) >= cfgD("slam.min-height", 4.0);
     }
 
     /** With the gem in the off hand, the main hand's own right-click use wins (bows, food, pearls, placing blocks). */
@@ -555,12 +576,12 @@ final class AuratusGem implements Listener {
     private void slam(Player p) {
         UUID id = p.getUniqueId();
         long n = now();
-        if (slamReady.getOrDefault(id, 0L) > n || dives.containsKey(id)) return;
-        double height = heightAboveGround(p.getLocation(), 64);
-        if (height < cfgD("slam.min-height", 4.0)) { hint(p, "Too low to slam: get " + (int) Math.ceil(cfgD("slam.min-height", 4.0)) + "+ blocks up"); return; }
+        if (dives.containsKey(id)) return;
+        long wait = slamReady.getOrDefault(id, 0L) - n;
+        if (wait > 0) { hint(p, "Slam ready in " + fmt(wait)); return; }
         Location target = slamTarget(p);
         if (target == null) return;
-        slamReady.put(id, n + ms("slam.cooldown-seconds", 8));
+        slamReady.put(id, n + ms("slam.cooldown-seconds", 0));
         stopReel(id);
         Dive d = new Dive();
         d.target = target;
@@ -886,30 +907,30 @@ final class AuratusGem implements Listener {
         }
     }
 
-    /** The action bar while the gem is held: chains, Aegis, slam and Flagpole, plus the Echo Anchor when it's up. */
+    // The old Auratus HUD glyphs from the main pack (default.json: blissgems:icons/peforators.png and aegis.png).
+    private static final String GLYPH_PERFORATORS = "\u22B5", GLYPH_AEGIS = "\u22B4";
+
+    /**
+     * The old Auratus action bar: chains and Aegis with the pack's own icons. Flagpole's cooldown, a slam cooldown (if
+     * one is set) and the Echo Anchor are added only while they matter.
+     */
     Component hudComponent(Player p) {
         UUID id = p.getUniqueId();
         long n = now();
         String h = hintText.get(id);
         if (h != null && n - lastHint.getOrDefault(id, 0L) < 1500) return Component.text(h, net.kyori.adventure.text.format.TextColor.color(0xFFC846));
-        boolean glyphs = cfgB("hud.use-glyphs", true);
-        String cg = glyphs ? plugin.getConfig().getString(path("hud.chain-glyph"), "\uE049") : "Chains";
-        String ag = glyphs ? plugin.getConfig().getString(path("hud.aegis-glyph"), "\uE04A") : "Aegis";
-        String sg = glyphs ? plugin.getConfig().getString(path("hud.slam-glyph"), "\uE04B") : "Slam";
-        String fg = glyphs ? plugin.getConfig().getString(path("hud.flagpole-glyph"), "\uE04C") : "Flagpole";
         Charges c = charges(p);
-        int ready = c.ready(n);
-        String cs = reels.containsKey(id) ? "§eReeling" : ready > 0 ? "§b" + ready + "/" + c.max() : "§b" + fmt(c.nextIn(n));
-        String as = aegis.containsKey(id) ? "§eActive" : status(aegisReady.getOrDefault(id, 0L) - n);
-        String ss = dives.containsKey(id) ? "§eActive" : status(slamReady.getOrDefault(id, 0L) - n);
-        String fs = status(flagReady.getOrDefault(id, 0L) - n);
-        String msg = "§f" + cg + " " + cs + "  §f" + ag + " " + as + "  §f" + sg + " " + ss + "  §f" + fg + " " + fs;
+        String chains = dives.containsKey(id) ? "§cActive..." : c.ready(n) > 0 ? "§aReady!" : "§b" + fmt(c.nextIn(n));
+        long aegisLeft = aegisReady.getOrDefault(id, 0L) - n;
+        String guard = aegis.containsKey(id) ? "§cActive..." : aegisLeft > 0 ? "§b" + fmt(aegisLeft) : "§aReady!";
+        StringBuilder msg = new StringBuilder("§f" + GLYPH_PERFORATORS + " §bAuratus " + chains + " §7➜ §f" + GLYPH_AEGIS + " " + guard);
+        long slamLeft = slamReady.getOrDefault(id, 0L) - n, flagLeft = flagReady.getOrDefault(id, 0L) - n;
+        if (slamLeft > 0) msg.append(" §7| §6Slam §b").append(fmt(slamLeft));
+        if (flagLeft > 0) msg.append(" §7| §6Flagpole §b").append(fmt(flagLeft));
         Anchor an = anchors.get(id);
-        if (an != null && an.until > n) msg += "  §6▲ Anchor " + fmt(an.until - n);
-        return LEGACY.deserialize(msg);
+        if (an != null && an.until > n) msg.append(" §7| §6Anchor §b").append(fmt(an.until - n));
+        return LEGACY.deserialize(msg.toString());
     }
-
-    private static String status(long ms) { return ms > 0 ? "§b" + fmt(ms) : "§aReady"; }
 
     private static String fmt(long ms) { return Math.max(1, (ms + 999) / 1000) + "s"; }
 

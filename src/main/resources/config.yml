@@ -97,9 +97,9 @@ mythics:
       max-slams: 3
       max-victims: 2
 
-  # Auratus (rebuilt; see AURATUS.md). Gem in the main hand: left-click chains, right-click Aegis,
-  # sneak + right-click (in the air) Gilded Slam, sneak + left-click Flagpole. Off hand: right-click chains,
-  # sneak + right-click Aegis. Damage numbers are before ability-damage.multiplier and its cap, like the standard gems.
+  # Auratus (rebuilt, on the old controls; see AURATUS.md). Gem in the main hand: left-click chains, sneak + right-click
+  # Aegis, sneak + left-click in the air Gilded Slam, left + right-click together Flagpole. Off hand: right-click chains,
+  # sneak + right-click Aegis (or the slam, in the air). Damage numbers are before ability-damage.multiplier and its cap.
   # Servers upgrading from the old Auratus get this section fresh once; Feathered Fall and the chain model settings are kept.
   auratus:
     passives:
@@ -134,27 +134,22 @@ mythics:
       anchor-height: 8.0 # the Echo Anchor appears up to this high above you
       anchor-seconds: 5
       anchor-cone-degrees: 35 # throw a chain within this angle of the anchor and it latches on
-    slam: # Gilded Slam
-      cooldown-seconds: 8
-      min-height: 4.0 # blocks above the ground needed to start it
+    slam: # Gilded Slam: sneak + chain while 4+ blocks up (costs no chain charge)
+      cooldown-seconds: 0 # like the old slam, none: getting back up costs chains
+      min-height: 4.0 # blocks above the ground needed; lower down, sneak + chain is just a chain
       range: 24 # how far away the landing spot can be (where you look, or straight down)
       dive-speed: 1.6
       radius: 5.0
       damage-center: 6.0 # x3 = 18 HP (9 hearts) unarmored at the centre
       damage-edge: 3.0 # at the edge of the radius
       launch: 0.45 # upward pop on everyone hit
-    flagpole: # Flagpole: hoist the enemy your chain just hooked
+    flagpole: # Flagpole: left + right-click together to hoist the enemy your chain just hooked
+      combo-ms: 100 # how close together the two clicks must be
       cooldown-seconds: 25
       hook-memory-seconds: 5 # works on an enemy your chain latched onto this recently
       range: 24
       height: 5.0 # lifted this high (less under a ceiling)
       hold-seconds: 2.5
-    hud:
-      use-glyphs: true # false: text labels instead of the pack's icons
-      chain-glyph: "\uE049"
-      aegis-glyph: "\uE04A"
-      slam-glyph: "\uE04B"
-      flagpole-glyph: "\uE04C"
 
   # Relay Gem: prize for "The Signal" ARG. One of a kind, ignores energy, drops on death.
   relay:
