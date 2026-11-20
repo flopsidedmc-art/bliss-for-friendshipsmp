@@ -52,6 +52,14 @@ final class GemSounds {
         if (s != null && at != null && at.getWorld() != null) one(plugin, s, at, null);
     }
 
+    /** Plays only the layer of an entry, for when something else makes its main sound (a firework's own blast). */
+    static void playLayer(SoulboundGemsPlugin plugin, String id, Location at) {
+        ConfigurationSection s = entry(plugin, id);
+        if (s == null || at == null || at.getWorld() == null) return;
+        ConfigurationSection layer = s.getConfigurationSection("layer");
+        if (layer != null && layer.getBoolean("enabled", true) && playable(plugin, layer.getString("event"))) one(plugin, layer, at, null);
+    }
+
     private static void emit(SoulboundGemsPlugin plugin, String id, Location at, Player only) {
         if (at == null || at.getWorld() == null) return;
         ConfigurationSection s = entry(plugin, id);

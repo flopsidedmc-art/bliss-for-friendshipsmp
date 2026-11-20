@@ -241,7 +241,6 @@ mythics:
       damage-center: 6.0 # x3 = 18 HP (9 hearts) unarmored at the centre
       damage-edge: 3.0 # at the edge of the radius
       launch: 0.45 # upward pop on everyone hit
-      firework: true # a gold firework bursts at the impact (it can't hurt anyone)
     flagpole: # Pull an enemy in (or hook them), then catch them with the Aegis: nothing else = Flagpole, chain again = the launch
       cooldown-seconds: 25 # shared by Flagpole and the launch
       hook-memory-seconds: 5 # the Aegis catches an enemy you hooked or pulled in this recently
@@ -250,6 +249,13 @@ mythics:
       finisher-launch-height: 30 # blocks they're thrown straight up (the fall comes on top)
       height: 5.0 # lifted this high (less under a ceiling)
       hold-seconds: 2.5
+      ceiling-cap: false # false: under a low ceiling they fly up into it and stay pinned there. true: they stop below it (no lift in a 2-high tunnel)
+    visuals: # firework bursts and sparks; no firework from this plugin can hurt anyone
+      slam-burst: true # Gilded Slam: a white sphere (fading pale blue) at a random spot 1.5-3 blocks from the landing, 0.5-2.5 up
+      slam-sparks: true # Gilded Slam: firework sparks from random spots on the ground, shooting up and drifting down
+      slam-spark-count: 30
+      launch-burst: true # the launch: a gold sphere where they stood (its blast replaces launch's own blast sound)
+      flagpole-burst: true # Flagpole: a gold sphere on them as they're hoisted
 
   # Relay Gem: prize for "The Signal" ARG. One of a kind, ignores energy, drops on death.
   relay:

@@ -56,6 +56,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionEffectTypeCategory;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
@@ -69,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * The Auratus gem, rebuilt: the same chains, Aegis, slam and Flagpole, on the old Auratus controls.
@@ -113,6 +116,8 @@ final class AuratusGem implements Listener {
     private final Set<UUID> reachApplied = new HashSet<>();
     private final Set<UUID> purifying = new HashSet<>();
     private final Set<UUID> reflecting = new HashSet<>();
+    private final Set<BukkitTask> sparkTasks = new HashSet<>(); // the slam's delayed sparks (each ends itself in 10 ticks)
+    private static final Color ICE = Color.fromRGB(0xDDE6FF); // the slam sphere's cold fade
     private long tick;
 
     /** The chain's links and hook (pack models), or nothing when drawn as dust. */
@@ -878,12 +883,14 @@ final class AuratusGem implements Listener {
         }
         fallGrace.put(id, now() + 1500);
         p.setFallDistance(0);
-        if (cfgB("slam.firework", true)) {
-            slamFirework(at); // its own large blast is the layer
+        // slam.firework is the old switch for the same thing: either one off turns the sphere off.
+        if (cfgB("visuals.slam-burst", true) && cfgB("slam.firework", true)) {
+            burst(randomNear(at, 1.5, 3.0, 0.5, 2.5), Color.WHITE, ICE); // a white sphere, somewhere new each slam; its blast is the layer
             GemSounds.playMain(plugin, "auratus.gilded-slam", at);
         } else {
             GemSounds.play(plugin, "auratus.gilded-slam", at);
         }
+        if (cfgB("visuals.slam-sparks", true)) sparks(at, radius);
         Block ground = at.getBlock().getRelative(BlockFace.DOWN);
         if (ground.getType().isSolid()) w.spawnParticle(Particle.BLOCK, at.clone().add(0, 0.2, 0), 50, radius * 0.4, 0.1, radius * 0.4, 0.2, ground.getBlockData());
         w.spawnParticle(Particle.END_ROD, at.clone().add(0, 0.3, 0), 24, radius * 0.3, 0.2, radius * 0.3, 0.12);
@@ -901,20 +908,60 @@ final class AuratusGem implements Listener {
     }
 
     /**
-     * A gold firework (large ball, #FFC846 fading to #FFF0B4) bursting at the slam. It's tagged so it never hurts anyone
-     * (onSlamFirework), and it makes its own large-blast sound, which stands in for gilded-slam's layer.
+     * A large-ball firework bursting at {@code at} at once. THE ONLY PLACE THIS PLUGIN SPAWNS A FIREWORK
+     * (FireworkSafetyTest checks it): every one is tagged with fireworkKey, so onSlamFirework cancels any damage it
+     * would do. It makes its own large-blast sound.
      */
-    private void slamFirework(Location at) {
-        Firework fw = at.getWorld().spawn(at.clone().add(0, 0.5, 0), Firework.class, f -> {
+    private void burst(Location at, Color color, Color fade) {
+        Firework fw = at.getWorld().spawn(at, Firework.class, f -> {
             FireworkMeta m = f.getFireworkMeta();
             m.clearEffects();
-            m.addEffect(FireworkEffect.builder().with(FireworkEffect.Type.BALL_LARGE)
-                    .withColor(Color.fromRGB(0xFFC846)).withFade(Color.fromRGB(0xFFF0B4)).build());
+            m.addEffect(FireworkEffect.builder().with(FireworkEffect.Type.BALL_LARGE).withColor(color).withFade(fade).build());
             m.setPower(0);
             f.setFireworkMeta(m);
             f.getPersistentDataContainer().set(fireworkKey, PersistentDataType.BYTE, (byte) 1);
         });
         fw.detonate();
+    }
+
+    /** A random spot minR..maxR out from {@code base} in any direction and minUp..maxUp above it; base + 1 up if that spot is in a solid block. */
+    private static Location randomNear(Location base, double minR, double maxR, double minUp, double maxUp) {
+        double[] o = AuratusMath.randomOffset(ThreadLocalRandom.current(), minR, maxR, minUp, maxUp);
+        Location at = base.clone().add(o[0], o[1], o[2]);
+        return at.getBlock().getType().isSolid() ? base.clone().add(0, 1, 0) : at;
+    }
+
+    /**
+     * visuals.slam-spark-count firework sparks, each from its own random spot within 0.8 x the slam radius, 0.2 above
+     * the ground, each with its own small delay (spread over the first 10 ticks): they shoot up and drift back down.
+     * Everyone in range sees them. The task ends itself after 10 ticks (and on disable).
+     */
+    private void sparks(Location at, double radius) {
+        int total = Math.max(0, Math.min(200, cfgI("visuals.slam-spark-count", 30)));
+        if (total == 0) return;
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        int[] perTick = new int[10];
+        for (int i = 0; i < total; i++) perTick[r.nextInt(10)]++;
+        World w = at.getWorld();
+        double reach = radius * 0.8;
+        int[] t = {0};
+        BukkitTask[] self = new BukkitTask[1];
+        self[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            ThreadLocalRandom rnd = ThreadLocalRandom.current();
+            for (int i = 0; i < perTick[t[0]]; i++) {
+                double a = rnd.nextDouble() * Math.PI * 2, d = reach * Math.sqrt(rnd.nextDouble()); // evenly over the disc
+                w.spawnParticle(Particle.FIREWORK, at.getX() + Math.cos(a) * d, at.getY() + 0.2, at.getZ() + Math.sin(a) * d,
+                        0, rnd.nextDouble(-0.2, 0.2), rnd.nextDouble(0.4, 0.85), rnd.nextDouble(-0.2, 0.2), 1.0); // count 0: offsets = direction
+            }
+            if (++t[0] >= perTick.length) { self[0].cancel(); sparkTasks.remove(self[0]); }
+        }, 0L, 1L);
+        sparkTasks.add(self[0]);
+    }
+
+    /** Inside a block (its box, a little shrunk so touching the floor or a ceiling doesn't count). */
+    private static boolean stuck(LivingEntity v) {
+        BoundingBox box = v.getBoundingBox().expand(-0.05);
+        return v.getWorld().hasCollisionsIn(box);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
@@ -953,12 +1000,15 @@ final class AuratusGem implements Listener {
         Hoist hs = new Hoist();
         hs.owner = id;
         hs.baseY = v.getLocation().getY();
-        double top = hs.baseY;
         int height = (int) Math.round(cfgD("flagpole.height", 5.0));
-        for (int up = 1; up <= height; up++) { // never into a ceiling
-            Block b = v.getLocation().getBlock().getRelative(0, up + 1, 0);
-            if (!b.isPassable()) break;
-            top = hs.baseY + up;
+        double top = hs.baseY + height; // under a low ceiling they fly up into it and stay pinned there (velocity, never a teleport)
+        if (cfgB("flagpole.ceiling-cap", false)) { // the old way: stop below any ceiling
+            top = hs.baseY;
+            for (int up = 1; up <= height; up++) {
+                Block b = v.getLocation().getBlock().getRelative(0, up + 1, 0);
+                if (!b.isPassable()) break;
+                top = hs.baseY + up;
+            }
         }
         hs.topY = top;
         int hold = (int) Math.round(cfgD("flagpole.hold-seconds", 2.5) * 20);
@@ -966,8 +1016,9 @@ final class AuratusGem implements Listener {
         hoists.put(v.getUniqueId(), hs);
         setModifier(v, Attribute.GRAVITY, hoistKey, -1);
         grasp(v, hs.left / 20.0 + 1);
-        World w = v.getWorld();
+        if (cfgB("visuals.flagpole-burst", true)) burst(v.getLocation().add(0, v.getHeight() * 0.7, 0), GOLD, PALE);
         GemSounds.play(plugin, "auratus.flagpole", v.getLocation());
+        if (stuck(v)) release(v.getUniqueId(), v); // already inside a block: no hold at all
     }
 
     /**
@@ -986,6 +1037,7 @@ final class AuratusGem implements Listener {
         stopReel(id);
         World w = v.getWorld();
         Location from = p.getLocation().add(0, 1.2, 0), to = v.getLocation().add(0, v.getHeight() * 0.5, 0);
+        Location stood = v.getLocation().add(0, v.getHeight() * 0.7, 0); // where they stood, chest height
         Vector step = to.toVector().subtract(from.toVector());
         int points = (int) Math.max(2, Math.min(40, step.length() * 3));
         for (int i = 0; i <= points; i++) w.spawnParticle(Particle.DUST, from.clone().add(step.clone().multiply(i / (double) points)), 1, 0, 0, 0, 0,
@@ -999,12 +1051,18 @@ final class AuratusGem implements Listener {
                 if (v.isValid() && !v.isDead() && v.getVelocity().getY() < up * 0.8) v.setVelocity(new Vector(0, up, 0));
             });
         }
-        GemSounds.play(plugin, "auratus.launch", to);
+        if (cfgB("visuals.launch-burst", true)) {
+            burst(stood, GOLD, PALE);
+            GemSounds.playLayer(plugin, "auratus.launch", to); // the burst's own blast is launch's main sound
+        } else {
+            GemSounds.play(plugin, "auratus.launch", to);
+        }
         w.spawnParticle(Particle.END_ROD, to, 40, 0.3, 1.5, 0.3, 0.25);
         dust(w, to, 30, 0.6, GOLD, 1.6f);
     }
 
     private void tickHoist(LivingEntity v, Hoist hs) {
+        if (stuck(v)) { release(v.getUniqueId(), v); return; } // never held inside a block (a block placed on them, say)
         Location l = v.getLocation();
         Vector vel = v.getVelocity();
         double vy = AuratusMath.hoistVelocity(l.getY(), hs.topY, 0.6, 0.3);
@@ -1251,6 +1309,8 @@ final class AuratusGem implements Listener {
     public void onWorld(PlayerChangedWorldEvent e) { cleanup(e.getPlayer()); }
 
     void shutdown() {
+        for (BukkitTask t : sparkTasks) t.cancel();
+        sparkTasks.clear();
         for (UUID id : new ArrayList<>(reels.keySet())) stopReel(id);
         for (UUID id : new ArrayList<>(tethers.keySet())) stopTether(id);
         combos.clear();

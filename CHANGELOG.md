@@ -1,3 +1,54 @@
+# Auratus firework bursts and the Flagpole under a ceiling
+
+## What changed
+- **One helper for every burst:** `burst(at, colour, fade)`, a large-ball firework detonated at once. It's still the plugin's only firework, and it's tagged so its damage is cancelled.
+- **Gilded Slam:**
+  - **The sphere:** it's now white, fading to a cold pale blue (#DDE6FF), at a random spot 1.5-3 blocks from the landing and 0.5-2.5 up. It moves to a new spot every slam, and to 1 block above the landing if the random spot is inside a block.
+  - **The sparks:** 30 firework sparks (`visuals.slam-spark-count`). Each starts from its own random point within 0.8 × the slam radius, 0.2 above the ground, with its own direction. They're spread over the first 10 ticks, so they shoot up a few at a time and drift back down. Everyone nearby sees them.
+- **The launch:** a gold sphere (#FFC846 to #FFF0B4) where the victim stood, chest height. Its own blast replaces the launch's blast sound; the sonic-boom layer still plays.
+- **Flagpole:**
+  - **The sphere:** a gold sphere on the victim as they're hoisted. It adds a firework blast to the chain and bell sound.
+  - **Under a ceiling:** the hold no longer stops below a ceiling. It always aims for the full height (5), so in a 2-high tunnel the victim flies up into the ceiling and stays pinned there for the hold.
+  - **Same movement as before:** gravity off and upward speed every tick, never a teleport. Fall distance resets every tick, and the normal release applies.
+  - **Never stuck in a block:** a victim who is already inside a block when the hold starts is released at once, and so is one who ends up in a block mid-hold. `flagpole.ceiling-cap: true` brings back the old stop-below-the-ceiling behaviour.
+- **Settings** (`mythics.auratus.visuals`, all true):
+  - `slam-burst`, `slam-sparks`, `slam-spark-count` (30), `launch-burst`, `flagpole-burst`;
+  - plus `flagpole.ceiling-cap` (false).
+  - The old `slam.firework` switch is gone from the shipped config. If your server's config still has `slam.firework: false`, the slam sphere stays off.
+  - The `/mythicconfig` Auratus page has no on/off switches (only numbers), so these aren't added there.
+- **Unchanged:** damage, timing, cooldowns and controls.
+
+## Files changed
+- `AuratusGem.java`:
+  - `slamFirework()` became `burst()`;
+  - new `randomNear()`, `sparks()` and the stuck-in-a-block check;
+  - the slam, launch and Flagpole bursts;
+  - the Flagpole height change;
+  - the spark task is cancelled on disable.
+- `AuratusMath.java`: `randomOffset()`, the random spot's maths, unit-tested.
+- `GemSounds.java`: `playLayer()`, so the launch can play only its sonic boom while the burst makes the blast.
+- `config.yml`: `mythics.auratus.visuals` and `flagpole.ceiling-cap`; `slam.firework` removed.
+- `AURATUS.md`, `SOUNDS.md`, `CHANGELOG.md`.
+- `FireworkSafetyTest.java` (new):
+  - fails if any code other than `burst()` spawns a firework, or if `burst()` stops tagging it;
+  - checks the random spot stays in its ring, and the new settings.
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 83 unit tests pass (3 new).
+- **Not tested:** nothing was seen in game. Unchecked:
+  - how the sparks look;
+  - the bursts' placement;
+  - the Flagpole in a tunnel;
+  - Paper 26.2.
+
+### In-game test plan
+1. Gilded Slam on a group: a white sphere bursts near the landing, and about 30 sparks shoot up over half a second and drift down. Slam three times: they land differently each time, and the sphere is never inside a wall. Nobody takes damage.
+2. The launch: the victim flies up and a gold sphere bursts where they stood.
+3. Flagpole: a gold sphere bursts on the victim as they're hoisted.
+4. Flagpole in a 2-high tunnel and a 3-high cave: the victim flies up and is pinned against the ceiling for the full hold, with no fall or suffocation damage when released.
+5. Turn each `visuals` toggle off and reload: only that effect stops.
+6. Stand near any burst with 1 heart left: no damage.
+
 # Abilities hit harder: they pierce armour, and the weakest went up
 
 Gem abilities barely scratched Protection IV diamond (a Bloodsaw did 0.2 hearts). Simply raising the numbers would have made them one-shot players in iron or no armour, so ability hits now **pierce armour points**, like magic. Protection and Resistance still reduce them, and shields don't block them. A hit now lands about the same on everyone, and Prot IV takes 64% off. The weakest ones also got bigger numbers.

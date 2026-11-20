@@ -34,6 +34,14 @@ final class AuratusMath {
         return Math.max(-Math.abs(maxDown), Math.min(Math.abs(maxUp), v));
     }
 
+    /** A random offset {x, y, z}: minR..maxR out horizontally in any direction, minUp..maxUp up. */
+    static double[] randomOffset(java.util.random.RandomGenerator r, double minR, double maxR, double minUp, double maxUp) {
+        double a = r.nextDouble() * Math.PI * 2;
+        double d = minR + r.nextDouble() * Math.max(0, maxR - minR);
+        double up = minUp + r.nextDouble() * Math.max(0, maxUp - minUp);
+        return new double[] {Math.cos(a) * d, up, Math.sin(a) * d};
+    }
+
     /** Divine Purity: a harmful effect's duration in ticks, scaled. Infinite (-1) stays infinite; at least 1 tick. */
     static int purifiedDuration(int ticks, double multiplier) {
         if (ticks < 0) return ticks;

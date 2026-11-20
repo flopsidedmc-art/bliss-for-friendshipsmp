@@ -126,6 +126,6 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 ## Not in this table
 
 - **The fireball explosion:** the game's own boom. It can't be turned down, so `fire.fireball-hit` is off to avoid a second boom.
-- **The gold slam firework:** it makes its own large blast. While `mythics.auratus.slam.firework` is on, `gilded-slam`'s layer is skipped so it isn't doubled.
+- **The Auratus firework bursts:** each one makes its own large blast. While `mythics.auratus.visuals.slam-burst` is on, `gilded-slam`'s layer is skipped; while `launch-burst` is on, `launch` plays only its layer (the sonic boom). The Flagpole burst adds a blast on top of `flagpole`.
 - **The Revenant:** a boss weapon, not a gem, so its sounds were left as they were.
 - **Other items:** the upgrader, trader and repair-kit items, the Prismatic Edge weapon, the energy level-up, the menus, the turmoil and the finale (which keeps its lightning).
