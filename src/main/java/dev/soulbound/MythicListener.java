@@ -611,7 +611,9 @@ public final class MythicListener implements Listener {
             // that GemListener.tick() sends on the very same tick.
             boolean revenantBar = plugin.revenant() != null && plugin.revenant().hudActive(p);
             if (type != null && !revenantBar) {
-                p.sendActionBar(mythicActionBar(p, type, n));
+                String capture = plugin.captures() == null ? "" : plugin.captures().hudSuffix(p); // your time on a capture point
+                p.sendActionBar(capture.isEmpty() ? mythicActionBar(p, type, n)
+                        : mythicActionBar(p, type, n).append(LegacyComponentSerializer.legacySection().deserialize(capture)));
                 mythicBarShown.add(p.getUniqueId());
             } else if (mythicBarShown.remove(p.getUniqueId()) && !revenantBar) {
                 p.sendActionBar(net.kyori.adventure.text.Component.empty());

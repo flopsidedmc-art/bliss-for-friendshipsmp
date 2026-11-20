@@ -34,11 +34,11 @@ public class ConfigGUI implements Listener {
     }
 
     private static final GemType[] ROW_A = {GemType.STRENGTH, GemType.FIRE, GemType.SPEED, GemType.WEALTH};
-    private static final int[] SLOTS_A = {10, 12, 14, 16};
+    private static final int[] SLOTS_A = {18, 19, 20, 21}; // one row: four gems, a centre label, four gems
     private static final GemType[] ROW_B = {GemType.FLUX, GemType.ASTRA, GemType.LIFE, GemType.PUFF};
-    private static final int[] SLOTS_B = {19, 21, 23, 25};
+    private static final int[] SLOTS_B = {23, 24, 25, 26};
     private static final GemType[] MYTHICS = {GemType.HERETIC, GemType.AURATUS};
-    private static final int[] SLOTS_M = {29, 31};
+    private static final int[] SLOTS_M = {39, 41}; // centred, one row of space under the gems
 
     private record StdSetting(String path, Material icon, String label, int step, int big, int min, int max) {}
 
@@ -53,6 +53,9 @@ public class ConfigGUI implements Listener {
         for (int i = 0; i < ROW_A.length; i++) gui.setItem(SLOTS_A[i], gems.createGem(ROW_A[i], 2, 5));
         for (int i = 0; i < ROW_B.length; i++) gui.setItem(SLOTS_B[i], gems.createGem(ROW_B[i], 2, 5));
         for (int i = 0; i < MYTHICS.length; i++) gui.setItem(SLOTS_M[i], gems.createMythic(MYTHICS[i]));
+        gui.setItem(4, label(Material.COMPARATOR, ChatColor.GOLD + "Config", "Click a gem to tune it."));
+        gui.setItem(22, label(Material.GOLD_NUGGET, ChatColor.YELLOW + "Gems", "Cooldowns and powers."));
+        gui.setItem(40, label(Material.ECHO_SHARD, ChatColor.DARK_AQUA + "Mythics", "Opens the live tuner."));
         p.openInventory(gui);
     }
 
@@ -62,6 +65,28 @@ public class ConfigGUI implements Listener {
         m.setDisplayName(" ");
         glass.setItemMeta(m);
         for (int i = 0; i < 54; i++) gui.setItem(i, glass);
+        ItemStack frame = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+        ItemMeta fm = frame.getItemMeta();
+        fm.setDisplayName(" ");
+        frame.setItemMeta(fm);
+        for (int i = 0; i < 9; i++) { gui.setItem(i, frame); gui.setItem(45 + i, frame); } // dark top and bottom rows
+    }
+
+    /** A non-clickable heading item. */
+    private ItemStack label(Material mat, String name, String lore) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta m = item.getItemMeta();
+        m.setDisplayName(name);
+        List<String> lines = new ArrayList<>();
+        lines.add(ChatColor.GRAY + lore);
+        m.setLore(lines);
+        item.setItemMeta(m);
+        return item;
+    }
+
+    /** Settings sit every other slot on row 2, centred on the middle slot (22) whatever their count. */
+    static int settingSlot(int index, int count) {
+        return 22 - (count - 1) + index * 2;
     }
 
     private List<StdSetting> settingsFor(GemType gem) {
@@ -119,7 +144,8 @@ public class ConfigGUI implements Listener {
         Inventory gui = Bukkit.createInventory(new SubHolder(gem), 54, gem.display + " Config");
         fill(gui);
         List<StdSetting> settings = settingsFor(gem);
-        for (int i = 0; i < settings.size(); i++) gui.setItem(10 + i * 2, renderStd(settings.get(i)));
+        for (int i = 0; i < settings.size(); i++) gui.setItem(settingSlot(i, settings.size()), renderStd(settings.get(i)));
+        gui.setItem(4, label(Material.COMPARATOR, ChatColor.GOLD + gem.display + " Config", "Left +, right -, shift for big steps."));
         if (settings.isEmpty()) {
             ItemStack info = new ItemStack(Material.GOLD_INGOT);
             ItemMeta m = info.getItemMeta();
@@ -183,8 +209,9 @@ public class ConfigGUI implements Listener {
             return;
         }
         List<StdSetting> settings = settingsFor(sub.gem);
-        int index = (e.getSlot() - 10) / 2;
-        if ((e.getSlot() - 10) % 2 != 0 || index < 0 || index >= settings.size()) return;
+        int first = settingSlot(0, settings.size());
+        int index = (e.getSlot() - first) / 2;
+        if (e.getSlot() < first || (e.getSlot() - first) % 2 != 0 || index >= settings.size()) return;
         StdSetting s = settings.get(index);
         boolean right = e.getClick().isRightClick();
         boolean shift = e.getClick().isShiftClick();

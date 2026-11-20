@@ -77,7 +77,7 @@ class GemSoundsTest {
     @Test void noSoundIsSharedBetweenGemsUnlessTheSpecSaysSo() {
         Map<String, Set<String>> families = new HashMap<>();
         for (Map.Entry<String, List<ConfigurationSection>> e : parts().entrySet()) {
-            if (e.getKey().equals("other")) continue; // not gems
+            if (e.getKey().equals("other") || e.getKey().equals("capture")) continue; // not gems
             for (ConfigurationSection s : e.getValue()) families.computeIfAbsent(s.getString("event"), k -> new TreeSet<>()).add(e.getKey());
         }
         for (Map.Entry<String, Set<String>> e : families.entrySet()) {

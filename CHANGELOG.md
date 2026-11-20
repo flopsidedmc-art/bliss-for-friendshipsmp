@@ -1,3 +1,61 @@
+# Menu layout and capture points
+
+## Menus
+- **`/bliss menu`:**
+  - The top and bottom rows are black glass, with a "Soulbound Gems" title at slot 4.
+  - Tier 1 gems are on row 1 and Tier 2 gems on row 2, each split four and four by a label.
+  - Mythics are at 38, 40 and 42 under a "Mythics" label.
+  - The five actions are centred on the bottom row (slots 47-51, named constants the click handler uses too).
+- **`/bliss config`:**
+  - The hub has the same frame, with all eight gems on row 2, Heretic at 39 and Auratus at 41.
+  - On each gem's page, the settings are centred on slot 22 for any count (`settingSlot()`, which the click handler uses too). Back stays at 49.
+- **Labels** do nothing when clicked. `/mythicconfig` is unchanged.
+- Your `MenuGUI.java` and `ConfigGUI.java` were exactly the repo's files plus `menu-layout.patch`, so they went in as sent. The only change: `settingSlot()` is package-visible, so it can be tested.
+
+## Capture points (new, see CAPTURE.md)
+- **Commands:** `/capture create|color|start|stop|list|info|remove|tp`, with `/fill`-style coordinates and tab completion everywhere. Points are saved in `capture-points.yml`. A capture running at a restart is stopped and reported, not resumed.
+- **Rules:**
+  - Alone on the point, you gain time. Untrusted players together contest it. Trusted players are one side and all gain.
+  - Your time is kept when you leave or die.
+  - Spectators, vanished players and the Revenant holder can't capture.
+- **The win:** first to the hold time gets the mythic reward (refused at start if that mythic already exists, unless `force`), plus a title, a chat message and a burst.
+- **HUD:**
+  - A boss bar within 64 blocks, in the point's colour.
+  - Your own time on the action bar, added to the end of the gem, mythic and Revenant HUDs when one is showing.
+  - Sounds under `sounds.capture`.
+- **Visuals:**
+  - Flat coloured text displays tile the floor (at most 32) and pulse through interpolation.
+  - Bands of light rise and fade from the edges (at most 24).
+  - Optional coloured dust.
+  - Everything is removed on stop, win, remove, chunk unload, plugin disable and server stop.
+- **Rifts:** no anchoring in, travelling to, or opening from a running point.
+
+## Files changed
+- `MenuGUI.java`, `ConfigGUI.java`: the new layout (your files).
+- `CaptureMath.java` (new): coordinates, the box, floor tiles, the hold timer, colours. No server needed, so it's unit-tested.
+- `CaptureManager.java` (new): points, saving, the rules, HUD and visuals.
+- `CaptureCommand.java` (new): `/capture` and its tab completion.
+- `SoulboundGemsPlugin.java`: starts and stops capture points, and registers the command.
+- `plugin.yml`: the `capture` command and the `soulbound.capture` permission (op).
+- `RelayRift.java`: rifts are blocked in running capture points (in the existing blocked-spot check, plus the spot you cast from).
+- `RevenantMace.java`: `isHolder()` is package-visible, so capture points can exclude the Revenant. The Revenant HUD shows your capture time.
+- `GemListener.java`, `MythicListener.java`: the gem and mythic HUDs show your capture time at the end.
+- `config.yml`: the `capture:` section and `sounds.capture` (step-on, contested, win).
+- `GemSoundsTest.java`: `capture` is skipped like `other` in the shared-sound check (it isn't a gem).
+- `SOUNDS.md`, `CAPTURE.md` (new), `CHANGELOG.md`.
+- Tests (new): `MenuLayoutTest` (`settingSlot()` for 1 to 5 settings, including 3 and 4; no two buttons on one slot), `CaptureMathTest` (`/fill` coordinates absolute, `~`, `~5`, `~-3`; box normalising and the size limit; floor tiles; hold, contested and trusted timer logic; colours).
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 76 unit tests pass (15 of them new).
+- **Not tested:** nothing was run on a server or seen in game. Especially unchecked:
+  - the text-display tile size and centring (the standard 1-space trick, scale 8 × 4 per block);
+  - the interpolated pulse and the bands rising;
+  - the boss bar;
+  - tab completion with spaces;
+  - Paper 26.2.
+
+Use the test plan in CAPTURE.md.
+
 # Trader: no mythics, and your config
 
 - **A mythic can't be traded:** using a Trader while holding the Heretic, Auratus or Relay says "Mythic gems can't be traded." and the Trader isn't used up.

@@ -146,6 +146,10 @@ sounds:
     tuned-full: {event: BLOCK_AMETHYST_BLOCK_CHIME, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_NOTE_BLOCK_BIT, volume: 0.6, pitch: 2.0}}  # you only, when the bar fills
   other: # Not gems
     pedestal-activate: {event: BLOCK_TRIAL_SPAWNER_OMINOUS_ACTIVATE, volume: 0.8, pitch: 1.0, enabled: true}  # the heart pedestal (was the Wither spawn)
+  capture: # Capture points (/capture), not a gem
+    step-on: {event: BLOCK_BEACON_POWER_SELECT, volume: 0.5, pitch: 1.4, enabled: true}  # you only, when you step onto a running point
+    contested: {event: BLOCK_NOTE_BLOCK_BASS, volume: 0.35, pitch: 0.6, enabled: true}  # everyone on the point, at most every 2 s while it's contested
+    win: {event: UI_TOAST_CHALLENGE_COMPLETE, volume: 1.0, pitch: 1.0, enabled: true}  # the winner only
 
 mythics:
   enabled: true
@@ -578,3 +582,26 @@ finale:
     food: true # also hand out 64 golden apples and 64 golden carrots
     protection: 3 # loaner set only
     sharpness: 3 # loaner set only
+
+# Capture points (/capture, see CAPTURE.md): hold a box to win a mythic. Week 1 awards Heretic, week 2 Auratus.
+# One player on the point gains time. Players who aren't trusted with each other contest it and nobody gains;
+# trusted players count as one side and all gain. Leaving or dying keeps your time. First to the hold time wins.
+capture:
+  hold-seconds: 120 # default for /capture start: one player's total time on the point to win
+  max-size: {x: 64, y: 32, z: 64} # the biggest box /capture create accepts, in blocks
+  bossbar-radius: 64 # players this close to the point see its boss bar
+  glow-when-idle: false # true: the floor glows whenever the point exists, not only while a capture runs
+  particles: false # also coloured dust along the edges, for players who can't see displays well
+  floor: # the glowing ground: flat text displays tiled over the box's floor
+    alpha-min: 0.35 # 0-1, the dim end of the slow pulse
+    alpha-max: 0.55 # the bright end
+    pulse-seconds: 3.0 # one breath from dim to bright and back
+    max-displays: 32 # floor tiles per point; bigger boxes get bigger tiles
+  bands: # thin bands of light rising from the edges while a capture runs
+    interval-seconds: 0.4 # a new band at a random spot on the edges this often
+    height: 4.0 # how far each band rises
+    lifetime-seconds: 2.0 # it rises and fades out over this long
+    max: 24 # bands alive at once per point
+    width: 0.15 # blocks
+    length: 1.5 # blocks
+    alpha: 0.7 # 0-1 when it appears

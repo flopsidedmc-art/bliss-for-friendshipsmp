@@ -575,8 +575,11 @@ public class GemListener implements Listener {
                 return;
             }
         }
-        p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(String.join("  ", bar)));
+        p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(String.join("  ", bar) + captureHud(p)));
     }
+
+    /** Your time on a running capture point, at the end of the bar (empty when you're not on one). */
+    private String captureHud(Player p) { return plugin.captures() == null ? "" : plugin.captures().hudSuffix(p); }
 
     /** One ability on the action bar: icons and timers only, no words (HudStatus). */
     private String hudEntry(String icon, long remainMs, boolean active) {
@@ -595,7 +598,7 @@ public class GemListener implements Listener {
         String watts = "§f" + tier2Glyph() + " §3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
         String overdrive = hudEntry(icon(GemType.FLUX, "right"), remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
 
-        String msg = beam + "  " + burst + "  " + watts + "  " + overdrive;
+        String msg = beam + "  " + burst + "  " + watts + "  " + overdrive + captureHud(p);
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
     }
 

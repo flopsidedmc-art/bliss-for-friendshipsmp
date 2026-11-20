@@ -119,6 +119,9 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 | Relay | tuned-full | `BLOCK_AMETHYST_BLOCK_CHIME` | 1.0 | 1.0 | you only |
 | Relay | tuned-full (+ layer) | `BLOCK_NOTE_BLOCK_BIT` | 0.6 | 2.0 | you only |
 | Not a gem | pedestal-activate | `BLOCK_TRIAL_SPAWNER_OMINOUS_ACTIVATE` | 0.8 | 1.0 | everyone near |
+| Capture point | step-on | `BLOCK_BEACON_POWER_SELECT` | 0.5 | 1.4 | you only |
+| Capture point | contested (every 2 s at most) | `BLOCK_NOTE_BLOCK_BASS` | 0.35 | 0.6 | players on the point |
+| Capture point | win | `UI_TOAST_CHALLENGE_COMPLETE` | 1.0 | 1.0 | the winner |
 
 ## Not in this table
 

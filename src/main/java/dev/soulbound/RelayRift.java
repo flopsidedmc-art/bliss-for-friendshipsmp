@@ -299,6 +299,8 @@ final class RelayRift implements Listener {
         if (finaleRunning()) return "rifts are sealed while the finale runs";
         String w = l.getWorld().getName();
         if (w.equals(domainWorld())) return "rifts can't anchor inside Temporal Divinity";
+        String capture = plugin.captures() == null ? null : plugin.captures().riftBlocked(l);
+        if (capture != null) return "rifts can't anchor inside the capture point " + capture + " while it runs";
         for (String b : plugin.getConfig().getStringList("mythics.relay.rift.blocked-worlds")) {
             if (b.equalsIgnoreCase(w)) return "rifts can't anchor in this world";
         }
@@ -344,6 +346,8 @@ final class RelayRift implements Listener {
         if (!enabled() || p.isDead() || !holdsRelay(p) || revenant(p)) return;
         if (finaleRunning()) { p.sendMessage("§6Rifts are sealed while the finale runs."); return; }
         if (relay.inDomain(id) || p.getWorld().getName().equals(domainWorld()) || casts.containsKey(id)) return;
+        String capture = plugin.captures() == null ? null : plugin.captures().riftBlocked(p.getLocation());
+        if (capture != null) { p.sendMessage("\u00A76Rifts can't open inside the capture point " + capture + " while it runs."); return; }
         long cd = cooldownLeft(id);
         if (cd > 0) { p.sendMessage("§6Rift recharging (" + fmt(cd) + ")."); return; }
         long combat = combatLeft(id);

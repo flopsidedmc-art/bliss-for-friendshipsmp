@@ -22,6 +22,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private Turmoil turmoil;
     private Finale finale;
     private RevenantMace revenant;
+    private CaptureManager captures;
     private AuratusGem auratus;
 
     /** Pristine-stage energy per player per gem (showcase parity). Public by design. */
@@ -42,6 +43,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public Finale finale() { return finale; }
     public RevenantMace revenant() { return revenant; }
     public AuratusGem auratus() { return auratus; }
+    public CaptureManager captures() { return captures; }
 
     @Override
     public void onEnable() {
@@ -66,6 +68,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         finale = new Finale(this);
         finale.recoverAfterCrash();
         revenant = new RevenantMace(this);
+        captures = new CaptureManager(this);
 
         Bukkit.getPluginManager().registerEvents(listener, this);
         Bukkit.getPluginManager().registerEvents(mythics, this);
@@ -82,6 +85,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(turmoil, this);
         Bukkit.getPluginManager().registerEvents(finale, this);
         Bukkit.getPluginManager().registerEvents(revenant, this);
+        Bukkit.getPluginManager().registerEvents(captures, this);
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -114,6 +118,12 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (getCommand("stalker") != null) {
             getCommand("stalker").setExecutor(stalker);
         }
+        CaptureCommand captureCommand = new CaptureCommand(this);
+        if (getCommand("capture") != null) {
+            getCommand("capture").setExecutor(captureCommand);
+            getCommand("capture").setTabCompleter(captureCommand);
+        }
+        captures.enable(); // loads capture-points.yml; a capture left running by a restart is stopped and reported
 
         int tickSec = getConfig().getInt("passives.tick-seconds", 2);
         int actionTicks = getConfig().getInt("actionbar.update-ticks", 10);
@@ -137,6 +147,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (captures != null) captures.shutdown(); // removes every capture display and boss bar
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
         if (auratus != null) auratus.shutdown(); // removes chains, halos and slam rings, and lets go of anyone on a Flagpole

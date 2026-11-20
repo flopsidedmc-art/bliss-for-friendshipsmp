@@ -39,6 +39,11 @@ commands:
     usage: /revenant <give <player> [fresh]|boss <start|stop>|status>
     permission: soulbound.revenant
     permission-message: You lack permission.
+  capture:
+    description: Capture points - hold a box to win a mythic.
+    usage: /capture <create|color|start|stop|list|info|remove|tp> ...
+    permission: soulbound.capture
+    permission-message: You lack permission.
   stalker:
     description: Shadow Stalker — begin the hunt toward a tracked player.
     usage: /stalker <player>
@@ -48,6 +53,8 @@ permissions:
   soulbound.turmoil:
     default: op
   soulbound.revenant:
+    default: op
+  soulbound.capture:
     default: op
   bliss.player:
     default: true

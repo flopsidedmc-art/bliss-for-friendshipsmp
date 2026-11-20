@@ -163,7 +163,8 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(idKey, PersistentDataType.STRING);
     }
 
-    private boolean isHolder(Player p) {
+    /** Also used by capture points: the Revenant can't capture. */
+    boolean isHolder(Player p) {
         return p != null && holder != null && holder.equals(p.getUniqueId()) && (state == State.GIVEN || state == State.RUNNING);
     }
 
@@ -828,6 +829,8 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         for (UUID id : want) if (barViewers.add(id)) { Player o = Bukkit.getPlayer(id); if (o != null) o.showBossBar(bar); }
     }
 
+    private String captureHud(Player p) { return plugin.captures() == null ? "" : plugin.captures().hudSuffix(p); }
+
     private void hudTick(Player h) {
         if (h == null || !hudActive(h)) {
             if (hudShown && h != null) h.sendActionBar(Component.empty());
@@ -849,7 +852,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         String us = HudStatus.entry(ug, undertowReady - n, false);
         String msg = ps + "  " + rs + "  " + us;
         if (suspension != null) msg = "§6\u231B §e" + HudStatus.time(suspension.remaining * 50L) + "  " + msg; // suspended: an hourglass and its timer
-        h.sendActionBar(LEGACY.deserialize(msg));
+        h.sendActionBar(LEGACY.deserialize(msg + captureHud(h)));
     }
 
 
