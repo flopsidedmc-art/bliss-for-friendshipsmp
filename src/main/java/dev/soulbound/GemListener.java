@@ -58,6 +58,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -129,7 +130,10 @@ public class GemListener implements Listener {
     private final Map<UUID, List<ItemDisplay>> astraDaggers = new HashMap<>();
     private final Map<UUID, Integer> astraDaggerIndex = new HashMap<>();
     private final Map<UUID, Long> astraDaggerFireCooldown = new HashMap<>();
-    private static final int ASTRA_DAGGER_CMD = 230; // nautilus shell spiritdagger model
+    private final Map<UUID, Integer> astraDaggersLeft = new HashMap<>(); // daggers left in this volley (5 when it's full)
+    private final Set<ItemDisplay> flyingDaggers = new HashSet<>(); // dagger models following their arrows
+    private static final int ASTRA_DAGGERS = 5;
+    private static final int ASTRA_DAGGER_CMD = 12350; // the pack's Astra dagger (blissgems:custom/astra_dagger), not the Spirit Dagger
     // Life systems (user-supplied kit). Vortex is offhand-right-click only.
     private final Map<UUID, Double> heartOrig = new HashMap<>();
     private final Map<UUID, Long> heartUntil = new HashMap<>();
@@ -1113,8 +1117,7 @@ public class GemListener implements Listener {
             if (left) {
                 long rem = cdRemain(p, "daggers");
                 if (rem > 0) { /* Silenced */ return; }
-                cdStart(p, "daggers", cooldownMs("daggers", energy));
-                handleAstraDaggers(p, energy);
+                handleAstraDaggers(p, energy); // the cooldown starts when the last of the 5 is fired
                 return;
             }
             if (targetedEntity(p, 5) != null) return;
@@ -1692,8 +1695,12 @@ public class GemListener implements Listener {
                 continue;
             }
             List<ItemDisplay> daggers = astraDaggers.computeIfAbsent(p.getUniqueId(), k -> new ArrayList<>());
-            // Spawn daggers if not exist
-            if (daggers.isEmpty()) spawnAstraDaggers(p);
+            // The daggers left in this volley hover; a spent volley comes back once the cooldown is over.
+            if (daggers.isEmpty()) {
+                if (astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) <= 0 && cdRemain(p, "daggers") <= 0)
+                    astraDaggersLeft.put(p.getUniqueId(), ASTRA_DAGGERS);
+                spawnAstraDaggers(p);
+            }
             // Update positions in semi-circle
             updateAstraDaggerPositions(p);
             // Handle firing cooldown
@@ -1708,8 +1715,9 @@ public class GemListener implements Listener {
         if (daggers == null) return;
         World w = p.getWorld();
         if (w == null) return;
-        for (int i = 0; i < 5; i++) {
-            ItemDisplay dagger = w.spawn(p.getLocation(), ItemDisplay.class, d -> {
+        int count = Math.max(0, Math.min(ASTRA_DAGGERS, astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS)));
+        for (int i = 0; i < count; i++) {
+            ItemDisplay dagger = w.spawn(unturned(p.getLocation()), ItemDisplay.class, d -> {
                 d.setItemStack(createAstraDaggerItem());
                 d.setPersistent(false);
                 d.setBrightness(new Display.Brightness(15, 15));
@@ -1748,7 +1756,7 @@ public class GemListener implements Listener {
             Vector offset = right.clone().multiply(x * radius).add(forward.clone().multiply(z * radius * 0.5));
             Location targetLoc = center.clone().add(offset);
             targetLoc.setY(center.getY() + Math.sin(time * 0.005 + i) * 0.2); // gentle bob
-            dagger.teleport(targetLoc);
+            dagger.teleport(unturned(targetLoc)); // no facing of its own: the transformation alone turns the model
             // Rotate dagger to face outward
             Vector faceDir = targetLoc.toVector().subtract(center.toVector()).setY(0);
             if (faceDir.lengthSquared() > 0.01) {
@@ -1771,47 +1779,103 @@ public class GemListener implements Listener {
         astraDaggerFireCooldown.remove(id);
     }
 
-    /** Fire one astra dagger in the direction the player is looking. */
-    public void fireAstraDagger(Player p) {
+    /** Fire one astra dagger in the direction the player is looking. False if none was fired. */
+    public boolean fireAstraDagger(Player p) {
         List<ItemDisplay> daggers = astraDaggers.get(p.getUniqueId());
-        if (daggers == null || daggers.isEmpty()) return;
+        if (daggers == null || daggers.isEmpty()) return false;
+        Long spacing = astraDaggerFireCooldown.get(p.getUniqueId());
+        if (spacing != null && spacing > System.currentTimeMillis()) return false; // one click can arrive as two events
         int index = astraDaggerIndex.getOrDefault(p.getUniqueId(), 0);
-        if (index >= daggers.size()) return;
+        if (index >= daggers.size()) return false;
         ItemDisplay dagger = daggers.get(index);
-        if (!dagger.isValid()) return;
+        if (!dagger.isValid()) return false;
         // Remove from hovering list
         daggers.remove(index);
         // Launch as projectile
         World w = p.getWorld();
         Location launchLoc = dagger.getLocation().clone();
         dagger.remove();
-        // Spawn spectral arrow with dagger model
-        org.bukkit.entity.SpectralArrow arrow = w.spawn(launchLoc, org.bukkit.entity.SpectralArrow.class);
+        // A spectral arrow does the flying and the hit, hidden from everyone; the pack's dagger model flies in its place.
+        org.bukkit.entity.SpectralArrow arrow = w.spawn(launchLoc, org.bukkit.entity.SpectralArrow.class, a -> {
+            a.setVisibleByDefault(false);
+            a.setShooter(p); // the hit handler needs the shooter to disable their gem
+            a.setPickupStatus(org.bukkit.entity.AbstractArrow.PickupStatus.DISALLOWED);
+            a.setDamage(plugin.getConfig().getDouble("astra.dagger-damage", 5.0));
+            a.setCritical(true);
+        });
         Vector dir = p.getLocation().getDirection().normalize();
         double speed = plugin.getConfig().getDouble("astra.dagger-speed", 3.0);
         arrow.setVelocity(dir.multiply(speed));
-        arrow.setDamage(plugin.getConfig().getDouble("astra.dagger-damage", 5.0));
-        arrow.setCritical(true);
         daggerShots.add(arrow.getUniqueId());
+        flyDaggerModel(arrow);
+        astraDaggersLeft.put(p.getUniqueId(), Math.max(0, astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) - 1));
         // Sound & particles
         GemSounds.play(plugin, "astra.daggers", launchLoc);
         w.spawnParticle(Particle.PORTAL, launchLoc, 10, 0.2, 0.2, 0.2, 0.1);
         // Cooldown between shots
         astraDaggerFireCooldown.put(p.getUniqueId(), System.currentTimeMillis() + 300L);
-        // Regenerate dagger after a delay
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!p.isOnline()) return;
-            List<ItemDisplay> current = astraDaggers.get(p.getUniqueId());
-            if (current == null) return;
-            if (current.size() < 5) {
-                ItemDisplay newDagger = w.spawn(p.getLocation(), ItemDisplay.class, d -> {
-                    d.setItemStack(createAstraDaggerItem());
-                    d.setPersistent(false);
-                    d.setBrightness(new Display.Brightness(15, 15));
-                });
-                current.add(newDagger);
+        return true;
+    }
+
+    /** The pack's Astra dagger, tip first, following its (hidden) arrow; it sticks in a wall for a second, then goes. */
+    private void flyDaggerModel(org.bukkit.entity.AbstractArrow arrow) {
+        float scale = 0.8f;
+        ItemDisplay model = arrow.getWorld().spawn(unturned(arrow.getLocation()), ItemDisplay.class, d -> {
+            d.setItemStack(createAstraDaggerItem());
+            d.setPersistent(false);
+            d.setBrightness(new Display.Brightness(15, 15));
+            d.setTeleportDuration(1);
+            d.setInterpolationDuration(1);
+            d.setTransformation(daggerPose(arrow.getVelocity(), scale));
+        });
+        flyingDaggers.add(model);
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int age, stuck;
+            @Override public void run() {
+                if (!model.isValid() || !arrow.isValid() || ++age > 200) { finish(); return; }
+                if (arrow.isInBlock()) { if (++stuck > 20) finish(); return; } // stays stuck where it hit, then goes
+                model.teleport(unturned(arrow.getLocation()));
+                Vector v = arrow.getVelocity();
+                if (v.lengthSquared() > 1.0e-4) { model.setInterpolationDelay(0); model.setTransformation(daggerPose(v, scale)); }
             }
-        }, 60L); // 3 seconds
+            private void finish() {
+                if (model.isValid()) model.remove();
+                flyingDaggers.remove(model);
+                if (arrow.isValid() && arrow.isInBlock()) arrow.remove();
+                cancel();
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    /**
+     * Turns the Astra dagger model (blade along +Y, tip at the top, flat face toward +Z) so the tip points along
+     * {@code v} with the flat face sideways, then centres the model on the display.
+     */
+    static Transformation daggerPose(Vector v, float scale) {
+        Vector3f tip = new Vector3f((float) v.getX(), (float) v.getY(), (float) v.getZ());
+        if (tip.lengthSquared() < 1.0e-6f) tip.set(0, 1, 0);
+        tip.normalize();
+        Vector3f side = new Vector3f(-tip.z, 0, tip.x);
+        if (side.lengthSquared() < 1.0e-6f) side.set(1, 0, 0); else side.normalize();
+        Vector3f x = new Vector3f(tip).cross(side);
+        Quaternionf rot = new Quaternionf().setFromNormalized(new Matrix3f(x, tip, side));
+        // The model's middle sits at (8.5, 5.5, 6.5) px, not the item's centre (8, 8, 8): move it back onto the display.
+        Vector3f centre = new Vector3f(-0.5f / 16, 2.5f / 16, 1.5f / 16).mul(scale).rotate(rot);
+        return new Transformation(centre, rot, new Vector3f(scale, scale, scale), new Quaternionf());
+    }
+
+    private static Location unturned(Location at) {
+        Location l = at.clone();
+        l.setYaw(0);
+        l.setPitch(0);
+        return l;
+    }
+
+    /** Plugin disable: the hovering and flying dagger models go (they're never saved, but a reload would leave them). */
+    void shutdown() {
+        for (UUID id : new ArrayList<>(astraDaggers.keySet())) clearAstraDaggers(id);
+        for (ItemDisplay d : flyingDaggers) if (d.isValid()) d.remove();
+        flyingDaggers.clear();
     }
 
     // ================= WEALTH (user kit, abilities offhand-only) =================
@@ -2327,9 +2391,11 @@ public class GemListener implements Listener {
     }
 
     /** Daggers [Left Click]: Fire one hovering dagger straight ahead. Deals 2.5 hearts, moves at configurable speed. */
+    /** One left-click fires one dagger. After the fifth the cooldown starts; the volley comes back when it ends. */
     private void handleAstraDaggers(Player p, int energy) {
-        fireAstraDagger(p);
+        if (!fireAstraDagger(p)) return;
         used(p, "Daggers");
+        if (astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) <= 0) cdStart(p, "daggers", cooldownMs("daggers", energy));
     }
 
     /** Unbounded [Hit]: enter the victim's body; exiting disables your own gem. */

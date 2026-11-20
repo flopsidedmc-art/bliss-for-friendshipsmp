@@ -148,6 +148,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar
+        if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
         if (auratus != null) auratus.shutdown(); // removes chains, halos and slam rings, and lets go of anyone on a Flagpole

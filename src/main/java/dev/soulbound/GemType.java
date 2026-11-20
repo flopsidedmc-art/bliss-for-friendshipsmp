@@ -48,9 +48,9 @@ public enum GemType {
             "Venerated Perforators [Left-click; off hand: right-click]: a chain hooks what it hits and stays; right-click goes there, swap hands hauls a creature in. Sneak + chain in the air: Gilded Slam.",
             "Echoing Aegis [Right-click; off hand: sneak + right-click]: a 1s parry and a shield 3 blocks ahead that hits whoever's there. Pull someone in and catch them: Flagpole, or chain again to launch them."),
     RELAY("Relay", "§x§B§8§9§3§5§8", Material.REPEATING_COMMAND_BLOCK, "⌛", "⟲",
-            "Mythic: ignores the energy system. Quickened makes your swings 1.2x faster. Tuned In tags players you hit for 30s (bonus damage from you); your hits also fill a compass, and when full you hold right-click for 0.5 seconds with Relay in your offhand and the compass needle points at them. Clean Signal makes you immune to gem disables.",
-            "Rewind [Right-click]: snap back to where you were ~5s ago, restoring lost health and clearing debuffs. Two charges.",
-            "Time Dilation [Left-click]: a time bubble that slows everything inside, disables gems, and makes projectiles crawl. A direct hit with the gem freezes that player (Time Lock).");
+            "Mythic: ignores the energy system. Tuned In: your hits tag players for 30s (+5% damage from you) and fill the Tuned In bar; every Relay power needs it full. Quickened: swings 1.2x faster. Clean Signal: immune to gem disables.",
+            "Rewind [Left-click]: snap back to where you were ~5s ago, restoring lost health and clearing debuffs. Two charges. Time Dilate [Right-click]: an 8s bubble where everything else moves at a tenth of the speed and gems are disabled.",
+            "Temporal Divinity [Sneak + right-click]: take nearby opponents into the void for 8s. Rift [Sneak + left-click]: travel between your two anchors.");
 
     public final String display;
     public final String color;

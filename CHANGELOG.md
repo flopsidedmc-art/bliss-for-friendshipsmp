@@ -1,3 +1,24 @@
+# Astra Daggers fixed, and the Relay's description
+
+- **The cooldown bug:** every left-click restarted the 90 s cooldown, so only one of the five hovering daggers could ever be fired. Now each left-click fires one (0.3 s apart), the cooldown starts after the fifth, and all five come back when it ends. Switching items doesn't refill a half-used volley. The old 3-second per-dagger respawn is gone (the volley replaces it).
+- **They look like daggers now:**
+  - The hovering daggers use the pack's Astra dagger model (`blissgems:custom/astra_dagger`, custom model data 12350) instead of the Spirit Dagger.
+  - A fired dagger flies as that model, tip first along its path.
+  - The arrow that does the flying and the hit is hidden from everyone.
+  - When it hits a wall it sticks there for a second, then goes.
+  - Like the chains, the hovering daggers no longer turn with the way you face.
+- **The gem-disable on hit never worked:** the dagger arrow had no shooter, and the hit code only disables the target's gem (8 s) when the shooter is a player. It now has one.
+- **No more free spectral arrows:** dagger arrows can't be picked up, and they're removed after landing.
+- **Disabling the plugin** removes the hovering and flying dagger models.
+- **`astra.dagger-damage` comment fixed:** it's the arrow's base damage. Minecraft multiplies arrow damage by speed, so 5 at speed 3 is about 15 (7.5 hearts) before armour, not 2.5 hearts. The damage itself is unchanged.
+- **Relay description:** the `GemType` text said Rewind was right-click and Time Dilation left-click, and it still described the removed off-hand compass and Time Lock. It now matches the code:
+  - Rewind is left-click and Time Dilate is right-click.
+  - Temporal Divinity is sneak + right-click and Rift is sneak + left-click.
+  - Tuned In needs a full bar.
+
+  The Relay's item lore was already right.
+- **Tests:** `AstraDaggerTest` fails if a left-click starts the dagger cooldown before the volley is spent, and checks that the flying dagger points along its flight. 78 unit tests pass. Not seen in game.
+
 # Menu layout and capture points
 
 ## Menus

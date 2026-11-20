@@ -451,10 +451,11 @@ abilities:
     # It ends if you go this long without hitting them, or as soon as they hit you back.
     combo-window-seconds: 3.0
 
-# Astra Daggers (T2) — hovering semi-circle, fire on left-click
+# Astra Daggers (T2): 5 hover round you; each left-click fires one (the pack's dagger model, flying tip first).
+# The cooldown (cooldowns.daggers, 90 s) starts after the fifth; then all 5 come back.
 astra:
   dagger-speed: 3.0 # blocks per tick
-  dagger-damage: 5.0 # 2.5 hearts
+  dagger-damage: 5.0 # the arrow's base damage: a hit does this x its speed (5 at speed 3 = about 15, 7.5 hearts, before armour)
 
 # Crafting recipes. min-progression gates by era (1-4).
 # Edit shapes/ingredients freely, then /progression <1-4> to reload.
