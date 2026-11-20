@@ -68,6 +68,28 @@ class AuratusMathTest {
         assertEquals(1000 * 0.84 * 0.2, AuratusMath.afterArmor(1000, 20, 8, 99), 1e-6);
     }
 
+    @Test void chainModelsRunFromTheHookPointToTheHand() {
+        double strand = 47 / 16.0, link = 6 / 16.0, step = 7 * link;
+        for (double len = 0.5; len <= 45; len += 0.05) {
+            double[] at = AuratusMath.chainLayout(len, strand, step, link, 60);
+            if (len <= strand + 2 * link) { // just the hook, scaled to fit between hand and tip
+                assertEquals(1, at.length, "at " + len);
+                assertEquals(len / 2, at[0], 1e-9);
+                continue;
+            }
+            assertEquals(strand / 2, at[0], 1e-9, "the hook's point is on the tip");
+            double far = at[at.length - 1] + strand / 2;
+            assertEquals(len, far, link / 2 + 1e-9, "the chain ends at the hand at " + len);
+            for (int i = 1; i < at.length; i++) {
+                double gap = at[i] - at[i - 1];
+                assertTrue(gap >= link - 1e-9 && gap <= step + 1e-9, "no gap between strands, none drawn twice, at " + len);
+                assertTrue(at[i] - at[0] >= 2 * link - 1e-9, "strands stay off the hook's claw at " + len);
+                double links = (at[i] - at[0]) / link;
+                assertEquals(Math.round(links), links, 1e-6, "strands stay in step with the hook at " + len);
+            }
+        }
+    }
+
     @Test void chainChargesAreIndependent() {
         Charges c = new Charges(2);
         assertTrue(c.use(0, 8_000));

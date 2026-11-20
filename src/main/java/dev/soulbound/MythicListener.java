@@ -696,7 +696,6 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.chain.hook-seconds", Material.TRIPWIRE_HOOK, "Hook Hold (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             new MythicSetting("mythics.auratus.chain.haul-speed", Material.LEAD, "Haul-In Speed", SettingKind.DOUBLE, 0.05, 0.25, 0.2, 3.0, null),
             new MythicSetting("mythics.auratus.chain.max-reel-ticks", Material.ARROW, "Chain Max Reel Ticks", SettingKind.INT, 2, 10, 4, 200, null),
-            new MythicSetting("mythics.auratus.chain.link-spacing", Material.IRON_CHAIN, "Chain Link Spacing", SettingKind.DOUBLE, 0.1, 0.5, 0.2, 5.0, null),
             new MythicSetting("mythics.auratus.chain.link-scale", Material.MAGMA_CREAM, "Chain Link Scale", SettingKind.DOUBLE, 0.05, 0.25, 0.1, 3.0, null),
             // Auratus Aegis + Echo Anchor
             new MythicSetting("mythics.auratus.aegis.cooldown-seconds", Material.SHIELD, "Aegis Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),

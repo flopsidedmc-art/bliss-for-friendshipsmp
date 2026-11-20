@@ -48,6 +48,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.MainHand;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -125,9 +126,9 @@ final class AuratusGem implements Listener {
             hook = null;
         }
     }
-    private static final class Reel { Location point; UUID entity; boolean hooked; double age; int blocked; boolean airborne; Vector carry = new Vector(); final Chain chain = new Chain(); }
+    private static final class Reel { Location point; UUID entity; boolean hooked; double age, bite; int blocked; boolean airborne; Vector carry = new Vector(); final Chain chain = new Chain(); }
     /** A hook left in an enemy (victim) or a block / the Echo Anchor (point), until it lets go or you go or haul. */
-    private static final class Tether { UUID victim; Location point; long until; double age; int blocked; boolean hauling; Vector carry = new Vector(); final Chain chain = new Chain(); }
+    private static final class Tether { UUID victim; Location point; long until; double age, bite; int blocked; boolean hauling; Vector carry = new Vector(); final Chain chain = new Chain(); }
     /** The Aegis caught an enemy you'd just pulled: Flagpole when the window ends, the launch if you chain again first. */
     private static final class Combo { UUID victim; long until; }
     private static final class Dive { Location target; double startY, age; ItemDisplay decal; final Chain chain = new Chain(); }
@@ -150,7 +151,7 @@ final class AuratusGem implements Listener {
     private void migrateConfig() {
         var cfg = plugin.getConfig();
         if (!cfg.contains("mythics.auratus.chain.regen-ms", true) && !cfg.contains("mythics.auratus.passives.hauling-strike-chance", true)) return;
-        String[] keep = {"passives.feathered-fall-damage-multiplier", "chain.show-models", "chain.link-spacing", "chain.link-scale"};
+        String[] keep = {"passives.feathered-fall-damage-multiplier", "chain.show-models", "chain.link-scale"};
         Object[] kept = new Object[keep.length];
         for (int i = 0; i < keep.length; i++) kept[i] = cfg.contains(path(keep[i]), true) ? cfg.get(path(keep[i])) : null;
         cfg.set("mythics.auratus", null);
@@ -214,15 +215,26 @@ final class AuratusGem implements Listener {
         return it;
     }
 
-    /** A full-bright pack model that moves smoothly between teleports. */
+    /**
+     * A full-bright pack model that moves smoothly between teleports. It is spawned facing nowhere (yaw and pitch 0):
+     * a display turns its model by its own facing before its transformation, so a location copied from a player
+     * (who faces somewhere) would turn every model a second time.
+     */
     private ItemDisplay display(Location at, int cmd) {
-        return at.getWorld().spawn(at, ItemDisplay.class, d -> {
+        return at.getWorld().spawn(unturned(at), ItemDisplay.class, d -> {
             d.setItemStack(model(cmd));
             d.setPersistent(false);
             d.setBrightness(new Display.Brightness(15, 15));
             d.setTeleportDuration(1);
             d.setInterpolationDuration(2);
         });
+    }
+
+    private static Location unturned(Location at) {
+        Location l = at.clone();
+        l.setYaw(0);
+        l.setPitch(0);
+        return l;
     }
 
     /** Lays a flat model (halo, slam ring) level at the display's height, scaled and turned. */
@@ -382,6 +394,7 @@ final class AuratusGem implements Listener {
             h.point = t.point();
             tip = t.point();
             if (t.anchor()) removeAnchor(id); // the Echo Anchor is used up
+            else h.bite = BITE; // the point stands off the block's face; the drawn hook reaches it
         }
         tethers.put(id, h);
         GemSounds.play(plugin, "auratus.chain-throw", p.getLocation()); // the lighter throw, at you
@@ -407,7 +420,7 @@ final class AuratusGem implements Listener {
         if (r.age > 0 && blockedBetween(p.getEyeLocation(), target)) {
             if (++r.blocked >= 2) { snap(p, r.chain, target); stopReel(id); return; }
         } else r.blocked = 0;
-        drawChain(r.chain, p.getLocation().add(0, 1.2, 0), target);
+        drawChain(r.chain, hand(p), target, r.bite);
         Vector to = target.toVector().subtract(p.getLocation().toVector().add(new Vector(0, 0.9, 0)));
         double dist = to.length();
         if (!p.isOnGround()) r.airborne = true;
@@ -452,6 +465,7 @@ final class AuratusGem implements Listener {
         r.entity = t.victim;
         r.point = t.point;
         r.hooked = t.victim != null;
+        r.bite = t.bite;
         reels.put(id, r);
         GemSounds.play(plugin, "auratus.fly-to-hook", p.getLocation());
     }
@@ -487,7 +501,7 @@ final class AuratusGem implements Listener {
         if (blockedBetween(p.getEyeLocation(), tip)) {
             if (++t.blocked >= 2) { snap(p, t.chain, tip); stopTether(id); return; }
         } else t.blocked = 0;
-        drawChain(t.chain, p.getLocation().add(0, 1.2, 0), tip);
+        drawChain(t.chain, hand(p), tip, t.bite);
         if (t.hauling && v != null) {
             Vector to = p.getLocation().toVector().subtract(v.getLocation().toVector());
             if (to.length() <= 2.5 || t.age >= cfgD("chain.haul-max-ticks", 30)) {
@@ -541,13 +555,40 @@ final class AuratusGem implements Listener {
         if (r != null) r.chain.clear();
     }
 
-    /** Links and hook along hand -> tip (pack models), or a line of gold dust. */
-    private void drawChain(Chain c, Location from, Location to) {
+    // The pack's chain models (echo shard 12348 = custom/chain, 12349 = custom/chain_end) are one straight strand of
+    // links, 47 px long along the model's z and centred on it, a link every 6 px, the strand's axis 8.1 px below the
+    // model's centre. chain_end is the same strand ending in the hook at its -z end. In blocks, at link-scale 1:
+    private static final double STRAND = 47 / 16.0, LINK_STEP = 6 / 16.0, STRAND_DROP = 8.1 / 16.0;
+    /** A strand 42 px (7 links) behind the one before carries the links on in step: one link is drawn twice, never a gap. */
+    private static final double STRAND_STEP = 7 * LINK_STEP;
+    /** A block hook's point stands this far off the face (so you don't fly into the block); the drawn hook reaches it. */
+    private static final double BITE = 0.4;
+
+    /** About where the hand holding the gem is: beside and a little in front of the body, at hip height. */
+    private Location hand(Player p) {
+        double yaw = Math.toRadians(p.getBodyYaw()); // the arms follow the body, which lags the head
+        Vector forward = new Vector(-Math.sin(yaw), 0, Math.cos(yaw));
+        Vector right = new Vector(-Math.cos(yaw), 0, -Math.sin(yaw));
+        boolean rightSide = (p.getMainHand() == MainHand.RIGHT) == inMain(p); // the gem's hand, main or off
+        return p.getLocation().add(right.multiply(rightSide ? 0.36 : -0.36)).add(forward.multiply(0.2))
+                .add(0, p.getEyeHeight() * 0.5, 0); // ~0.8 standing, lower when sneaking
+    }
+
+    /**
+     * The chain from the hand to the tip: the hook model with its point on the tip, then plain strands back to the
+     * hand, joined in step and ending there (pack models); or a line of gold dust. {@code bite} draws the tip that much
+     * further along the chain (block hooks).
+     */
+    private void drawChain(Chain c, Location from, Location to, double bite) {
         World w = from.getWorld();
         Vector delta = to.toVector().subtract(from.toVector());
         double len = delta.length();
         if (len < 0.5) { c.clear(); return; }
-        Vector dir = delta.clone().normalize();
+        Vector dir = delta.clone().multiply(1 / len);
+        if (bite > 0) {
+            to = to.clone().add(dir.clone().multiply(bite));
+            len += bite;
+        }
         if (!cfgB("chain.show-models", true)) {
             c.clear();
             int points = Math.max(2, Math.min(64, (int) (len * 2)));
@@ -556,23 +597,27 @@ final class AuratusGem implements Listener {
                         new Particle.DustOptions(i % 3 == 0 ? PALE : GOLD, 0.9f));
             return;
         }
+        float s = (float) Math.max(0.1, cfgD("chain.link-scale", 1.0));
         Quaternionf rot = new Quaternionf().rotationTo(new Vector3f(0, 0, -1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
-        float scale = (float) cfgD("chain.link-scale", 1.0);
-        Transformation pose = new Transformation(new Vector3f(), rot, new Vector3f(scale, scale, scale), new Quaternionf());
-        double spacing = Math.max(0.2, cfgD("chain.link-spacing", 1.0));
-        int n = Math.max(1, Math.min(60, (int) Math.ceil(len / spacing)));
-        while (c.links.size() < n) c.links.add(display(from, CMD_LINK));
-        while (c.links.size() > n) { ItemDisplay d = c.links.remove(c.links.size() - 1); if (d.isValid()) d.remove(); }
-        for (int i = 0; i < n; i++) {
-            ItemDisplay link = c.links.get(i);
-            if (!link.isValid()) continue;
-            link.teleport(from.clone().add(dir.clone().multiply(len * (i + 0.5) / n)));
-            link.setTransformation(pose);
-        }
+        Vector3f lift = new Vector3f(0, (float) (STRAND_DROP * s), 0).rotate(rot); // the strand's axis onto the line
+        double[] at = AuratusMath.chainLayout(len, STRAND * s, STRAND_STEP * s, LINK_STEP * s, 60);
+        // A short chain is just the hook, squashed (or stretched a little) to fit between hand and tip.
+        float squash = at.length == 1 ? (float) (len / (STRAND * s)) : 1f;
         if (c.hook == null || !c.hook.isValid()) c.hook = display(to, CMD_HOOK);
-        c.hook.teleport(to);
-        c.hook.setTransformation(pose);
+        place(c.hook, to.clone().subtract(dir.clone().multiply(at[0])), new Transformation(lift, rot, new Vector3f(s, s, s * squash), new Quaternionf()));
+        int n = at.length - 1;
+        while (c.links.size() < n) c.links.add(display(from, CMD_LINK)); // new strands glide out from the hand
+        while (c.links.size() > n) { ItemDisplay d = c.links.remove(c.links.size() - 1); if (d.isValid()) d.remove(); }
+        Transformation pose = new Transformation(lift, rot, new Vector3f(s, s, s), new Quaternionf());
+        for (int i = 0; i < n; i++) place(c.links.get(i), to.clone().subtract(dir.clone().multiply(at[i + 1])), pose);
         if (tick % 4 == 0) w.spawnParticle(Particle.WAX_ON, from.clone().add(dir.clone().multiply(len * Math.random())), 1, 0.05, 0.05, 0.05, 0);
+    }
+
+    /** Moves a chain model without giving it a facing of its own (see {@link #display}). */
+    private static void place(ItemDisplay d, Location at, Transformation pose) {
+        if (d == null || !d.isValid()) return;
+        d.teleport(unturned(at));
+        d.setTransformation(pose);
     }
 
     // ------------------------------------------------------------------ Echoing Aegis
@@ -804,7 +849,7 @@ final class AuratusGem implements Listener {
         double total = Math.max(1, d.startY - d.target.getY());
         double left = Math.max(0, p.getLocation().getY() - d.target.getY());
         flat(d.decal, (float) (0.4 + 2.6 * (1 - Math.min(1, left / total))), (float) (d.age * 0.15));
-        drawChain(d.chain, p.getLocation().add(0, 1.0, 0), d.target);
+        drawChain(d.chain, hand(p), d.target, 0);
         if ((p.isOnGround() && d.age > 2) || p.isInWater() || p.isInLava() || to.length() < 1.0 || d.age > 60) { impact(p, d); return; }
         p.setVelocity(to.normalize().multiply(Math.max(0.3, cfgD("slam.dive-speed", 1.6)) * scale));
         p.setFallDistance(0);

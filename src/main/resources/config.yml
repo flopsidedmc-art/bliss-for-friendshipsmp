@@ -211,8 +211,7 @@ mythics:
       haul-speed: 1.0 # top speed hauling them to you (F), blocks/tick
       haul-max-ticks: 30
       show-models: true # chain links + hook from the pack (echo shard models 12348/12349); false = gold dust
-      link-spacing: 1.0 # blocks between chain links
-      link-scale: 1.0
+      link-scale: 1.0 # size of the links; the chain always runs from your hand to the hook's point
     aegis: # Echoing Aegis
       cooldown-seconds: 15
       success-cooldown-seconds: 10 # counted from the cast, when the parry caught a hit

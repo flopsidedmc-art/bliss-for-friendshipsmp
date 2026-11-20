@@ -1,3 +1,13 @@
+# Auratus chain drawn where it really is
+
+- **It points the right way:** the chain pieces were spawned facing the way you faced, and a display model turns by its own facing before its pose. The chain was only right facing south (facing north it pointed backward). Every Auratus model now spawns facing nowhere. The same fix stands the Aegis shield square to you and keeps the Echo Anchor ring level; before, they turned with you as well.
+- **The hook's point is on the real hook point:** the hook model was centred there, so its claw drew about 1.2 blocks past it. On a block hook the point now reaches the block's face.
+- **It's on the line:** the chain model sits half a block below its centre; it's lifted back up.
+- **It starts at your hand:** the hand holding the gem (main or off hand, left-handed players too), not your chest.
+- **The pieces join end to end:** each piece is a strand of links about 3 blocks long. They were placed every block, three deep with the links out of step. Now each strand follows the last 7 links on, so the links carry on in step. The last one is pulled in whole links so the chain ends at your hand, not behind you. A short chain is just the hook, scaled to fit.
+- **`chain.link-spacing` is gone** (spacing comes from the model now). A leftover line in your config is ignored. `link-scale` still sizes the links.
+- **Tests:** `AuratusMathTest` checks the layout for every chain length from 0.5 to 45 blocks: the hook's point on the tip, the chain ending at the hand, no gaps, links in step, nothing on the hook's claw. 58 unit tests pass. Not seen in game.
+
 # Relay sounds boosted to vanilla level
 
 - `rewind.ogg` and `time_dilate.ogg` are peak-normalised to about -1 dB, where vanilla sounds sit, with a little headroom so nothing clips. It's a straight volume increase (Rewind +8 dB, Time Dilate +12.7 dB), so the sound itself is the same.

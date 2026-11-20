@@ -56,4 +56,23 @@ final class AuratusMath {
         double s = parried ? Math.min(successCooldownSeconds, cooldownSeconds) : cooldownSeconds;
         return (long) (Math.max(0, s) * 1000);
     }
+
+    /**
+     * Where the chain's models go on a chain {@code len} long, as distances back from the tip to each model's centre:
+     * [0] the hook, then one per strand. Every model is {@code strand} long. The hook's point is on the tip. Each strand
+     * sits {@code step} behind the one before so the links carry on in step, and the last is pulled forward by whole
+     * links ({@code link}) so it ends at the hand, within half a link, instead of sticking out behind you. A strand
+     * always stays at least two links behind the hook, off its claw, so a chain up to two links longer than a strand
+     * is just the hook, centred (scaled to len / strand). At most {@code maxStrands} strands.
+     */
+    static double[] chainLayout(double len, double strand, double step, double link, int maxStrands) {
+        if (len <= strand + 2 * link) return new double[] {len / 2};
+        int n = Math.max(1, Math.min(maxStrands, (int) Math.ceil((len - strand - link / 2) / step - 1e-9)));
+        double[] at = new double[n + 1];
+        at[0] = strand / 2;
+        for (int i = 1; i <= n; i++) at[i] = strand / 2 + i * step;
+        double over = at[n] + strand / 2 - len; // how far the last strand's end is past the hand
+        if (over > 0) at[n] -= Math.round(over / link) * link;
+        return at;
+    }
 }
