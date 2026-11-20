@@ -46,7 +46,7 @@ Because right-click is Plunge, the holder can't open doors or chests with the ma
 ## Boss mode
 
 - `/revenant boss start` needs the mace to have been given first. The fight starts with:
-  - **120 HP (60 hearts)**, full health, all charges and cooldowns ready;
+  - **60 HP (30 hearts, 3x a normal player)**, full health, all charges and cooldowns ready;
   - knockback resistance 0.6;
   - a boss bar for everyone within 100 blocks. The title is teal text. The bar itself is blue, since boss bars can't be teal.
 - **Phase 2** at half health:
@@ -112,7 +112,7 @@ The icons are pack glyphs, 33x20, matching the Relay icons: dark iron frame with
 
 ## Settings (`mythics.revenant` in config.yml)
 
-`enabled`; `plunge.charges` (2), `recharge-seconds` (12), `leap-height` (12), `leap-forward-speed` (0.35), `range` (16), `slam-speed` (1.8), `radius` (4), `base-damage` (6), `damage-cap` (28), `knockback` (1.0); `rising.cooldown-seconds` (25), `range` (20), `sink-ticks` (20); `undertow.cooldown-seconds` (30), `radius` (8), `strength` (1.4); `abyssal-weight-seconds` (2); `boss.max-health` (120), `knockback-resistance` (0.6), `bar-radius` (100), `phase2-plunge-recharge` (0.7); `phase2-sky` (true), `phase2-sky-seconds` (10); `divinity-suspend-seconds` (5), `divinity-suspend-seconds-phase2` (3), `divinity-immunity-seconds` (30); `return-delay-seconds` (5); `hud.use-glyphs`, `plunge-glyph`, `rising-glyph`, `undertow-glyph`.
+`enabled`; `plunge.charges` (2), `recharge-seconds` (12), `leap-height` (12), `leap-forward-speed` (0.35), `range` (16), `slam-speed` (1.8), `radius` (4), `base-damage` (6), `damage-cap` (28), `knockback` (1.0); `rising.cooldown-seconds` (25), `range` (20), `sink-ticks` (20); `undertow.cooldown-seconds` (30), `radius` (8), `strength` (1.4); `abyssal-weight-seconds` (2); `boss.max-health` (60), `knockback-resistance` (0.6), `bar-radius` (100), `phase2-plunge-recharge` (0.7); `phase2-sky` (true), `phase2-sky-seconds` (10); `divinity-suspend-seconds` (5), `divinity-suspend-seconds-phase2` (3), `divinity-immunity-seconds` (30); `return-delay-seconds` (5); `hud.use-glyphs`, `plunge-glyph`, `rising-glyph`, `undertow-glyph`.
 
 ## Decisions I made
 
@@ -155,7 +155,7 @@ You need two accounts (or a friend), the server with the new JAR, and the merged
 3. Have the second player stand at the landing spot, naked and then in Prot IV diamond. Check they never take more than 14 hearts, even after you pillar up high and plunge. They can't jump for 2 seconds after any hit.
 4. Sneak + right-click near them. You sink for 1 s, then rise behind them, facing them. Try it with them in a 1-wide tunnel: you rise in place and the cooldown shows about 13 s (half of 25).
 5. Sneak + left-click with mobs and the player within 8 blocks: they're all pulled in, with no damage.
-6. `/revenant boss start`. You have 60 hearts and a boss bar shows within 100 blocks. Take damage to below half: you see the phase 2 message, the red sky for 10 s, and faster Plunge recharge.
+6. `/revenant boss start`. You have 30 hearts and a boss bar shows within 100 blocks. Take damage to below half: you see the phase 2 message, the red sky for 10 s, and faster Plunge recharge.
 7. Second player with the Relay: cast Time Dilate on you. Rising is refused and Plunge is slow. Then cast Divinity: you stay in the normal world, frozen up in the air for 3–5 s with clock particles, and the bar says SUSPENDED. Hits push you; ender pearls fail. You drift down with no fall damage. A second Divinity within 30 s doesn't suspend you.
 8. Log out mid-fight. The bar says "The Revenant has vanished…". Log back in: 5 s warning, then the mace returns at the same health. Try `/revenant give <you> fresh` for full health.
 9. Stop the server mid-fight and start it again. Rejoin: the fight resumes with the saved health and you're not stuck floating.

@@ -245,7 +245,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         AttributeInstance mh = p.getAttribute(Attribute.MAX_HEALTH);
         if (mh != null) {
             if (mh.getModifier(healthKey) != null) mh.removeModifier(healthKey);
-            double extra = cfgD("boss.max-health", 120) - mh.getBaseValue();
+            double extra = cfgD("boss.max-health", 60) - mh.getBaseValue();
             if (extra > 0) mh.addTransientModifier(new AttributeModifier(healthKey, extra, AttributeModifier.Operation.ADD_NUMBER));
         }
         AttributeInstance kb = p.getAttribute(Attribute.KNOCKBACK_RESISTANCE);
@@ -806,7 +806,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         if (state != State.RUNNING && state != State.PAUSED) { hideBar(); return; }
         if (bar == null) bar = BossBar.bossBar(Component.empty(), 1f, BossBar.Color.BLUE, BossBar.Overlay.NOTCHED_10);
         Player h = holderOnline();
-        double max = Math.max(1, cfgD("boss.max-health", 120));
+        double max = Math.max(1, cfgD("boss.max-health", 60));
         Set<UUID> want = new HashSet<>();
         if (state == State.PAUSED || h == null) {
             bar.name(Component.text("The Revenant has vanished…", TEAL_COLOR));

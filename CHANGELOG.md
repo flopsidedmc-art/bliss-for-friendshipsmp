@@ -1,3 +1,17 @@
+# Trader: no mythics, and your config
+
+- **A mythic can't be traded:** using a Trader while holding the Heretic, Auratus or Relay says "Mythic gems can't be traded." and the Trader isn't used up.
+- **A Trader never makes a mythic:** the new gem comes from `GemType.tradePool`, which is every standard gem except the one you hold. Before, the pool was every gem type, mythics included.
+- **TraderTest** checks the pool, and also reads GemListener's `case "trader"`. It fails if the mythic check goes, if the pool goes back to `GemType.values()`, or if the Trader would be used up before the check.
+- **config.yml is your current one.** Compared with the old bundled copy:
+  - Revenant `boss.max-health` is 60 (30 hearts). The code default and REVENANT.md now say 60 too.
+  - The brown finale flash is on, holding 20 ticks and fading over 60.
+  - Heretic `bloodsaw-hit` is the sweep sound.
+  - Relay Rewind and Time Dilate fall back to one vanilla sound each, with no layer (SOUNDS.md updated).
+  - Your comments are in (`blocked-areas` TODO, the overlay style note, the fade keys).
+  - One exception: `chain.link-spacing` stays out, since the chain fix made it unused.
+- 61 unit tests pass. Not played in game.
+
 # Auratus chain drawn where it really is
 
 - **It points the right way:** the chain pieces were spawned facing the way you faced, and a display model turns by its own facing before its pose. The chain was only right facing south (facing north it pointed backward). Every Auratus model now spawns facing nowhere. The same fix stands the Aegis shield square to you and keeps the Echo Anchor ring level; before, they turned with you as well.

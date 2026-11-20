@@ -82,6 +82,17 @@ public enum GemType {
         return this == HERETIC || this == AURATUS || this == RELAY;
     }
 
+    /**
+     * What a Trader can turn {@code current} into: every standard gem except the current one. Never a mythic (they are
+     * one of a kind), and a mythic can't be traded at all, so it gets an empty pool.
+     */
+    public static java.util.List<GemType> tradePool(GemType current) {
+        java.util.List<GemType> pool = new java.util.ArrayList<>();
+        if (current == null || current.isMythic()) return pool;
+        for (GemType g : values()) if (!g.isMythic() && g != current) pool.add(g);
+        return pool;
+    }
+
     public static GemType match(String s) {
         if (s == null) return null;
         for (GemType g : values()) {

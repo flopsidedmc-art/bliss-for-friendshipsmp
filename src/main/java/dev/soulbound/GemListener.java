@@ -2814,8 +2814,12 @@ public class GemListener implements Listener {
                     return;
                 }
                 GemType cur = gems.getType(gem);
-                List<GemType> pool = new ArrayList<>(List.of(GemType.values()));
-                pool.remove(cur);
+                if (cur == null || cur.isMythic()) { // mythics are one of a kind: no trading them (the Trader isn't used up)
+                    p.sendMessage(ChatColor.RED + "Mythic gems can't be traded.");
+                    return;
+                }
+                List<GemType> pool = GemType.tradePool(cur); // standard gems only: a Trader never makes a mythic
+                if (pool.isEmpty()) return;
                 GemType next = pool.get((int) (Math.random() * pool.size()));
                 int tier = gems.getTier(gem);
                 int en = gems.getEnergy(gem);

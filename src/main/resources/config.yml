@@ -108,7 +108,7 @@ sounds:
     siphon: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 0.8, enabled: true}  # the tier 1 power
   heretic: # Heretic: gore, sculk (the only gem with the Warden heartbeat)
     bloodsaws: {event: BLOCK_GRINDSTONE_USE, volume: 1.0, pitch: 1.4, enabled: true, layer: {event: ENTITY_PLAYER_ATTACK_SWEEP, volume: 0.9, pitch: 0.6}}
-    bloodsaw-hit: {event: BLOCK_NOTE_BLOCK_PLING, volume: 0.9, pitch: 2.0, enabled: true}
+    bloodsaw-hit: {event: ENTITY_PLAYER_ATTACK_SWEEP, volume: 0.8, pitch: 0.6, enabled: true}  # was a note-block pling at 2.0
     spore: {event: BLOCK_SPORE_BLOSSOM_BREAK, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_SCULK_SPREAD, volume: 1.0, pitch: 1.0}}
     bloodlinking: {event: ENTITY_WARDEN_HEARTBEAT, volume: 1.2, pitch: 1.0, enabled: true}  # on link
     bloodlink-slam: {event: ITEM_MACE_SMASH_GROUND_HEAVY, volume: 1.0, pitch: 0.9, enabled: true}  # each slam
@@ -134,8 +134,8 @@ sounds:
     launch: {event: ENTITY_FIREWORK_ROCKET_LARGE_BLAST, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.3, pitch: 2.0}}
     shield-jam: {event: ITEM_SHIELD_BREAK, volume: 0.8, pitch: 1.2, enabled: true}  # Hauling Strike drops a shield
   relay: # Relay: time (low pitch = slowed time)
-    rewind: {event: "blissgems:relay.rewind", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 1.4, layer: {event: ITEM_CHORUS_FRUIT_TELEPORT, volume: 0.6, pitch: 1.2}}}  # your rewind.ogg; the fallback plays when custom-enabled is false
-    time-dilate: {event: "blissgems:relay.time_dilate", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_AMBIENT, volume: 0.9, pitch: 0.5, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.5}}}  # your time_dilate.ogg when the bubble opens
+    rewind: {event: "blissgems:relay.rewind", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_DEACTIVATE, volume: 0.8, pitch: 1.4}}  # your reversed bell (rewind.ogg); fallback when custom sounds are off
+    time-dilate: {event: "blissgems:relay.time_dilate", volume: 1.0, pitch: 1.0, enabled: true, fallback: {event: BLOCK_BEACON_AMBIENT, volume: 0.9, pitch: 0.5}}  # your slowed beacon + bell (time_dilate.ogg), when the bubble opens
     divinity: {event: BLOCK_END_PORTAL_SPAWN, volume: 0.4, pitch: 0.7, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 0.8, pitch: 0.6}}  # end portal spawn is loud: keep it low
     rift-menu: {event: BLOCK_BELL_RESONATE, volume: 0.4, pitch: 1.5, enabled: true}  # you only
     rift-set-anchor: {event: BLOCK_RESPAWN_ANCHOR_SET_SPAWN, volume: 0.8, pitch: 0.8, enabled: true}
@@ -352,7 +352,7 @@ mythics:
       blocked-worlds: [] # worlds where anchors can't be set or reached, e.g. [world_nether]
       # Boxes where anchors can't be set or reached, e.g. the abyss or arena areas:
       #   - {name: the abyss, world: world, x1: -200, z1: -200, x2: 200, z2: 200}
-      blocked-areas: []
+      blocked-areas: [] # TODO before the season: add the abyss and each Pantheon arena (format above)
       width: 2.5 # blocks
       height: 6.0 # blocks
       glow-color: "#B0703A"
@@ -397,7 +397,7 @@ mythics:
       strength: 1.4 # strongest pull, blocks/tick
     abyssal-weight-seconds: 2 # his hits stop the target jumping or being launched upward (no icon or particles)
     boss:
-      max-health: 120 # total HP while he holds the mace (120 = 60 hearts)
+      max-health: 60 # total HP while he holds the mace (60 = 30 hearts, 3x a normal player)
       knockback-resistance: 0.6
       bar-radius: 100 # players this close see his boss bar
       phase2-plunge-recharge: 0.7 # phase 2 (half health): Plunge recharges in 70% of the time
@@ -557,17 +557,17 @@ finale:
     during-battle: false
   overlay:
     enabled: true
-    style: gold
+    style: gold # "gold" now holds the brown haze frames
     frame-ticks: 4
     fade-in-ticks: 30 # 1.5 s fade in when the cutscene starts (0 = pop in)
     fade-out-ticks: 30 # 1.5 s fade out when it ends (0 = cut)
   sparkles: true
   flash:
-    enabled: false # requires matching resource-pack glyph
+    enabled: true # requires matching resource-pack glyph
     glyph: "\uE120"
     color: "#5A3A1C"
-    hold-ticks: 2
-    fade-ticks: 10
+    hold-ticks: 20 # 1 s of full brown
+    fade-ticks: 60 # then 3 s fading out
   kit:
     enabled: true
     # true: the chosen player fights in their own armor, weapons and tools, temporarily raised to
