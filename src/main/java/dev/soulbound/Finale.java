@@ -366,11 +366,25 @@ public final class Finale implements Listener {
     private void stopSky() {
         if (!skyOn) return;
         skyOn = false;
+        // Fade the overlay out instead of cutting it: one last frame that only fades (no fade-in, no stay).
+        int fadeOut = Math.max(0, (int) skyL("overlay.fade-out-ticks", 30L));
+        Title last = null;
+        if (skyB("overlay.enabled", true) && fadeOut > 0) {
+            last = Title.title(Component.text(String.valueOf(overlayGlyph())), Component.empty(),
+                    Title.Times.times(Duration.ZERO, Duration.ZERO, Duration.ofMillis(fadeOut * 50L)));
+        }
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.resetPlayerTime();
             p.resetPlayerWeather();
-            p.clearTitle();
+            if (last != null && plugin.turmoil().overlayAllowed(p)) p.showTitle(last);
+            else p.clearTitle();
         }
+    }
+
+    /** The overlay glyph for the current frame: brown (the gold slot) or red. */
+    private char overlayGlyph() {
+        boolean red = pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold"));
+        return (char) ((red ? 0xE110 : 0xE100) + overlayFrame);
     }
 
     private void applySky(Player p) {
@@ -384,10 +398,19 @@ public final class Finale implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()) applySky(p);
         }
         int frameTicks = Math.max(1, (int) skyL("overlay.frame-ticks", 4L));
-        if (skyB("overlay.enabled", true) && skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
+        int fadeIn = Math.max(0, (int) skyL("overlay.fade-in-ticks", 30L));
+        if (skyB("overlay.enabled", true) && fadeIn > 0 && skyTicks == 1) {
+            // Fade in: one frame that fades in over fade-in-ticks. The animation waits until it has finished,
+            // because every new title restarts the client's fade.
+            Title in = Title.title(Component.text(String.valueOf(overlayGlyph())), Component.empty(),
+                    Title.Times.times(Duration.ofMillis(fadeIn * 50L), Duration.ofMillis(frameTicks * 50L * 4L), Duration.ZERO));
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (plugin.turmoil().overlayAllowed(p)) p.showTitle(in);
+            }
+        }
+        if (skyB("overlay.enabled", true) && skyTicks > fadeIn && skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
             overlayFrame = (overlayFrame + 1) % OVERLAY_FRAMES;
-            boolean red = pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold"));
-            char glyph = (char) ((red ? 0xE110 : 0xE100) + overlayFrame);
+            char glyph = overlayGlyph();
             Title t = Title.title(Component.text(String.valueOf(glyph)), Component.empty(),
                     Title.Times.times(Duration.ZERO, Duration.ofMillis(frameTicks * 50L * 4L), Duration.ZERO));
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1332,8 +1355,8 @@ public final class Finale implements Listener {
     private void endPulse() {
         if (pulseTask == null) return;
         cancelPulseTask();
+        if (phase == Phase.IDLE) stopSky(); // before clearing pulseRed, so the fade-out frame stays red
         pulseRed = false;
-        if (phase == Phase.IDLE) stopSky();
     }
 
     private void cancelPulseTask() {
