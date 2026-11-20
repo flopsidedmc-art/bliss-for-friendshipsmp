@@ -351,8 +351,7 @@ public final class MythicListener implements Listener {
             loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 2, 0.3, 0.3, 0.3, 0);
             double damage = plugin.getConfig().getDouble("mythics.heretic.bloodsaws.damage", 5.0);
             Player source = Bukkit.getPlayer(s.owner);
-            if (source != null) le.damage(damage, source);
-            else le.damage(damage);
+            plugin.listener().pierceHit(le, damage, source); // skips armour points (ability-damage.pierce-armor)
             applyBleed(le);
             registerBloodsawHit(s.owner, loc);
         }
@@ -457,7 +456,7 @@ public final class MythicListener implements Listener {
             if (victims.size() < maxVictims || victims.contains(victim.getUniqueId())) {
                 victims.add(victim.getUniqueId());
             }
-            victim.damage(damage, p);
+            plugin.listener().pierceHit(victim, damage, p);
             victim.setVelocity(new Vector(0, 0.6, 0));
         }
         int slamCount = bloodlinkSlamCounts.getOrDefault(p.getUniqueId(), 0) + 1;

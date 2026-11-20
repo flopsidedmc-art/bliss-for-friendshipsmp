@@ -27,6 +27,8 @@ import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LargeFireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.damage.DamageType;
 import org.bukkit.entity.SpectralArrow;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -116,6 +118,7 @@ public class GemListener implements Listener {
     }
     private final Map<UUID, BlurRun> blurRuns = new HashMap<>();
     private final Map<UUID, UUID> blurCloneVictim = new HashMap<>();
+    private final Map<UUID, Long> cloneLastHit = new HashMap<>(); // Blur clone -> its last hit (ms)
     private final Map<UUID, SpeedStorm> storms = new HashMap<>();
     private final Map<UUID, Long> stormLastStrike = new HashMap<>();
     private final Map<UUID, Long> amplifyCooldown = new HashMap<>();
@@ -219,18 +222,40 @@ public class GemListener implements Listener {
      * holder's on-hit bonuses (Overdrive, Ground) so no single ability hit can one-shot through armor.
      */
     private void abilityDamage(LivingEntity victim, double base, Player source) {
+        abilityDamage(victim, base, source, true);
+    }
+
+    /**
+     * Ability damage: base x ability-damage.multiplier, capped (onAbilityDamageCap). With ability-damage.pierce-armor
+     * and {@code pierce}, it skips armour points the way magic does; Protection and Resistance still count. Without,
+     * it lands like a hit from the caster.
+     */
+    private void abilityDamage(LivingEntity victim, double base, Player source, boolean pierce) {
         double scaled = base * Math.max(0.0, plugin.getConfig().getDouble("ability-damage.multiplier", 3.0));
         abilityHits++;
         try {
-            victim.damage(scaled, source);
+            if (pierce && plugin.getConfig().getBoolean("ability-damage.pierce-armor", true)) victim.damage(scaled, piercing(source));
+            else victim.damage(scaled, source);
         } finally {
             abilityHits--;
         }
     }
 
-    /** The same scaled, capped ability damage for mythic powers (the Auratus' chains and slam). */
+    /** The same scaled, capped ability damage for the Auratus' chains, Aegis and slam: armour still counts (tuned for it). */
     void abilityHit(LivingEntity victim, double base, Player source) {
-        abilityDamage(victim, base, source);
+        abilityDamage(victim, base, source, false);
+    }
+
+    /** Raw damage (no multiplier or cap) that skips armour points when ability-damage.pierce-armor is on: the Heretic's saws and slams. */
+    void pierceHit(LivingEntity victim, double amount, Player source) {
+        if (source == null) { victim.damage(amount); return; }
+        if (plugin.getConfig().getBoolean("ability-damage.pierce-armor", true)) victim.damage(amount, piercing(source));
+        else victim.damage(amount, source);
+    }
+
+    /** Magic from the caster: armour points don't reduce it, Protection does. Shields don't block it. */
+    private static DamageSource piercing(Player source) {
+        return DamageSource.builder(DamageType.INDIRECT_MAGIC).withCausingEntity(source).withDirectEntity(source).build();
     }
 
     /** Runs after onHit (NORMAL) has applied the holder's bonuses. */
@@ -1800,7 +1825,7 @@ public class GemListener implements Listener {
             a.setVisibleByDefault(false);
             a.setShooter(p); // the hit handler needs the shooter to disable their gem
             a.setPickupStatus(org.bukkit.entity.AbstractArrow.PickupStatus.DISALLOWED);
-            a.setDamage(plugin.getConfig().getDouble("astra.dagger-damage", 5.0));
+            a.setDamage(1.0); // the hit itself is replaced by astra.dagger-hit-damage (onHit)
             a.setCritical(true);
         });
         Vector dir = p.getLocation().getDirection().normalize();
@@ -2230,7 +2255,19 @@ public class GemListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBlurCloneHit(EntityDamageByEntityEvent e) {
         UUID victim = blurCloneVictim.get(e.getDamager().getUniqueId());
-        if (victim != null && !victim.equals(e.getEntity().getUniqueId())) e.setCancelled(true);
+        if (victim == null) return;
+        e.setCancelled(true); // a clone never deals its own vex damage
+        if (!victim.equals(e.getEntity().getUniqueId()) || !(e.getEntity() instanceof LivingEntity target)) return;
+        // Instead: abilities.blur.clone-damage as an ability hit (x multiplier, piercing), at most once a second per clone.
+        long n = System.currentTimeMillis();
+        if (n - cloneLastHit.getOrDefault(e.getDamager().getUniqueId(), 0L) < 1000) return;
+        cloneLastHit.put(e.getDamager().getUniqueId(), n);
+        for (Map.Entry<UUID, BlurRun> run : blurRuns.entrySet()) {
+            if (!run.getValue().clones.contains(e.getDamager())) continue;
+            Player owner = Bukkit.getPlayer(run.getKey());
+            if (owner != null) abilityDamage(target, plugin.getConfig().getDouble("abilities.blur.clone-damage", 1.0), owner);
+            return;
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -3014,9 +3051,14 @@ public class GemListener implements Listener {
         }
         // Dagger shots disable gems on hit
         if (e.getDamager() instanceof org.bukkit.entity.Projectile proj && daggerShots.remove(proj.getUniqueId())) {
-            if (e.getEntity() instanceof Player hit && proj.getShooter() instanceof Player shooter
-                    && !hit.getUniqueId().equals(shooter.getUniqueId())) {
-                disableGem(hit, 8_000L, "Daggers");
+            // The arrow's own damage (base x speed, through armour) is replaced by astra.dagger-hit-damage as an ability hit.
+            e.setCancelled(true);
+            proj.remove(); // a cancelled hit would bounce the arrow back
+            if (proj.getShooter() instanceof Player shooter && e.getEntity() instanceof LivingEntity le
+                    && !le.getUniqueId().equals(shooter.getUniqueId())) {
+                abilityDamage(le, plugin.getConfig().getDouble("astra.dagger-hit-damage", 2.5), shooter);
+                le.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 200, 0)); // what the spectral arrow did
+                if (le instanceof Player hit) disableGem(hit, 8_000L, "Daggers");
             }
             return;
         }

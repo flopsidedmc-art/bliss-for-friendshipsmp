@@ -167,7 +167,7 @@ mythics:
       speed: 1.65
       idle-despawn-ms: 5000 # vanishes 5s after last hit: ding + firework burst
       drag-ticks: 20 # cut victims are dragged along in the wake this long
-      damage: 5.0
+      damage: 7.0 # per saw hit, pierces armour (x2 on a bleeding target: Hemorrhage)
       hit-radius: 0.8
       spawn-spacing: 0.55
       max-bounces: -1 # -1 = true reflection, unlimited
@@ -181,7 +181,7 @@ mythics:
       launch-y: 1.35
       dive-speed: 1.3
       radius: 4
-      damage: 6.0
+      damage: 9.0 # per slam, pierces armour (x2 on a bleeding target)
       max-slams: 3
       max-victims: 2
 
@@ -424,7 +424,11 @@ mythics:
 # through Protection IV diamond, so they are multiplied here. Fireball has its own setting below.
 ability-damage:
   multiplier: 3.0 # 1.0 = the old damage
-  cap: 40.0 # most one ability hit can deal before armor, bonuses included (about 4 hearts through Prot IV diamond); 0 = no cap
+  cap: 40.0 # most one ability hit can deal before Protection, bonuses included; 0 = no cap
+  # true: ability hits skip armour points, like magic; Protection and Resistance still reduce them. A hit then lands about
+  # the same on everyone: Crisp is 2.2 hearts through Prot IV diamond and 6 unarmoured (0.7 and 6 with armour counting).
+  # Also the Heretic's saws and slams, Astra daggers and Blur clones. Not the Auratus or the Revenant (tuned with armour).
+  pierce-armor: true
 
 # Fire gem Fireball (T2 power): left-click to start charging, left-click again to launch.
 fire:
@@ -447,6 +451,7 @@ abilities:
     damage-per-second: 3.0 # before ability-damage.multiplier
     damage-seconds: 3
   blur: # Speed gem, Blur
+    clone-damage: 1.0 # each clone's hit, x ability-damage.multiplier, pierces armour; at most one hit a second per clone
     # Blur stays active for as long as you keep hitting the same target with the gem in your main hand.
     # It ends if you go this long without hitting them, or as soon as they hit you back.
     combo-window-seconds: 3.0
@@ -455,7 +460,7 @@ abilities:
 # The cooldown (cooldowns.daggers, 90 s) starts after the fifth; then all 5 come back.
 astra:
   dagger-speed: 3.0 # blocks per tick
-  dagger-damage: 5.0 # the arrow's base damage: a hit does this x its speed (5 at speed 3 = about 15, 7.5 hearts, before armour)
+  dagger-hit-damage: 2.5 # each dagger that hits, x ability-damage.multiplier (7.5), pierces armour; also disables their gem 8 s
 
 # Crafting recipes. min-progression gates by era (1-4).
 # Edit shapes/ingredients freely, then /progression <1-4> to reload.

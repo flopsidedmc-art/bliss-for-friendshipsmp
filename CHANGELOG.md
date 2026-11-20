@@ -1,3 +1,35 @@
+# Abilities hit harder: they pierce armour, and the weakest went up
+
+Gem abilities barely scratched Protection IV diamond (a Bloodsaw did 0.2 hearts). Simply raising the numbers would have made them one-shot players in iron or no armour, so ability hits now **pierce armour points**, like magic. Protection and Resistance still reduce them, and shields don't block them. A hit now lands about the same on everyone, and Prot IV takes 64% off. The weakest ones also got bigger numbers.
+
+| Ability | Before: hearts through Prot IV diamond | Now | Now: no armour or plain iron |
+|---|---|---|---|
+| Crisp (15 s) | 0.7 | 2.2 | 6 |
+| Breezy Bash (60 s) | 1.2 | 3.2 | 9 |
+| Dash (40 s), 3 hits | 1.4 | 4.9 | 13.5 |
+| Kinetic Burst, full charge | 2.8 | 5.6 | 15.5 |
+| Energy Beam, 60 watts | 2.5 | 5.1 | 14.2 |
+| Bloodsaw (5 → **7**), bleeding ×2 | 0.2 / 0.5 | 1.3 / 2.5 | 3.5 / 7 |
+| Bloodlinking slam (6 → **9**), ×3 | 0.3 each | 1.6 each | 4.5 each |
+| Astra dagger (now **2.5 × 3 = 7.5**), ×5 a volley | 0.9 each | 1.35 each | 3.75 each |
+| Blur clone hit (now **1 × 3 = 3**, at most once a second per clone) | 0.2 | 0.54 | 1.5 |
+
+- **Unchanged:**
+  - The Auratus and the Revenant: their hits still go through armour, because they were tuned with it.
+  - The fireball's blast (still up to about 5 hearts through Prot IV diamond at full charge).
+  - Melee and fall damage.
+- **Settings:**
+  - `ability-damage.pierce-armor` (true). Set it to false for the old behaviour.
+  - `abilities.blur.clone-damage` (1.0).
+  - `astra.dagger-hit-damage` (2.5). It replaces `astra.dagger-damage`, which was the arrow's base damage and is no longer used.
+  - `mythics.heretic.bloodsaws.damage` (7) and `bloodlinking.damage` (9).
+- **Your server's config:** on the next start, if the Heretic numbers are still the old defaults (5 and 6) they become 7 and 9, once. Numbers you changed are left alone, and the console says what changed.
+- **How the hits work now:**
+  - Dagger hits replace the arrow's own damage. They still disable the target's gem for 8 s and make them glow for 10 s, as the spectral arrow did.
+  - Blur clones no longer deal vex damage of their own.
+- **Bleeding does no damage by itself.** It only doubles the Heretic's damage (Hemorrhage).
+- **Tests:** `BalanceConfigTest` checks the new keys and that the Auratus still doesn't pierce. 80 unit tests pass. Not seen in game.
+
 # Astra Daggers fixed, and the Relay's description
 
 - **The cooldown bug:** every left-click restarted the 90 s cooldown, so only one of the five hovering daggers could ever be fired. Now each left-click fires one (0.3 s apart), the cooldown starts after the fifth, and all five come back when it ends. Switching items doesn't refill a half-used volley. The old 3-second per-dagger respawn is gone (the volley replaces it).

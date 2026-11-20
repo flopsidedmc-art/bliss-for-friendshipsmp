@@ -50,6 +50,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
         for (String bad : GemSounds.unknown(this)) getLogger().warning("config.yml: unknown sound " + bad + " (it will be silent)");
+        migrateBalance();
         saveConfig();
         energy = new EnergyManager(this);
         gemManager = new GemManager(this);
@@ -156,6 +157,20 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (turmoil != null && turmoil.isActive()) turmoil.stop();
         if (stalker != null) stalker.shutdown();
         if (energy != null) energy.save();
+    }
+
+    /**
+     * Balance 2: ability hits pierce armour, and the Heretic's weakest numbers go up. A server still on the old
+     * defaults gets the new ones once; numbers someone changed are left alone.
+     */
+    private void migrateBalance() {
+        var c = getConfig();
+        if (c.getInt("balance-version", 1) >= 2) return;
+        java.util.List<String> changed = new java.util.ArrayList<>();
+        if (c.getDouble("mythics.heretic.bloodsaws.damage", 5.0) == 5.0) { c.set("mythics.heretic.bloodsaws.damage", 7.0); changed.add("Bloodsaw damage 5 -> 7"); }
+        if (c.getDouble("mythics.heretic.bloodlinking.damage", 6.0) == 6.0) { c.set("mythics.heretic.bloodlinking.damage", 9.0); changed.add("Bloodlinking damage 6 -> 9"); }
+        c.set("balance-version", 2);
+        if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (abilities now pierce armour; see CHANGELOG.md).");
     }
 
     private void registerRecipes() {
