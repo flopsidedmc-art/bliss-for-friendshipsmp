@@ -170,12 +170,20 @@ public class SoulboundGemsPlugin extends JavaPlugin {
      */
     private void migrateBalance() {
         var c = getConfig();
-        if (c.getInt("balance-version", 1) >= 2) return;
+        int version = c.getInt("balance-version", 1);
+        if (version >= 3) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
-        if (c.getDouble("mythics.heretic.bloodsaws.damage", 5.0) == 5.0) { c.set("mythics.heretic.bloodsaws.damage", 7.0); changed.add("Bloodsaw damage 5 -> 7"); }
-        if (c.getDouble("mythics.heretic.bloodlinking.damage", 6.0) == 6.0) { c.set("mythics.heretic.bloodlinking.damage", 9.0); changed.add("Bloodlinking damage 6 -> 9"); }
-        c.set("balance-version", 2);
-        if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (abilities now pierce armour; see CHANGELOG.md).");
+        String link = "mythics.heretic.bloodlinking.";
+        if (version < 2) {
+            if (c.getDouble("mythics.heretic.bloodsaws.damage", 5.0) == 5.0) { c.set("mythics.heretic.bloodsaws.damage", 7.0); changed.add("Bloodsaw damage 5 -> 7"); }
+            if (c.getDouble(link + "damage", 6.0) == 6.0) c.set(link + "damage", 9.0); // and on to 11 below
+        }
+        // Balance 3: a stronger Bloodlinking (instant bounces on contact).
+        if (c.getDouble(link + "launch-y", 1.35) == 1.35) { c.set(link + "launch-y", 1.9); changed.add("Bloodlinking launch 1.35 -> 1.9"); }
+        if (c.getDouble(link + "damage", 9.0) == 9.0) { c.set(link + "damage", 11.0); changed.add("Bloodlinking damage -> 11"); }
+        if (c.getInt(link + "max-victims", 2) == 2) { c.set(link + "max-victims", 4); changed.add("Bloodlinking max victims 2 -> 4"); }
+        c.set("balance-version", 3);
+        if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 
     private void registerRecipes() {

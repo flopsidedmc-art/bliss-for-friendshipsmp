@@ -21,6 +21,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.LivingEntity;
@@ -69,6 +70,11 @@ public final class MythicListener implements Listener {
     private final Set<UUID> bloodlinkTransferTargets = new HashSet<>();
     private final Map<UUID, BloodsawState> bloodsaws = new HashMap<>();
     private record BloodlinkState(Set<UUID> victims, long until) {}
+    /** One Bloodlinking flight (rising, then diving): its per-tick task, your hitbox last tick, and who you already touch. */
+    private static final class BloodlinkRun { org.bukkit.scheduler.BukkitTask task; org.bukkit.util.BoundingBox lastBox; Set<UUID> touching = new HashSet<>(); }
+    private final Map<UUID, BloodlinkRun> bloodlinkRuns = new HashMap<>();
+    /** No fall damage for the holder until then (ms): during Bloodlinking and 2 s after it ends. */
+    private final Map<UUID, Long> bloodlinkFallGrace = new HashMap<>();
 
     private static final class BloodsawState {
         ArmorStand entity;
@@ -311,9 +317,7 @@ public final class MythicListener implements Listener {
                 for (int dz = -1; dz <= 1; dz++) {
                     Block b = w.getBlockAt(bx + dx, by + dy, bz + dz);
                     if (b.getType() == Material.COBWEB) {
-                        b.setType(Material.AIR, false);
-                        w.spawnParticle(Particle.SWEEP_ATTACK, b.getLocation().add(0.5, 0.5, 0.5),
-                                2, 0.2, 0.2, 0.2, 0);
+                        b.setType(Material.AIR, false); // no sweep particles from the saws
                     }
                 }
             }
@@ -348,7 +352,6 @@ public final class MythicListener implements Listener {
             // Cut victims get dragged along in the wake briefly.
             long dragMs = plugin.getConfig().getLong("mythics.heretic.bloodsaws.drag-ticks", 20L) * 50L;
             s.dragging.put(le.getUniqueId(), now() + dragMs);
-            loc.getWorld().spawnParticle(Particle.SWEEP_ATTACK, loc, 2, 0.3, 0.3, 0.3, 0);
             double damage = plugin.getConfig().getDouble("mythics.heretic.bloodsaws.damage", 5.0);
             Player source = Bukkit.getPlayer(s.owner);
             plugin.listener().pierceHit(le, damage, source); // skips armour points (ability-damage.pierce-armor)
@@ -412,11 +415,86 @@ public final class MythicListener implements Listener {
         }
         long cd = secondsToMs("mythics.heretic.bloodlinking.cooldown-seconds", 100_000L);
         hereticBloodlinkCooldown.put(p.getUniqueId(), now() + cd);
-        p.setVelocity(new Vector(0, plugin.getConfig().getDouble("mythics.heretic.bloodlinking.launch-y", 1.35), 0));
+        p.setVelocity(new Vector(0, plugin.getConfig().getDouble("mythics.heretic.bloodlinking.launch-y", 1.9), 0));
         bloodlinks.put(p.getUniqueId(), new BloodlinkState(new HashSet<>(), now() + 10_000L));
         bloodlinkSlamCounts.put(p.getUniqueId(), 0);
+        bloodlinkFallGrace.put(p.getUniqueId(), Long.MAX_VALUE); // no fall damage while it lasts
         GemSounds.play(plugin, "heretic.bloodlinking", p.getLocation());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> beginBloodlinkDive(p), 14L);
+        startBloodlinkRun(p, 14);
+    }
+
+    /**
+     * One flight: rising, then diving toward the block you look at after {@code diveAfter} ticks. The tick your
+     * hitbox newly overlaps a living entity's (rising or diving; the space you moved through counts, so a fast dive
+     * can't skip a body), the slam happens right there, centred where you touched. Otherwise it slams on landing
+     * (or after 40 ticks), as before. Someone you already overlap when the flight starts doesn't count until you've
+     * parted, so a bounce doesn't slam the same body again at once.
+     */
+    private void startBloodlinkRun(Player p, int diveAfter) {
+        UUID id = p.getUniqueId();
+        stopBloodlinkRun(id);
+        BloodlinkRun run = new BloodlinkRun();
+        run.lastBox = p.getBoundingBox();
+        run.touching = touchedIds(p, run.lastBox);
+        final int[] t = {0};
+        run.task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!p.isOnline() || p.isDead() || !bloodlinks.containsKey(id)) { endBloodlink(p); return; }
+            t[0]++;
+            org.bukkit.util.BoundingBox box = p.getBoundingBox();
+            org.bukkit.util.BoundingBox swept = HereticMath.swept(box, run.lastBox);
+            run.lastBox = box;
+            Set<UUID> now = new HashSet<>();
+            LivingEntity fresh = null;
+            Vector where = null;
+            for (LivingEntity le : touchable(p, swept)) {
+                now.add(le.getUniqueId());
+                if (fresh == null && !run.touching.contains(le.getUniqueId())) { fresh = le; where = HereticMath.contact(swept, le.getBoundingBox()); }
+            }
+            run.touching = now;
+            if (fresh != null && where != null) { // touched: the slam happens now, where you touched them
+                stopBloodlinkRun(id);
+                doBloodlinkSlam(p, where.toLocation(p.getWorld()));
+                return;
+            }
+            if (t[0] == diveAfter) beginBloodlinkDive(p);
+            int sinceDive = t[0] - diveAfter;
+            if (sinceDive > 0 && (p.isOnGround() && sinceDive > 2 || sinceDive > 40)) {
+                stopBloodlinkRun(id);
+                doBloodlinkSlam(p, p.getLocation());
+            }
+        }, 1L, 1L);
+        bloodlinkRuns.put(id, run);
+    }
+
+    /** Living entities whose hitbox overlaps {@code box}: not you, not armour stands, not spectators. */
+    private List<LivingEntity> touchable(Player p, org.bukkit.util.BoundingBox box) {
+        List<LivingEntity> out = new ArrayList<>();
+        for (Entity e : p.getWorld().getNearbyEntities(box.clone().expand(0.5))) {
+            if (!(e instanceof LivingEntity le) || le.equals(p) || le instanceof ArmorStand || le.isDead() || !le.isValid()) continue;
+            if (le instanceof Player o && o.getGameMode() == GameMode.SPECTATOR) continue;
+            if (le.getBoundingBox().overlaps(box)) out.add(le);
+        }
+        return out;
+    }
+
+    private Set<UUID> touchedIds(Player p, org.bukkit.util.BoundingBox box) {
+        Set<UUID> ids = new HashSet<>();
+        for (LivingEntity le : touchable(p, box)) ids.add(le.getUniqueId());
+        return ids;
+    }
+
+    private void stopBloodlinkRun(UUID id) {
+        BloodlinkRun run = bloodlinkRuns.remove(id);
+        if (run != null && run.task != null) run.task.cancel();
+    }
+
+    /** Bloodlinking is over: no more slams, and no fall damage for 2 more seconds. */
+    private void endBloodlink(Player p) {
+        UUID id = p.getUniqueId();
+        stopBloodlinkRun(id);
+        bloodlinks.remove(id);
+        bloodlinkSlamCounts.remove(id);
+        bloodlinkFallGrace.put(id, now() + 2000L);
     }
 
     private void beginBloodlinkDive(Player p) {
@@ -428,50 +506,49 @@ public final class MythicListener implements Listener {
         if (to.lengthSquared() < 1) to = p.getLocation().getDirection().normalize().multiply(8);
         to.normalize().multiply(plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 1.3));
         p.setVelocity(to);
-        scheduleBloodlinkLand(p);
     }
 
-    private void scheduleBloodlinkLand(Player p) {
-        final int[] ticks = {0};
-        final BukkitTask[] task = new BukkitTask[1];
-        task[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!p.isOnline()) { task[0].cancel(); return; }
-            ticks[0]++;
-            if (p.isOnGround() && ticks[0] > 2 || ticks[0] > 40) {
-                task[0].cancel();
-                doBloodlinkSlam(p);
-            }
-        }, 1L, 1L);
-    }
-
-    private void doBloodlinkSlam(Player p) {
+    /**
+     * A slam centred on {@code at} (where you touched someone, or where you landed). It hits every living entity in
+     * the radius (players and mobs; armour pierced); players are bloodlinked, up to max-victims, as before. Hit anyone:
+     * you're launched straight back up this same tick (bounce-launch-y). Hit nobody: the old rule (HereticMath.afterSlam).
+     */
+    private void doBloodlinkSlam(Player p, Location at) {
         BloodlinkState state = bloodlinks.get(p.getUniqueId());
         if (state == null) return;
         Set<UUID> victims = new HashSet<>(state.victims());
         int radius = plugin.getConfig().getInt("mythics.heretic.bloodlinking.radius", 4);
-        double damage = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.damage", 6.0);
-        for (Entity e : p.getNearbyEntities(radius, 3, radius)) {
-            if (!(e instanceof Player victim) || victim.getUniqueId().equals(p.getUniqueId())) continue;
-            int maxVictims = plugin.getConfig().getInt("mythics.heretic.bloodlinking.max-victims", 2);
-            if (victims.size() < maxVictims || victims.contains(victim.getUniqueId())) {
-                victims.add(victim.getUniqueId());
+        double damage = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.damage", 11.0);
+        int maxVictims = plugin.getConfig().getInt("mythics.heretic.bloodlinking.max-victims", 4);
+        int hits = 0;
+        for (Entity e : at.getWorld().getNearbyEntities(at, radius, 3, radius)) {
+            if (!(e instanceof LivingEntity le) || le.equals(p) || le instanceof ArmorStand || le.isDead() || !le.isValid()) continue;
+            if (le instanceof Player victim) {
+                if (victim.getGameMode() == GameMode.SPECTATOR) continue;
+                if (victims.size() < maxVictims || victims.contains(victim.getUniqueId())) {
+                    victims.add(victim.getUniqueId());
+                }
             }
-            plugin.listener().pierceHit(victim, damage, p);
-            victim.setVelocity(new Vector(0, 0.6, 0));
+            plugin.listener().pierceHit(le, damage, p);
+            le.setVelocity(new Vector(0, 0.6, 0));
+            hits++;
         }
         int slamCount = bloodlinkSlamCounts.getOrDefault(p.getUniqueId(), 0) + 1;
         bloodlinkSlamCounts.put(p.getUniqueId(), slamCount);
-        p.getWorld().spawnParticle(Particle.EXPLOSION, p.getLocation(), 2, 0.2, 0.1, 0.2, 0.02);
-        p.getWorld().spawnParticle(Particle.DUST, p.getLocation(), 45, radius * 0.45, 0.25, radius * 0.45,
+        at.getWorld().spawnParticle(Particle.EXPLOSION, at, 2, 0.2, 0.1, 0.2, 0.02);
+        at.getWorld().spawnParticle(Particle.DUST, at, 45, radius * 0.45, 0.25, radius * 0.45,
                 new Particle.DustOptions(Color.fromRGB(150, 0, 20), 1.6f));
-        GemSounds.play(plugin, "heretic.bloodlink-slam", p.getLocation());
-        if (victims.size() > 0 && slamCount < plugin.getConfig().getInt("mythics.heretic.bloodlinking.max-slams", 3)) {
+        GemSounds.play(plugin, "heretic.bloodlink-slam", at);
+        int maxSlams = plugin.getConfig().getInt("mythics.heretic.bloodlinking.max-slams", 3);
+        if (HereticMath.afterSlam(hits, !victims.isEmpty(), slamCount, maxSlams) == HereticMath.AfterSlam.BOUNCE) {
             bloodlinks.put(p.getUniqueId(), new BloodlinkState(victims, now() + 10_000L));
-            p.setVelocity(new Vector(0, 0.95, 0));
-            Bukkit.getScheduler().runTaskLater(plugin, () -> beginBloodlinkDive(p), 8L);
+            double up = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.bounce-launch-y",
+                    plugin.getConfig().getDouble("mythics.heretic.bloodlinking.launch-y", 1.9));
+            p.setVelocity(new Vector(0, up, 0)); // straight back up, this tick
+            p.setFallDistance(0);
+            startBloodlinkRun(p, 8);
         } else {
-            bloodlinks.remove(p.getUniqueId());
-            bloodlinkSlamCounts.remove(p.getUniqueId());
+            endBloodlink(p);
         }
     }
 
@@ -479,6 +556,10 @@ public final class MythicListener implements Listener {
     public void onDamage(EntityDamageEvent e) {
         if (!plugin.getConfig().getBoolean("mythics.enabled", true)) return;
         if (!(e.getEntity() instanceof Player p)) return;
+        if (e.getCause() == EntityDamageEvent.DamageCause.FALL && bloodlinkFallGrace.getOrDefault(p.getUniqueId(), 0L) > now()) {
+            e.setCancelled(true); // Bloodlinking, and 2 s after it ends
+            return;
+        }
         GemType type = heldType(p);
         if (type == GemType.HERETIC) {
             double cap = plugin.getConfig().getDouble("mythics.heretic.passives.blood-hardening-max-damage", 14.0);
@@ -583,6 +664,8 @@ public final class MythicListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         UUID id = e.getPlayer().getUniqueId();
+        stopBloodlinkRun(id);
+        bloodlinkFallGrace.remove(id);
         bloodlinks.remove(id);
         bloodlinkSlamCounts.remove(id);
         bloodlinkTransferTargets.remove(id);
@@ -685,6 +768,7 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.heretic.spore.bleed-ms", Material.REDSTONE_BLOCK, "Bleed Duration", SettingKind.LONG, 1000, 5000, 0, 60000, null),
             new MythicSetting("mythics.heretic.bloodlinking.cooldown-seconds", Material.ENDER_EYE, "Bloodlink Cooldown", SettingKind.INT, 5, 30, 0, 600, null),
             new MythicSetting("mythics.heretic.bloodlinking.launch-y", Material.WIND_CHARGE, "Bloodlink Launch", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 3.0, null),
+            new MythicSetting("mythics.heretic.bloodlinking.bounce-launch-y", Material.SLIME_BALL, "Bloodlink Bounce", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 3.0, null),
             new MythicSetting("mythics.heretic.bloodlinking.radius", Material.TNT, "Bloodlink Radius", SettingKind.INT, 1, 2, 1, 12, null),
             new MythicSetting("mythics.heretic.bloodlinking.damage", Material.MACE, "Bloodlink Damage", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             new MythicSetting("mythics.heretic.bloodlinking.max-slams", Material.ANVIL, "Bloodlink Max Slams", SettingKind.INT, 1, 1, 1, 10, null),

@@ -1,3 +1,58 @@
+# Heretic: no saw sweep particles; Bloodlinking slams on contact and bounces at once
+
+## What I found first
+- **The sweep particles** didn't come from the throw (that's only a sound). They came from saws in flight: when a saw hit an entity, and when it cut a cobweb.
+- **Bloodlinking:**
+  - **The sequence:** launch (1.35), dive toward the block you look at 14 ticks later, then wait to touch the ground (up to 40 ticks) and slam there.
+  - **A bounce:** set 0.95 upward and dived again 8 ticks later.
+  - **Only players were hit.** Mobs took nothing, so the zombie test would have shown nothing.
+  - **The rule:** a slam bounced if any player had been linked so far and slams were left.
+  - **Fall damage** wasn't blocked.
+- **Controls:** main-hand right-click is Bloodlinking, and left-click into the air (or off-hand right-click) throws saws. The Heretic's GemType description, and the simulator, had them the other way round. The simulator is fixed.
+
+## What changed
+- **Bloodsaws:** no more `SWEEP_ATTACK` particles, on hits or cobwebs. Every other saw visual and sound is unchanged, and so are Spore and the passives.
+- **Bloodlinking:**
+  - **The slam on contact:** the tick your hitbox newly overlaps a living entity's, rising or diving, the slam happens right there, centred on where you touched. The space you moved through that tick counts, so a fast dive can't skip a body.
+    - Someone you're already overlapping when a flight starts doesn't count until you've parted, so a bounce doesn't slam the same body again at once.
+    - Otherwise it still slams on landing (or after 40 ticks).
+  - **The slam** hits every living entity in the radius, players and mobs, armour pierced (×2 on bleeding targets through Hemorrhage, as before). Players are bloodlinked up to `max-victims`, as before.
+  - **Hit anyone:** you're launched straight back up that same tick (`bounce-launch-y`), then dive again after 8 ticks, as bounces did.
+  - **Hit nobody:** the old rule (bounce only if someone is already linked).
+  - **Slam count:** every slam counts toward `max-slams`.
+  - **Fall damage:** none for the holder during Bloodlinking or for 2 s after it ends.
+- **Stronger** (`mythics.heretic.bloodlinking`, with comments):
+  - `launch-y` 1.35 → 1.9, `damage` 9 → 11, `max-victims` 2 → 4;
+  - new `bounce-launch-y` (1.9);
+  - `cooldown-seconds` 100, `radius` 4 and `max-slams` 3 are unchanged.
+  - Bounce launch is also in `/mythicconfig`.
+  - **Your server's config:** values still on the old defaults (1.35, 9, 2) are moved to the new ones once, at the next start. Anything you changed by hand is left alone, and the console lists what changed.
+
+## Files changed
+- `MythicListener.java`: the sweep particles removed; Bloodlinking's flight (contact check, slam at the contact point, instant bounce, end, no fall damage) and cleanup on quit; the bounce launch in the tuner.
+- `HereticMath.java` (new): the bounce rule, the swept hitbox and the contact point, unit-tested.
+- `SoulboundGemsPlugin.java`: the one-time balance update for the new defaults.
+- `config.yml`: the new defaults and `bounce-launch-y`, with comments.
+- `BloodlinkBounceTest.java` (new), `BalanceConfigTest.java` (Bloodlinking damage now 11), `CHANGELOG.md`.
+- The simulator: the Heretic's buttons swapped to match the plugin, plus the new Bloodlinking.
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 104 unit tests pass (6 new):
+  - a hit bounces at once;
+  - a miss keeps the old rule;
+  - `max-slams` is respected;
+  - a dive that passes through a body counts as a touch, centred inside it;
+  - the new defaults;
+  - no sweep particles left in the Heretic code.
+- **Not tested:** nothing was seen in game.
+
+### In-game test plan
+1. Throw saws: no sweep particles.
+2. Bloodlinking into a group of zombies: you bounce straight back up the moment you hit them, up to 3 slams.
+3. Bloodlinking straight into a zombie in mid-air: it slams on contact without reaching the ground.
+4. Bloodlinking onto empty ground: it works as before.
+5. No fall damage at the end.
+
 # Auratus hook drawn the right way round
 
 - **The cause:** item displays draw their model turned 180° about Y (vanilla's item display renderer does it). The plain chain strands are symmetric, so it never showed on them. The hook (chain_end, custom model data 12349) has its claw at one end, so it was drawn backwards.

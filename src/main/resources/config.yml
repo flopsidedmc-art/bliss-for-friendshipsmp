@@ -178,14 +178,17 @@ mythics:
       radius: 4.0
       duration-ms: 8000
       bleed-ms: 8000
-    bloodlinking:
+    bloodlinking: # [Right-click] launch up and dive. The tick you touch a living entity (rising or diving) it slams right
+      # there; a slam that hits anyone bounces you straight back up at once. A slam that hits nobody bounces only if
+      # someone is already bloodlinked. No fall damage during it or for 2 s after.
       cooldown-seconds: 100
-      launch-y: 1.35
+      launch-y: 1.9 # upward speed of the first jump (was 1.35)
+      bounce-launch-y: 1.9 # upward speed of each bounce (the same as launch-y by default)
       dive-speed: 1.3
-      radius: 4
-      damage: 9.0 # per slam, pierces armour (x2 on a bleeding target)
-      max-slams: 3
-      max-victims: 2
+      radius: 4 # around where you touched them (or landed)
+      damage: 11.0 # per slam, to every living entity in the radius, pierces armour (x2 on a bleeding target)
+      max-slams: 3 # every bounce counts
+      max-victims: 4 # players bloodlinked (was 2)
 
   # Auratus (rebuilt; see AURATUS.md). Main hand: left-click throws a chain, right-click Aegis (or, while a hook is in,
   # goes there), sneak + left-click in the air Gilded Slam. Off hand: right-click throws / goes, sneak + right-click Aegis

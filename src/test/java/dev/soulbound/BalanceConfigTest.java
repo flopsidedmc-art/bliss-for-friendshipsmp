@@ -16,7 +16,7 @@ class BalanceConfigTest {
     @Test void balanceKeys() {
         assertTrue(CFG.getBoolean("ability-damage.pierce-armor", false));
         assertEquals(7.0, CFG.getDouble("mythics.heretic.bloodsaws.damage"));
-        assertEquals(9.0, CFG.getDouble("mythics.heretic.bloodlinking.damage"));
+        assertEquals(11.0, CFG.getDouble("mythics.heretic.bloodlinking.damage"));
         assertEquals(2.5, CFG.getDouble("astra.dagger-hit-damage"));
         assertEquals(1.0, CFG.getDouble("abilities.blur.clone-damage"));
         assertFalse(CFG.contains("balance-version"), "the migration writes this; shipping it would skip the migration");
