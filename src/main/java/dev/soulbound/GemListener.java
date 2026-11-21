@@ -3613,6 +3613,7 @@ public class GemListener implements Listener {
         if (!plugin.getConfig().getBoolean("protection.prevent-drop", true)) return;
         ItemStack dropped = e.getItemDrop().getItemStack();
         if (!gems.isGem(dropped)) return;
+        if (plugin.finale() != null && plugin.finale().claimsDrop(e.getPlayer(), dropped)) return; // a pedestal drop: the finale's alone
         // Flux T2: dropping the gem converts banked ore energy into wattage (gem stays soulbound)
         if (gems.getType(dropped) == GemType.FLUX && gems.getTier(dropped) >= 2) {
             int banked = fluxOf(fluxOre, e.getPlayer().getUniqueId());

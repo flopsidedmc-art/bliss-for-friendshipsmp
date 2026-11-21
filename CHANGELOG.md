@@ -1,3 +1,28 @@
+# Finale: dropping a mythic on its pedestal no longer duplicates it
+
+## What I found
+- **The cause:** a cancelled drop is given back to the player when the event ends. `Finale.onDrop` (normal priority) didn't check whether the drop was cancelled. It removed the dropped item and placed the gem, and the server then gave the gem back. With the default `protection.prevent-drop: true`, `GemListener.onDrop` (also normal priority) cancels every gem drop. So **every** pedestal drop duplicated, whichever of the two ran first.
+- **The Q release had its own bug:** `AuratusGem.onRelease` checked that you were holding the Auratus, but Q takes the item out of your hand before the drop event fires. Q with the Auratus in your main hand never released the chain; it only worked with the Auratus in your off hand.
+- **The timeout fallback** ("The Signal" pulling the gems) was already safe: it removes the gem first and only then places it. It could still run while a drop was being handled, so it now skips that gem.
+- **Gems have no unique id** (only type, tier, energy and kind), so the fix stamps a one-time id onto the dropped gem.
+
+## What changed
+- **A pedestal drop is the finale's alone.** A merge gem dropped near its pedestal before it's placed: the Auratus Q release and the "gems can't be dropped" rule both step aside (`Finale.claimsDrop`).
+- **The finale handles it at HIGHEST priority, cancelled or not:**
+  1. It always cancels the drop, so the server gives the gem back however the other listeners acted.
+  2. It stamps that gem with a one-time id.
+  3. On the next tick it removes exactly the stack carrying that id, from any inventory slot (hotbar, storage, armour, off hand), the cursor, an open inventory or the ground.
+  4. Only then does it put the gem on the pedestal. If it can't find the stamped gem, it doesn't place it.
+- **The one exception: a full inventory.** If you drop from the cursor or the inventory screen with no free slot, the server has nowhere to give a cancelled drop back and deletes it. In that case (and only if the stamped gem is found nowhere), it's placed, so it isn't lost.
+- **Spamming Q:** while a drop is being handled, more drops of that gem are just cancelled. A gem can't be placed twice (`place` refuses a second time).
+- **A chain that's out when the Auratus goes on the pedestal** is put away, as Q would.
+- **The Q release works from the main hand** again: the Auratus being dropped counts as held. Outside the finale, Q with a chain out still releases it, and the gem still can't be dropped.
+- **Files:** Finale.java, AuratusGem.java, GemListener.java, new PedestalDrop.java, new FinaleDropTest.java.
+- **Tested:** compiles against paper-api 1.21.11. 118 unit tests pass, 12 of them new (FinaleDropTest). They run a copy of Paper's drop flow with the real PedestalDrop logic:
+  - in all 24 orders of the four drop listeners, with and without another plugin cancelling first or un-cancelling afterwards;
+  - Auratus and Heretic, the off hand, any slot, a full inventory, spammed Q, too far from the pedestal, outside the finale, and the finale ending before the next tick.
+- **Not tested in game.**
+
 # Bloodlinking: the dive is one strong push the way you look
 
 This replaces the steerable dive from the previous jar.

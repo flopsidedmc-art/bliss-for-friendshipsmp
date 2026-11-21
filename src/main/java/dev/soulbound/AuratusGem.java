@@ -547,9 +547,20 @@ final class AuratusGem implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onRelease(PlayerDropItemEvent e) {
         Player p = e.getPlayer();
-        UUID id = p.getUniqueId();
-        if (!enabled() || !holds(p) || !(flights.containsKey(id) || tethers.containsKey(id) || reels.containsKey(id))) return;
+        ItemStack dropped = e.getItemDrop().getItemStack();
+        // Q takes the item out of the hand before this event fires, so the Auratus being dropped counts as held
+        if (!enabled() || !(holds(p) || isAuratus(dropped)) || !chainOut(p.getUniqueId())) return;
+        if (plugin.finale() != null && plugin.finale().claimsDrop(p, dropped)) return; // dropped on its pedestal: the finale's alone
         e.setCancelled(true);
+        letGo(p);
+    }
+
+    private boolean chainOut(UUID id) { return flights.containsKey(id) || tethers.containsKey(id) || reels.containsKey(id); }
+
+    /** Lets go of a chain that's out (flying out, bitten or reeling), as Q does. Also used when the gem goes on a finale pedestal. */
+    void letGo(Player p) {
+        UUID id = p.getUniqueId();
+        if (!chainOut(id)) return;
         Flight f = flights.remove(id);
         if (f != null) {
             if (cfgB("release.refund-before-hit", true)) charges(p).refundLatest(now());

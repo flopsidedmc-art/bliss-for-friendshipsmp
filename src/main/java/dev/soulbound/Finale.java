@@ -86,6 +86,8 @@ public final class Finale implements Listener {
     private final SoulboundGemsPlugin plugin;
     private final GemManager gems;
     private final NamespacedKey kitKey;
+    private final NamespacedKey dropKey; // the one-time id a pedestal drop stamps on its gem
+    private final PedestalDrop drops = new PedestalDrop();
     private final File centerFile;
     private final File stashDir;
     private final File borderFile;
@@ -138,6 +140,7 @@ public final class Finale implements Listener {
         this.plugin = plugin;
         this.gems = plugin.gems();
         this.kitKey = new NamespacedKey(plugin, "finale_kit");
+        this.dropKey = new NamespacedKey(plugin, "finale_drop");
         this.centerFile = new File(plugin.getDataFolder(), "turmoil.yml");
         this.stashDir = new File(plugin.getDataFolder(), "finale-stash");
         this.borderFile = new File(plugin.getDataFolder(), "finale-border.yml");
@@ -547,6 +550,7 @@ public final class Finale implements Listener {
     }
 
     private void startDrop() {
+        drops.clear();
         dropTicks = 0;
         bothAt = -1;
         placedAuratus = false;
@@ -581,6 +585,7 @@ public final class Finale implements Listener {
         pedHeretic = null;
         placedAuratus = false;
         placedHeretic = false;
+        drops.clear();
         bothAt = -1;
         dropTicks = 0;
     }
@@ -642,9 +647,10 @@ public final class Finale implements Listener {
         return false;
     }
 
-    /** Locks a gem onto its pedestal. It is a display now, so nobody can pick it back up. */
+    /** Locks a gem onto its pedestal. It is a display now, so nobody can pick it back up. Never twice. */
     private void place(GemType type, String who) {
         boolean aur = type == GemType.AURATUS;
+        if (aur ? placedAuratus : placedHeretic) return;
         Location ped = aur ? pedAuratus : pedHeretic;
         Location top = ped.clone().add(0, gemHeight(), 0);
         ItemDisplay d = spawnDisplay(top, gems.createMythic(type));
@@ -664,26 +670,92 @@ public final class Finale implements Listener {
         Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + who + " has given up the " + (aur ? "Auratus" : "Heretic") + " gem.");
     }
 
-    @EventHandler
-    public void onDrop(PlayerDropItemEvent e) {
-        if (phase != Phase.DROP) return;
-        ItemStack st = e.getItemDrop().getItemStack();
-        if (!isMergeGem(st)) return;
-        boolean aur = gems.getType(st) == GemType.AURATUS;
-        Player p = e.getPlayer();
-        if (aur ? placedAuratus : placedHeretic) {
-            e.setCancelled(true);
-            return;
-        }
+    // ------------------------------------------------------------------ pedestal drops (PedestalDrop)
+
+    private PedestalDrop.Facts facts(Player p, ItemStack st) {
+        boolean merge = isMergeGem(st);
+        GemType type = merge ? gems.getType(st) : null;
+        boolean aur = type == GemType.AURATUS;
         Location ped = aur ? pedAuratus : pedHeretic;
         double reach = cfgD("pedestal.reach", 4.0);
-        if (ped == null || !p.getWorld().equals(ped.getWorld()) || p.getLocation().distanceSquared(ped) > reach * reach) {
-            e.setCancelled(true);
-            p.sendMessage(ChatColor.LIGHT_PURPLE + "Bring the " + (aur ? "Auratus" : "Heretic") + " gem to its pedestal to place it.");
-            return;
+        boolean near = merge && ped != null && p.getWorld().equals(ped.getWorld()) && p.getLocation().distanceSquared(ped) <= reach * reach;
+        return new PedestalDrop.Facts(phase == Phase.DROP, merge, merge && (aur ? placedAuratus : placedHeretic), near);
+    }
+
+    /**
+     * True while the finale alone handles this drop: a merge gem dropped near its pedestal before it's placed. The
+     * Auratus Q release and the "gems can't be dropped" rule check this and stay out of it.
+     */
+    public boolean claimsDrop(Player p, ItemStack st) {
+        return p != null && phase == Phase.DROP && PedestalDrop.owns(facts(p, st));
+    }
+
+    /**
+     * Highest priority, cancelled or not: every merge gem dropped in the drop phase is cancelled here, so the server
+     * gives it back whatever the other listeners did. A drop at its pedestal is stamped first and placed next tick,
+     * once exactly that gem has been taken back out (PedestalDrop).
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDrop(PlayerDropItemEvent e) {
+        Player p = e.getPlayer();
+        Item drop = e.getItemDrop();
+        ItemStack st = drop.getItemStack();
+        GemType type = isMergeGem(st) ? gems.getType(st) : null;
+        boolean couldNotReturn = p.getInventory().firstEmpty() == -1;
+        PedestalDrop.Verdict v = drops.onDrop(type, facts(p, st), () -> e.setCancelled(true), () -> stamp(drop), couldNotReturn);
+        if (v == PedestalDrop.Verdict.TOO_FAR) {
+            p.sendMessage(ChatColor.LIGHT_PURPLE + "Bring the " + (type == GemType.AURATUS ? "Auratus" : "Heretic") + " gem to its pedestal to place it.");
+        } else if (v == PedestalDrop.Verdict.CLAIMED) {
+            Bukkit.getScheduler().runTask(plugin, () -> settleDrop(p, type));
         }
-        e.getItemDrop().remove();
-        place(aur ? GemType.AURATUS : GemType.HERETIC, p.getName());
+    }
+
+    /** The tick after a claimed drop: the server has given the gem back by now, so take exactly it out, then place it. */
+    private void settleDrop(Player p, GemType type) {
+        boolean placed = type == GemType.AURATUS ? placedAuratus : placedHeretic;
+        if (!drops.settle(type, phase == Phase.DROP, placed, token -> take(p, token))) return;
+        place(type, p.getName());
+        if (type == GemType.AURATUS && p.isOnline() && plugin.auratus() != null) plugin.auratus().letGo(p); // a chain that's out goes with it
+    }
+
+    /** Stamps the dropped gem with a fresh id (on the drop entity's stack, which is what the server gives back). */
+    private String stamp(Item drop) {
+        ItemStack st = drop.getItemStack();
+        ItemMeta m = st.getItemMeta();
+        if (m == null) return null;
+        String token = UUID.randomUUID().toString();
+        m.getPersistentDataContainer().set(dropKey, PersistentDataType.STRING, token);
+        st.setItemMeta(m);
+        drop.setItemStack(st);
+        return token;
+    }
+
+    private boolean stamped(ItemStack it, String token) {
+        return it != null && it.hasItemMeta()
+                && token.equals(it.getItemMeta().getPersistentDataContainer().get(dropKey, PersistentDataType.STRING));
+    }
+
+    /**
+     * Removes the one stack carrying {@code token}: any slot of the player's inventory (hotbar, storage, armour, off
+     * hand), their cursor, the inventory they have open, or the ground of their world. True if it was found.
+     */
+    private boolean take(Player p, String token) {
+        if (p.isOnline()) {
+            PlayerInventory inv = p.getInventory();
+            ItemStack[] c = inv.getContents();
+            for (int i = 0; i < c.length; i++) {
+                if (stamped(c[i], token)) { inv.setItem(i, null); return true; }
+            }
+            if (stamped(p.getItemOnCursor(), token)) { p.setItemOnCursor(null); return true; }
+            org.bukkit.inventory.Inventory top = p.getOpenInventory().getTopInventory();
+            for (int i = 0; i < top.getSize(); i++) {
+                if (stamped(top.getItem(i), token)) { top.setItem(i, null); return true; }
+            }
+        }
+        for (Item item : p.getWorld().getEntitiesByClass(Item.class)) {
+            if (item.isValid() && stamped(item.getItemStack(), token)) { item.remove(); return true; }
+        }
+        return false;
     }
 
     private void dropTick() {
@@ -695,8 +767,9 @@ public final class Finale implements Listener {
         if (dropTicks % 20 == 0) guideHolders();
         int timeout = cfgI("pedestal.timeout-seconds", 0);
         if (timeout > 0 && dropTicks >= timeout * 20 && dropTicks % 20 == 0) {
-            if (!placedAuratus && forcePull(GemType.AURATUS)) place(GemType.AURATUS, "The Signal");
-            if (!placedHeretic && forcePull(GemType.HERETIC)) place(GemType.HERETIC, "The Signal");
+            // a gem being dropped right now is left to its drop (settleDrop), so it can't be pulled as well
+            if (!placedAuratus && !drops.isPending(GemType.AURATUS) && forcePull(GemType.AURATUS)) place(GemType.AURATUS, "The Signal");
+            if (!placedHeretic && !drops.isPending(GemType.HERETIC) && forcePull(GemType.HERETIC)) place(GemType.HERETIC, "The Signal");
         }
         if (placedAuratus && placedHeretic) {
             if (bothAt < 0) bothAt = dropTicks;
