@@ -1,3 +1,57 @@
+# Auratus: let go of the chain, the chain flies out and reels in; mythic HUD numbers
+
+## What I found first
+- **The chain:** it was instant. `aim()` picked the target, a charge was spent, and `hook()` landed the hook the same tick, with damage, sounds and the tether. A throw that found nothing already cost no charge.
+- **The mythic HUD:** it already showed seconds while a single ability recharged. Abilities with charges (Auratus chains, Heretic saws, Relay Rewind) only said "Ready!" while any charge was left: no count, and no timer for the one recharging.
+- **The fireball:** nothing in the plugin changes its size. It's vanilla's small (blaze) fireball, which the game always draws at one fixed size. No display entity, scale, per-tick update or resource-pack model touches it, and its charge only sets the explosion power. **Not changed:** what looks like shrinking is most likely perspective, since it leaves from your eyes and races away.
+
+## What changed
+- **Letting go (Q, the drop key, while a chain is out):**
+  - **Why Q:** dropping the Auratus is already blocked (`protection.prevent-drop`), and every other button is taken: clicks, sneak-clicks and F.
+  - **Before it bites anything** (still flying, or what it was flying at died or left), the charge comes back (`mythics.auratus.release.refund-before-hit`).
+  - **After it bit a player, mob, block or the Echo Anchor,** the charge is spent as normal.
+  - **While you're flying to the hook,** you let go and keep your momentum.
+  - **Off-hand edge case:** Q only fires when the main hand holds something, so a player with the Auratus in the off hand and an empty main hand can't release.
+- **The chain flies out** (`visuals.chain-travel`, `chain-travel-ticks` 5):
+  - The hook leaves your hand and flies to its target, pointing at it the whole way, with the links appearing behind it as it passes.
+  - The bite (damage, Angels Grasp, the clink, the hit particles) happens when it arrives; the throw sound plays when you fire.
+  - **A moving target:** the hook follows it and still lands on it. The target and range are unchanged (`aim()` still chooses).
+  - **Buttons pressed mid-flight:** right-click (go there) and F (haul) are queued for the landing, so they still mean what they did instead of casting the Aegis.
+  - **Throwing again or slamming** while one is flying refunds the one that hit nothing.
+- **The chain reels in** (`visuals.chain-reel-in`, `chain-reel-ticks` 4): when you let go, or when the hook slides out after 6 s, the hook flies back to your hand and each link disappears as it passes. Snapping on a wall is still instant.
+- **How it's drawn:** by display interpolation, recorded like any other entity data, so it plays back smoothly in Replay Mod and Flashback.
+  - **The hook:** its translation is set once to the landing spot, with a duration. It's set again only if the target moves.
+  - **The links:** spawned once each where they'll lie, and never moved during the flight.
+  - **The reel-in:** the hook's way back is one move, set once.
+- **Going to the hook** now keeps the same chain on screen while you fly, instead of clearing and respawning it.
+- **Mythic HUD numbers** (`mythics.hud.show-numbers`, true):
+  - **Abilities with charges** show what's left and the seconds until the next one: `Ready! 1/2 6s`, or `6s 0/2` when none are left. That's the Auratus chains (also `… 1/2` while a hook is out), the Heretic's saws and Relay's Rewind.
+  - **Single cooldowns** keep showing their seconds.
+  - **Relay** keeps all three of its entries, each with its own timer.
+  - **Off:** icons only, dimmed until ready.
+  - **Style:** colours and layout unchanged.
+- **Cleanup:** every flying or reeling model goes on release, logout, death, world change and plugin disable.
+- **Unchanged:** damage and every cooldown length.
+
+## Files changed
+- `AuratusGem.java`:
+  - the flight, landing, release (Q), reel-in and cleanup;
+  - right-click and F queued in flight;
+  - the shared chain layout (`layout()`);
+  - fly-to-hook keeps the chain;
+  - the HUD numbers.
+- `Charges.java`: `refundLatest()` and `nextRecharge()`.
+- `HudStatus.java`: number-aware `entry()` and `charges()`.
+- `AuratusMath.java`: `hookPassed()` (when a link appears) and `passTick()` (when a link goes on reel-in).
+- `MythicListener.java`, `RelayGem.java`: the Heretic and Relay HUD use the numbers setting.
+- `config.yml`: `mythics.hud.show-numbers`, `mythics.auratus.release.refund-before-hit`, and four `mythics.auratus.visuals.chain-*` keys.
+- `AURATUS.md`, `CHANGELOG.md`, `ChainFlightTest.java` (new).
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 91 unit tests pass (6 new): the refund, next-recharge timing, links appearing from the hand outward, link removal timing, HUD formats with numbers on and off, and the settings.
+- **Not tested:** nothing was seen in game or in a recording.
+  - **To check:** the flight and reel-in look, the hand-off from the flying hook to the attached chain, and Replay Mod and Flashback playback.
+
 # Divinity void world: clearer ownership
 
 - **Why it was refused:** on a test server the void world folder existed, but `plugins/SoulboundGems/temporal-world-soulbound_temporal_void.marker` didn't (the plugin folder was reset or not copied). The plugin rightly refused to adopt an unmarked world, and Divinity stayed off.

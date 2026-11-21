@@ -34,6 +34,19 @@ final class AuratusMath {
         return Math.max(-Math.abs(maxDown), Math.min(Math.abs(maxUp), v));
     }
 
+    /**
+     * Whether the flying hook has passed strand {@code i}'s spot: the hook's middle has covered {@code progress} (0..1) of
+     * the way to its landing spot (len - at[0] from the hand), and strand i lies len - at[i] from the hand.
+     */
+    static boolean hookPassed(double len, double[] at, int i, double progress) {
+        return progress * (len - at[0]) >= len - at[i] - 1e-9;
+    }
+
+    /** The tick a link goes while the hook reels in: when the hook, travelling back over {@code ticks}, reaches it. */
+    static long passTick(long now, int ticks, double distanceFromHook, double total) {
+        return now + Math.max(1, Math.round(ticks * Math.min(1, distanceFromHook / Math.max(1e-6, total))));
+    }
+
     /** A random offset {x, y, z}: minR..maxR out horizontally in any direction, minUp..maxUp up. */
     static double[] randomOffset(java.util.random.RandomGenerator r, double minR, double maxR, double minUp, double maxUp) {
         double a = r.nextDouble() * Math.PI * 2;

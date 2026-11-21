@@ -399,9 +399,10 @@ public final class RelayGem implements Listener {
         String dvg=glyphs?plugin.getConfig().getString("mythics.relay.hud.divinity-glyph","\uE044"):"Divinity";
         String meter=glyphs?tunedGlyph(id):null;
         // Icons and timers only, no words (HudStatus): bright when ready, dimmed with a timer while recharging.
-        String rw=HudStatus.charges(rg,ready,max,next==Long.MAX_VALUE?0:next);
-        String dl=HudStatus.entry(dg,dilationReady.getOrDefault(id,0L)-n,flow.active(id));
-        String dv=HudStatus.entry(dvg,divinityReady.getOrDefault(id,0L)-n,domain.contains(id));
+        boolean numbers=plugin.getConfig().getBoolean("mythics.hud.show-numbers",true);
+        String rw=HudStatus.charges(rg,ready,max,next==Long.MAX_VALUE?0:next,false,numbers);
+        String dl=HudStatus.entry(dg,dilationReady.getOrDefault(id,0L)-n,flow.active(id),numbers);
+        String dv=HudStatus.entry(dvg,divinityReady.getOrDefault(id,0L)-n,domain.contains(id),numbers);
         String rs=byHotbar("rift")?null:rift.hudEntry(p,rfg,false);
         String inlineRift=rs==null?"":"  "+rs;
         // Tuned In is just its meter; without the pack's icons it falls back to a number.

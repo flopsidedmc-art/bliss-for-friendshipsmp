@@ -636,9 +636,10 @@ public final class MythicListener implements Listener {
             int ready = (slotRemain(id, 0, n) <= 0 ? 1 : 0) + (slotRemain(id, 1, n) <= 0 ? 1 : 0);
             long next = Math.min(slotRemain(id, 0, n) > 0 ? slotRemain(id, 0, n) : Long.MAX_VALUE,
                     slotRemain(id, 1, n) > 0 ? slotRemain(id, 1, n) : Long.MAX_VALUE);
-            String saws = HudStatus.charges(GLYPH_BLOODSAWS, ready, 2, next == Long.MAX_VALUE ? 0 : next);
+            boolean numbers = plugin.getConfig().getBoolean("mythics.hud.show-numbers", true);
+            String saws = HudStatus.charges(GLYPH_BLOODSAWS, ready, 2, next == Long.MAX_VALUE ? 0 : next, false, numbers);
             String link = HudStatus.entry(GLYPH_BLOODLINKING, cooldown(hereticBloodlinkCooldown, id),
-                    bloodlinks.containsKey(id) || bloodlinkSlamCounts.containsKey(id));
+                    bloodlinks.containsKey(id) || bloodlinkSlamCounts.containsKey(id), numbers);
             msg = saws + "  " + link;
         } else if (type == GemType.AURATUS) {
             return plugin.auratus().hudComponent(p);

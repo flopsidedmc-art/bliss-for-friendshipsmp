@@ -43,6 +43,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
@@ -67,6 +68,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -130,7 +132,27 @@ final class AuratusGem implements Listener {
             if (hook != null && hook.isValid()) hook.remove();
             hook = null;
         }
+        /** Takes over another chain's models (the hook goes on being drawn, no flicker). */
+        void take(Chain o) {
+            links.addAll(o.links);
+            o.links.clear();
+            if (o.hook != null) { if (hook != null && hook.isValid()) hook.remove(); hook = o.hook; o.hook = null; }
+        }
     }
+    /**
+     * A thrown hook flying out to what it will bite (visuals.chain-travel). The hook model stays where it was spawned
+     * (the hand) and its translation is interpolated to the landing spot: set once, set again only if the target moves.
+     * The links are spawned once each, where they will lie, as the hook passes. The bite (damage, sounds) waits for it.
+     */
+    private static final class Flight {
+        Target target; Location from; int age, ticks; double bite; boolean go, haul;
+        ItemDisplay hook; Vector3f aimedAt; ItemDisplay[] strands = new ItemDisplay[0];
+    }
+    /** A released or expired chain reeling back to the hand (visuals.chain-reel-in): links go as the hook passes them. */
+    private static final class Retract { ItemDisplay hook; long hookGone; final List<ItemDisplay> links = new ArrayList<>(); final List<Long> gone = new ArrayList<>(); }
+    private final Map<UUID, Flight> flights = new HashMap<>();
+    private final Map<UUID, Retract> retracts = new HashMap<>();
+    private final List<ItemDisplay> removeNextTick = new ArrayList<>(); // a landed flight's hook, gone once the tether's own is up
     private static final class Reel { Location point; UUID entity; boolean hooked; double age, bite; int blocked; boolean airborne; Vector carry = new Vector(); final Chain chain = new Chain(); }
     /** A hook left in an enemy (victim) or a block / the Echo Anchor (point), until it lets go or you go or haul. */
     private static final class Tether { UUID victim; Location point; long until; double age, bite; int blocked; boolean hauling; Vector carry = new Vector(); final Chain chain = new Chain(); }
@@ -293,13 +315,15 @@ final class AuratusGem implements Listener {
         lastRight.put(id, n);
         Tether held = tethers.get(id);
         boolean go = held != null && !held.hauling && !p.isSneaking(); // right-click while a hook is in: go there
+        Flight flying = p.isSneaking() ? null : flights.get(id); // still flying out: go once it lands
         if (main) {
-            if (go) flyToHook(p, held);
+            if (flying != null) flying.go = true;
+            else if (go) flyToHook(p, held);
             else aegis(p); // sneak + right-click still parries while hooked
             return;
         }
         // Off hand: right-click throws the chain (and goes, while hooked); sneak + right-click slams in the air, else the Aegis.
-        if (!p.isSneaking()) { if (go) flyToHook(p, held); else chain(p); }
+        if (!p.isSneaking()) { if (flying != null) flying.go = true; else if (go) flyToHook(p, held); else chain(p); }
         else if (slamPosition(p)) slam(p);
         else aegis(p);
     }
@@ -336,7 +360,8 @@ final class AuratusGem implements Listener {
         Target t = aim(p);
         if (t == null) return; // nothing in range, or close enough to just hit: no charge used
         c.use(n, ms("chain.recharge-seconds", 8));
-        hook(p, t);
+        if (travelOn()) launch(p, t);
+        else hook(p, t, true);
     }
 
     private Target aim(Player p) {
@@ -376,7 +401,7 @@ final class AuratusGem implements Listener {
      * creature, in a block or in the Echo Anchor. Then right-click to go there, the swap-hands key to haul a creature
      * to you, or leave it: it slides out after chain.hook-seconds, and snaps if a wall gets between you.
      */
-    private void hook(Player p, Target t) {
+    private Tether hook(Player p, Target t, boolean throwSound) {
         UUID id = p.getUniqueId();
         stopReel(id);
         stopTether(id);
@@ -402,10 +427,207 @@ final class AuratusGem implements Listener {
             else h.bite = BITE; // the point stands off the block's face; the drawn hook reaches it
         }
         tethers.put(id, h);
-        GemSounds.play(plugin, "auratus.chain-throw", p.getLocation()); // the lighter throw, at you
+        if (throwSound) GemSounds.play(plugin, "auratus.chain-throw", p.getLocation()); // the lighter throw, at you
         w.spawnParticle(Particle.CRIT, tip, 10, 0.15, 0.15, 0.15, 0.25);
         dust(w, tip, 10, 0.25, GOLD, 1.2f);
+        return h;
     }
+
+    // ---- the flight out, the release and the reel-in
+
+    private boolean travelOn() {
+        return cfgB("visuals.chain-travel", true) && cfgB("chain.show-models", true) && cfgI("visuals.chain-travel-ticks", 5) > 1;
+    }
+
+    /** Where the hook bites right now: the creature's middle (it may have moved) or the point; null if the creature is gone. */
+    private static Location biteAt(Target t) {
+        LivingEntity v = t.entity();
+        if (v == null) return t.point();
+        if (!v.isValid() || v.isDead()) return null;
+        return v.getLocation().add(0, v.getHeight() * 0.5, 0);
+    }
+
+    /** The hook leaves the hand; aim() already chose what it bites, so range and target are as before. */
+    private void launch(Player p, Target t) {
+        UUID id = p.getUniqueId();
+        stopReel(id);
+        stopTether(id);
+        dropFlight(id, true); // a new throw while one is still flying: the old one hit nothing, so its charge comes back
+        Flight f = new Flight();
+        f.target = t;
+        f.ticks = Math.max(2, Math.min(40, cfgI("visuals.chain-travel-ticks", 5)));
+        f.bite = t.entity() == null && !t.anchor() ? BITE : 0;
+        f.from = hand(p);
+        Location to = biteAt(t);
+        Layout l = to == null ? null : layout(f.from, to, f.bite);
+        if (l == null) { hook(p, t, true); return; }
+        f.hook = display(f.from, CMD_HOOK);
+        f.hook.setTransformation(l.hookPose(new Vector3f())); // at the hand, already pointing at the target
+        f.strands = new ItemDisplay[l.at().length - 1];
+        flights.put(id, f);
+        GemSounds.play(plugin, "auratus.chain-throw", p.getLocation()); // the throw now; the bite's sounds when it lands
+    }
+
+    private void tickFlight(Player p, Flight f) {
+        UUID id = p.getUniqueId();
+        Location to = biteAt(f.target);
+        if (to == null || !to.getWorld().equals(f.from.getWorld())) { missFlight(p, f); return; } // what it was flying at is gone
+        Layout l = layout(f.from, to, f.bite);
+        if (l == null) { land(p, f); return; }
+        f.age++;
+        Vector3f end = vec(l.centre(0)).sub(vec(f.from)); // from the hook model (at the hand) to where it lands
+        if (f.aimedAt == null || f.aimedAt.distance(end) > 0.3f) { // the first tick, or the target moved: one interpolated move for the time left
+            int left = Math.max(1, f.ticks - f.age);
+            f.hook.setInterpolationDelay(0);
+            f.hook.setInterpolationDuration(left);
+            f.hook.setTransformation(l.hookPose(end));
+            f.aimedAt = end;
+        }
+        int n = l.at().length - 1;
+        if (f.strands.length != n) { // the target moved enough to change the chain's length
+            ItemDisplay[] next = new ItemDisplay[n];
+            for (int i = 0; i < f.strands.length; i++) {
+                if (i < n) next[i] = f.strands[i];
+                else if (f.strands[i] != null && f.strands[i].isValid()) f.strands[i].remove();
+            }
+            f.strands = next;
+        }
+        double progress = Math.min(1, (f.age - 1) / (double) Math.max(1, f.ticks - 1));
+        Transformation pose = l.strandPose();
+        for (int i = 1; i <= n; i++) {
+            if (f.strands[i - 1] != null || !AuratusMath.hookPassed(l.len(), l.at(), i, progress)) continue;
+            ItemDisplay d = display(l.centre(i), CMD_LINK); // spawned where it will lie, as the hook passes: it never moves in flight
+            d.setTransformation(pose);
+            f.strands[i - 1] = d;
+        }
+        if (f.age >= f.ticks) land(p, f);
+    }
+
+    /** It arrives: the bite happens now (damage, Angels Grasp, sounds), and the tether takes over the links. */
+    private void land(Player p, Flight f) {
+        UUID id = p.getUniqueId();
+        flights.remove(id);
+        Tether h = hook(p, f.target, false);
+        for (ItemDisplay d : f.strands) if (d != null && d.isValid()) h.chain.links.add(d);
+        if (f.hook != null) removeNextTick.add(f.hook); // the tether draws its own hook this tick, in the same spot
+        if (f.go) flyToHook(p, h);
+        else if (f.haul && h.victim != null) startHaul(h);
+    }
+
+    /** What it was flying at died or left: nothing was hit, so the charge comes back (release.refund-before-hit). */
+    private void missFlight(Player p, Flight f) {
+        flights.remove(p.getUniqueId());
+        if (cfgB("release.refund-before-hit", true)) charges(p).refundLatest(now());
+        retract(p, f.hook, flightHookAt(f), java.util.Arrays.asList(f.strands));
+        GemSounds.play(plugin, "auratus.hook-slides-out", p.getLocation());
+    }
+
+    /** Where the flying hook is drawn now (it moves by interpolation, so this is worked out, not read). */
+    private static Location flightHookAt(Flight f) {
+        if (f.aimedAt == null) return f.from.clone();
+        double q = Math.min(1, Math.max(0, (f.age - 1) / (double) Math.max(1, f.ticks - 1)));
+        return f.from.clone().add(f.aimedAt.x * q, f.aimedAt.y * q, f.aimedAt.z * q);
+    }
+
+    /** Removes a flight's models at once (logout, death, a new throw, the slam); refunds when asked and configured. */
+    private void dropFlight(UUID id, boolean refund) {
+        Flight f = flights.remove(id);
+        if (f == null) return;
+        if (f.hook != null && f.hook.isValid()) f.hook.remove();
+        for (ItemDisplay d : f.strands) if (d != null && d.isValid()) d.remove();
+        Player p = Bukkit.getPlayer(id);
+        if (refund && p != null && cfgB("release.refund-before-hit", true)) charges(p).refundLatest(now());
+    }
+
+    /**
+     * Release [Q, the drop key, while a chain is out]: dropping the gem is blocked anyway (protection.prevent-drop), so
+     * the key is free. Still flying out: the charge comes back (release.refund-before-hit). Already bitten: spent as normal.
+     * Flying to the hook: you let go and keep your momentum.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onRelease(PlayerDropItemEvent e) {
+        Player p = e.getPlayer();
+        UUID id = p.getUniqueId();
+        if (!enabled() || !holds(p) || !(flights.containsKey(id) || tethers.containsKey(id) || reels.containsKey(id))) return;
+        e.setCancelled(true);
+        Flight f = flights.remove(id);
+        if (f != null) {
+            if (cfgB("release.refund-before-hit", true)) charges(p).refundLatest(now());
+            retract(p, f.hook, flightHookAt(f), java.util.Arrays.asList(f.strands));
+        } else {
+            Tether t = tethers.remove(id);
+            Chain c = t != null ? t.chain : null;
+            if (c == null) { Reel r = reels.remove(id); c = r == null ? null : r.chain; }
+            if (c != null) retractChain(p, c);
+        }
+        GemSounds.play(plugin, "auratus.hook-slides-out", p.getLocation());
+    }
+
+    private void retractChain(Player p, Chain c) {
+        ItemDisplay h = c.hook;
+        List<ItemDisplay> links = new ArrayList<>(c.links);
+        c.links.clear();
+        c.hook = null;
+        retract(p, h, h != null && h.isValid() ? h.getLocation() : hand(p), links);
+    }
+
+    /**
+     * The hook flies back to the hand over visuals.chain-reel-ticks: one interpolated move of its translation, set once.
+     * Each link goes as the hook passes it. Off (or no hook): everything goes at once.
+     */
+    private void retract(Player p, ItemDisplay hookModel, Location hookAt, List<ItemDisplay> links) {
+        UUID id = p.getUniqueId();
+        clearRetract(id);
+        if (!cfgB("visuals.chain-reel-in", true) || hookModel == null || !hookModel.isValid()) {
+            if (hookModel != null && hookModel.isValid()) hookModel.remove();
+            for (ItemDisplay d : links) if (d != null && d.isValid()) d.remove();
+            return;
+        }
+        int ticks = Math.max(1, Math.min(40, cfgI("visuals.chain-reel-ticks", 4)));
+        Location handAt = hand(p);
+        Transformation now = hookModel.getTransformation();
+        float sc = now.getScale().x;
+        Vector3f lift = new Vector3f(0, (float) (STRAND_DROP * sc), 0).rotate(now.getLeftRotation());
+        Vector3f back = vec(handAt).sub(vec(hookModel.getLocation())).add(lift); // the hook's middle onto the hand
+        hookModel.setInterpolationDelay(0);
+        hookModel.setInterpolationDuration(ticks);
+        hookModel.setTransformation(new Transformation(back, now.getLeftRotation(), now.getScale(), now.getRightRotation()));
+        Retract r = new Retract();
+        r.hook = hookModel;
+        r.hookGone = tick + ticks;
+        double total = Math.max(0.01, hookAt.distance(handAt));
+        for (ItemDisplay d : links) {
+            if (d == null || !d.isValid()) continue;
+            r.links.add(d);
+            r.gone.add(AuratusMath.passTick(tick, ticks, d.getLocation().distance(hookAt), total));
+        }
+        retracts.put(id, r);
+    }
+
+    private void tickRetracts() {
+        for (ItemDisplay d : removeNextTick) if (d.isValid()) d.remove();
+        removeNextTick.clear();
+        for (Iterator<Map.Entry<UUID, Retract>> it = retracts.entrySet().iterator(); it.hasNext(); ) {
+            Retract r = it.next().getValue();
+            for (int i = r.links.size() - 1; i >= 0; i--)
+                if (tick >= r.gone.get(i)) { ItemDisplay d = r.links.remove(i); r.gone.remove(i); if (d.isValid()) d.remove(); }
+            if (tick >= r.hookGone) { removeRetract(r); it.remove(); }
+        }
+    }
+
+    private void clearRetract(UUID id) {
+        Retract r = retracts.remove(id);
+        if (r != null) removeRetract(r);
+    }
+
+    private static void removeRetract(Retract r) {
+        if (r.hook != null && r.hook.isValid()) r.hook.remove();
+        for (ItemDisplay d : r.links) if (d.isValid()) d.remove();
+        r.links.clear();
+        r.gone.clear();
+    }
+
+    private static Vector3f vec(Location l) { return new Vector3f((float) l.getX(), (float) l.getY(), (float) l.getZ()); }
 
     private void tickReel(Player p, Reel r) {
         UUID id = p.getUniqueId();
@@ -465,8 +687,9 @@ final class AuratusGem implements Listener {
     /** Right-click while a hook is in: you're reeled there (no extra charge). */
     private void flyToHook(Player p, Tether t) {
         UUID id = p.getUniqueId();
-        stopTether(id);
+        tethers.remove(id);
         Reel r = new Reel();
+        r.chain.take(t.chain); // the same chain goes on being drawn while you fly
         r.entity = t.victim;
         r.point = t.point;
         r.hooked = t.victim != null;
@@ -479,10 +702,16 @@ final class AuratusGem implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSwapHands(PlayerSwapHandItemsEvent e) {
         Player p = e.getPlayer();
+        Flight f = flights.get(p.getUniqueId());
+        if (f != null && f.target.entity() != null && holds(p) && enabled()) { e.setCancelled(true); f.haul = true; return; } // haul once it lands
         Tether t = tethers.get(p.getUniqueId());
         if (t == null || t.victim == null || !holds(p) || !enabled()) return;
         e.setCancelled(true);
         if (t.hauling || dives.containsKey(p.getUniqueId())) return;
+        startHaul(t);
+    }
+
+    private void startHaul(Tether t) {
         t.hauling = true;
         t.age = 0;
         Entity v = Bukkit.getEntity(t.victim);
@@ -527,9 +756,10 @@ final class AuratusGem implements Listener {
             t.age += Math.max(0.05, scale);
             return;
         }
-        if (now() >= t.until) { // left alone: the hook slides out
+        if (now() >= t.until) { // left alone: the hook slides out and reels back in
             GemSounds.play(plugin, "auratus.hook-slides-out", tip);
-            stopTether(id);
+            tethers.remove(id);
+            retractChain(p, t.chain);
         }
     }
 
@@ -584,6 +814,29 @@ final class AuratusGem implements Listener {
      * hand, joined in step and ending there (pack models); or a line of gold dust. {@code bite} draws the tip that much
      * further along the chain (block hooks).
      */
+    /** The chain's shape from hand to tip: the direction, the models' spots back from the tip, and their poses. */
+    private record Layout(Location tip, Vector dir, double len, double[] at, float scale, Quaternionf rot, Vector3f lift) {
+        Location centre(int i) { return tip.clone().subtract(dir.clone().multiply(at[i])); }
+        Transformation hookPose(Vector3f offset) {
+            float squash = at.length == 1 ? (float) (len / (STRAND * scale)) : 1f; // a short chain is just the hook, squashed to fit
+            return new Transformation(new Vector3f(lift).add(offset), rot, new Vector3f(scale, scale, scale * squash), new Quaternionf());
+        }
+        Transformation strandPose() { return new Transformation(new Vector3f(lift), rot, new Vector3f(scale, scale, scale), new Quaternionf()); }
+    }
+
+    private Layout layout(Location from, Location to, double bite) {
+        Vector delta = to.toVector().subtract(from.toVector());
+        double len = delta.length();
+        if (len < 0.5) return null;
+        Vector dir = delta.clone().multiply(1 / len);
+        Location tip = to;
+        if (bite > 0) { tip = to.clone().add(dir.clone().multiply(bite)); len += bite; }
+        float s = (float) Math.max(0.1, cfgD("chain.link-scale", 1.0));
+        Quaternionf rot = new Quaternionf().rotationTo(new Vector3f(0, 0, -1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
+        Vector3f lift = new Vector3f(0, (float) (STRAND_DROP * s), 0).rotate(rot); // the strand's axis onto the line
+        return new Layout(tip, dir, len, AuratusMath.chainLayout(len, STRAND * s, STRAND_STEP * s, LINK_STEP * s, 60), s, rot, lift);
+    }
+
     private void drawChain(Chain c, Location from, Location to, double bite) {
         World w = from.getWorld();
         Vector delta = to.toVector().subtract(from.toVector());
@@ -809,6 +1062,7 @@ final class AuratusGem implements Listener {
         slamReady.put(id, n + ms("slam.cooldown-seconds", 0));
         stopReel(id);
         stopTether(id);
+        dropFlight(id, true); // slamming before the hook landed: nothing was hit
         Dive d = new Dive();
         d.target = target;
         d.startY = p.getLocation().getY();
@@ -997,6 +1251,7 @@ final class AuratusGem implements Listener {
         if (hoists.containsKey(v.getUniqueId())) return;
         flagReady.put(id, now() + ms("flagpole.cooldown-seconds", 25));
         stopTether(id);
+        dropFlight(id, false);
         Hoist hs = new Hoist();
         hs.owner = id;
         hs.baseY = v.getLocation().getY();
@@ -1190,7 +1445,14 @@ final class AuratusGem implements Listener {
 
     void tick() {
         tick++;
+        tickRetracts();
         if (!enabled()) return;
+        for (UUID id : new ArrayList<>(flights.keySet())) {
+            Player p = Bukkit.getPlayer(id);
+            Flight f = flights.get(id);
+            if (p == null || p.isDead() || f == null) { dropFlight(id, false); continue; }
+            tickFlight(p, f);
+        }
         for (UUID id : new ArrayList<>(reels.keySet())) {
             Player p = Bukkit.getPlayer(id);
             if (p == null || p.isDead()) { stopReel(id); continue; }
@@ -1267,9 +1529,10 @@ final class AuratusGem implements Listener {
         UUID id = p.getUniqueId();
         long n = now();
         Charges c = charges(p);
-        String chains = dives.containsKey(id) || tethers.containsKey(id) ? HudStatus.entry(GLYPH_PERFORATORS, 0, true)
-                : HudStatus.charges(GLYPH_PERFORATORS, c.ready(n), c.max(), c.nextIn(n));
-        String guard = HudStatus.entry(GLYPH_AEGIS, aegisReady.getOrDefault(id, 0L) - n, aegis.containsKey(id));
+        boolean numbers = plugin.getConfig().getBoolean("mythics.hud.show-numbers", true);
+        boolean out = dives.containsKey(id) || tethers.containsKey(id) || flights.containsKey(id);
+        String chains = HudStatus.charges(GLYPH_PERFORATORS, c.ready(n), c.max(), c.nextRecharge(n), out, numbers);
+        String guard = HudStatus.entry(GLYPH_AEGIS, aegisReady.getOrDefault(id, 0L) - n, aegis.containsKey(id), numbers);
         return LEGACY.deserialize(chains + "  " + guard);
     }
 
@@ -1277,6 +1540,8 @@ final class AuratusGem implements Listener {
         UUID id = p.getUniqueId();
         stopReel(id);
         stopTether(id);
+        dropFlight(id, false);
+        clearRetract(id);
         for (Map.Entry<UUID, Tether> en : new ArrayList<>(tethers.entrySet())) // anyone hooked into them lets go
             if (id.equals(en.getValue().victim)) stopTether(en.getKey());
         combos.remove(id);
@@ -1313,6 +1578,10 @@ final class AuratusGem implements Listener {
         sparkTasks.clear();
         for (UUID id : new ArrayList<>(reels.keySet())) stopReel(id);
         for (UUID id : new ArrayList<>(tethers.keySet())) stopTether(id);
+        for (UUID id : new ArrayList<>(flights.keySet())) dropFlight(id, false);
+        for (UUID id : new ArrayList<>(retracts.keySet())) clearRetract(id);
+        for (ItemDisplay d : removeNextTick) if (d.isValid()) d.remove();
+        removeNextTick.clear();
         combos.clear();
         for (UUID id : new ArrayList<>(dives.keySet())) stopDive(id);
         for (Aegis a : aegis.values()) if (a.halo != null && a.halo.isValid()) a.halo.remove();

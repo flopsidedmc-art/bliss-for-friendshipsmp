@@ -15,6 +15,27 @@ final class HudStatus {
         return "§f" + icon + " " + READY;
     }
 
+    /**
+     * The mythic HUD (mythics.hud.show-numbers): {@code numbers} shows the seconds while recharging; off, the icon is
+     * just dimmed until it's ready.
+     */
+    static String entry(String icon, long remainMs, boolean active, boolean numbers) {
+        if (numbers || active || remainMs <= 0) return entry(icon, remainMs, active);
+        return "§7" + icon;
+    }
+
+    /**
+     * Charges with numbers: "Ready!" while one is ready, the charges left (1/2), and the seconds until the one
+     * recharging is back; none left: the seconds, dimmed. {@code active}: in use ("…"), with the charges left.
+     */
+    static String charges(String icon, int ready, int max, long nextMs, boolean active, boolean numbers) {
+        if (!numbers) return active ? entry(icon, 0, true) : ready > 0 ? charges(icon, ready, max, nextMs) : "§7" + icon;
+        String count = max > 1 ? ready + "/" + max : "";
+        if (active) return "§f" + icon + " §e\u2026" + (count.isEmpty() ? "" : " §f" + count);
+        if (ready <= 0) return "§7" + icon + " §b" + time(nextMs) + (count.isEmpty() ? "" : " §7" + count);
+        return "§f" + icon + " " + READY + (count.isEmpty() ? "" : " §f" + count) + (ready < max && nextMs > 0 ? " §b" + time(nextMs) : "");
+    }
+
     static final String READY = "§aReady!";
 
     static String charges(String icon, int ready, int max, long nextMs) {

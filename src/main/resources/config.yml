@@ -155,6 +155,8 @@ mythics:
   enabled: true
   drop-on-death: true
   glow: true # mythic holders glow; standard gems never do
+  hud:
+    show-numbers: true # Heretic, Auratus, Relay: seconds while recharging, and charges left (1/2) on the saws, chains and Rewind; false = icons only
 
   heretic:
     passives:
@@ -250,7 +252,13 @@ mythics:
       height: 5.0 # lifted this high (less under a ceiling)
       hold-seconds: 2.5
       ceiling-cap: false # false: under a low ceiling they fly up into it and stay pinned there. true: they stop below it (no lift in a 2-high tunnel)
+    release: # let go of the chain early: Q (the drop key) while a chain is out; dropping the gem is blocked anyway
+      refund-before-hit: true # released (or missed) before the hook bit anything: the charge comes back. Already bitten: spent as normal
     visuals: # firework bursts and sparks; no firework from this plugin can hurt anyone
+      chain-travel: true # the hook flies from the hand to what it bites, the links unspooling behind it; it bites when it arrives
+      chain-travel-ticks: 5
+      chain-reel-in: true # on release or when the hook slides out, it flies back to the hand and the links go as it passes
+      chain-reel-ticks: 4
       slam-burst: true # Gilded Slam: a white sphere (fading pale blue) at a random spot 1.5-3 blocks from the landing, 0.5-2.5 up
       slam-sparks: true # Gilded Slam: firework sparks from random spots on the ground, shooting up and drifting down
       slam-spark-count: 30

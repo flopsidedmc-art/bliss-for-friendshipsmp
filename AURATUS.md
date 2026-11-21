@@ -13,12 +13,14 @@ The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt undern
 | Sneak + right-click | Aegis, even while a hook is in |
 | Sneak + left-click, 4+ blocks up | **Gilded Slam** (sneak + chain in the air) |
 | Swap hands (F), while a hook is in a creature | **Haul them to you** |
+| Q (drop key), while a chain is out | **Let go**: the hook reels back. Before it bites anything the charge comes back; after, it's spent |
 
 | Gem in **off hand** | What it does |
 |---|---|
 | Right-click | Throw a chain, or, while a hook is in, go to the hook |
 | Sneak + right-click | Aegis on the ground; Gilded Slam when 4+ blocks up |
 | Swap hands (F), while a hook is in a creature | Haul them to you |
+| Q (drop key), while a chain is out | Let go: the hook reels back. Before it bites anything the charge comes back; after, it's spent |
 
 ### The combos (hidden, not in the lore)
 
@@ -130,7 +132,8 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 | `aegis` | `cooldown-seconds` 15, `success-cooldown-seconds` 10, `window-ms` 1000, `distance` 3.0, `strike-radius` 1.3, `strike-damage` 5.0, `strike-ticks` 6, `reflect` 0.5, `attacker-slow-seconds` 1.5, `weapon-durability-loss` 30, `heal-hp` 5.0, `speed-seconds` 3, `anchor-height` 8, `anchor-seconds` 5, `anchor-cone-degrees` 35 |
 | `slam` | `cooldown-seconds` 0, `min-height` 4, `range` 24, `dive-speed` 1.6, `radius` 5, `damage-center` 6.0, `damage-edge` 3.0, `launch` 0.45 |
 | `flagpole` | `cooldown-seconds` 25 (Flagpole and the launch), `hook-memory-seconds` 5, `window-ms` 750, `finisher-damage` 72 (raw), `finisher-launch-height` 30, `height` 5, `hold-seconds` 2.5, `ceiling-cap` false (true: stop below a ceiling) |
-| `visuals` | `slam-burst` true (white sphere), `slam-sparks` true, `slam-spark-count` 30, `launch-burst` true (gold sphere), `flagpole-burst` true (gold sphere) |
+| `visuals` | `slam-burst` true (white sphere), `slam-sparks` true, `slam-spark-count` 30, `launch-burst` true (gold sphere), `flagpole-burst` true (gold sphere) , `chain-travel` true, `chain-travel-ticks` 5, `chain-reel-in` true, `chain-reel-ticks` 4 |
+| `release` | `refund-before-hit` true |
 
 ## Files
 
