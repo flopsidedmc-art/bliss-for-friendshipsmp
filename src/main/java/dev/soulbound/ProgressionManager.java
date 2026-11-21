@@ -268,14 +268,22 @@ public class ProgressionManager implements Listener {
         };
     }
 
+    /** Every non-null element of the arrays, in order. Inventory arrays hold null for empty slots. */
+    @SafeVarargs
+    static <T> List<T> present(T[]... groups) {
+        List<T> out = new ArrayList<>();
+        for (T[] g : groups) if (g != null) for (T t : g) if (t != null) out.add(t);
+        return out;
+    }
+
     /** Kit limits per progression: enchant caps, potion tiers, chorus caps, egg buffs. */
     private void enforceProgression(Player p) {
         int prog = progressionLevel();
         int protCap = progProtCap();
         int sharpCap = progSharpCap();
-        List<ItemStack> all = new ArrayList<>(List.of(p.getInventory().getContents()));
-        for (ItemStack s : p.getInventory().getArmorContents()) all.add(s);
-        all.add(p.getInventory().getItemInOffHand());
+        // Empty slots are null: List.of rejected them (NullPointerException), present() skips them.
+        List<ItemStack> all = present(p.getInventory().getContents(), p.getInventory().getArmorContents(),
+                new ItemStack[] {p.getInventory().getItemInOffHand()});
         for (ItemStack s : all) {
             if (s == null || s.getType() == Material.AIR || !s.hasItemMeta()) continue;
             ItemMeta m = s.getItemMeta();

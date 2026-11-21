@@ -1,3 +1,33 @@
+# Two crash fixes: the Divinity void world and progression checks
+
+## Temporal Divinity froze the server (watchdog kill)
+- **Cause:** the void world `soulbound_temporal_void` was created the first time anyone used Divinity, on the main thread. Its generator never said where spawn is, so the server generated chunk after empty chunk looking for somewhere to put it, then prepared the spawn area. It took 101 s, and the watchdog killed the server.
+- **Fix:** the world is now created or loaded once, when the plugin starts. Divinity never creates or generates a world mid-game.
+  - The world is made with `keepSpawnLoaded(TriState.FALSE)`, so no spawn area is kept loaded.
+  - The void generator gives a fixed spawn point (`getFixedSpawnLocation`), so there's no search.
+  - The spawn chunk radius game rule is set to 0 where the server still has it. Minecraft 1.21.9 removed spawn chunks and that rule, so on 1.21.11 there's nothing to set.
+- **Arena chunks:** every arena's chunks (5 × 5 per session slot) are generated in the background at startup. A cast only loads them, holds them with plugin chunk tickets while the session runs, and releases them when it ends. Nothing else in that world is kept loaded.
+- **If the world can't be prepared** (for example, a folder of that name not made by this plugin), the console says why and Divinity stays off until a restart. Before, it would have tried again mid-game.
+- **Your server already has the world** from the crash; it's simply loaded at startup now. The console logs how long that took ("Temporal Divinity void world ... ready in N ms").
+
+## Progression check crashed on empty slots
+- **Cause:** `ProgressionManager.enforceProgression` built `List.of(inventory contents)`. Empty slots are null, and `List.of` throws a NullPointerException on null.
+- **Fix:** it now collects only the filled slots (`present()`, which skips nulls).
+- **Test:** `ProgressionInventoryTest` checks null slots are skipped. It also fails if any code builds a `List.of` from inventory contents again.
+
+## Files changed
+- `TemporalDomain.java`: `prepareWorld()` at construction (plugin enable), `VoidGenerator` with a fixed spawn, and `getSky()` no longer creates anything.
+- `ProgressionManager.java`: `present()`, and the null-safe inventory walk.
+- `ProgressionInventoryTest.java` (new), `CHANGELOG.md`.
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 85 unit tests pass (2 new).
+- **Not tested:** nothing was run on a server. Things to check in game:
+  - the startup log line and its time;
+  - the first Divinity cast (no freeze);
+  - `/tps` during a cast;
+  - joining with empty inventory slots while progression limits apply.
+
 # Auratus firework bursts and the Flagpole under a ceiling
 
 ## What changed

@@ -1,5 +1,6 @@
 package dev.soulbound;
 
+import net.kyori.adventure.util.TriState;
 import org.bukkit.*;
 import org.bukkit.attribute.*;
 import org.bukkit.configuration.ConfigurationSection;
@@ -68,6 +69,7 @@ final class TemporalDomain implements Listener {
                 for(String id:c.getKeys(false)) pending.put(UUID.fromString(id),new Saved(c.getConfigurationSection(id)));
             } catch(Exception ex) { journalHealthy=false; plugin.getLogger().severe("Relay domain disabled: recovery journal needs repair: "+ex.getMessage()); }
         }
+        prepareWorld();
     }
     private double cfg(String k,double d) { return plugin.getConfig().getDouble("mythics.relay.temporal.divinity."+k,d); }
     private double boundary() { return Math.max(8,Math.min(64,cfg("boundary-radius",48))); }
@@ -78,29 +80,64 @@ final class TemporalDomain implements Listener {
     private double drift() { return Math.max(Bukkit.getAllowFlight()?0.005:0.035,Math.min(0.5,cfg("downward-drift",0.06))); }
     boolean contains(UUID id) { return members.containsKey(id)||pending.containsKey(id); }
     private String worldName() { return plugin.getConfig().getString("mythics.relay.temporal.divinity.world","soulbound_temporal_void"); }
+    /**
+     * The void world, made or loaded once at plugin enable (prepareWorld). Divinity never creates or generates a world
+     * mid-game: if it wasn't prepared, Divinity is off until a restart.
+     */
     private World getSky() throws IOException {
-        if(sky!=null)return sky;
-        String name=worldName();
-        if(!name.matches("[A-Za-z0-9_-]{1,64}"))throw new IOException("Invalid void-world name");
-        File marker=new File(plugin.getDataFolder(),"temporal-world-"+name+".marker");
-        if(!marker.exists() && (Bukkit.getWorld(name)!=null || new File(Bukkit.getWorldContainer(),name).exists()))
-            throw new IOException("Refusing to reuse unowned world "+name);
-        plugin.getDataFolder().mkdirs();
-        Files.writeString(marker.toPath(),"Owned by Soulbound Gems Temporal Divinity\n");
-        sky=Bukkit.createWorld(new WorldCreator(name).environment(World.Environment.NORMAL).generateStructures(false).generator(new ChunkGenerator() {
-            @Override public boolean shouldGenerateNoise(){return false;}
-            @Override public boolean shouldGenerateSurface(){return false;}
-            @Override public boolean shouldGenerateBedrock(){return false;}
-            @Override public boolean shouldGenerateCaves(){return false;}
-            @Override public boolean shouldGenerateDecorations(){return false;}
-            @Override public boolean shouldGenerateMobs(){return false;}
-            @Override public boolean shouldGenerateStructures(){return false;}
-        }));
-        if(sky==null)throw new IOException("World creation returned null");
-        sky.setTime(6000);sky.setStorm(false);sky.setThundering(false);
-        sky.setGameRule(GameRule.DO_DAYLIGHT_CYCLE,false);sky.setGameRule(GameRule.DO_WEATHER_CYCLE,false);
-        sky.setGameRule(GameRule.DO_MOB_SPAWNING,false);
-        return sky;
+        if(sky!=null && Bukkit.getWorld(sky.getUID())!=null)return sky;
+        throw new IOException("the void world wasn't prepared at startup (see the console)");
+    }
+
+    /**
+     * Plugin enable: creates or loads the void world with no spawn area kept loaded, a fixed spawn point (so the server
+     * never searches empty chunks for one) and every Divinity arena's chunks generated in the background, so a cast
+     * later only loads them. The arenas' chunks are held only while a session runs (plugin tickets in start / finish).
+     * Changing divinity.world needs a restart.
+     */
+    @SuppressWarnings("unchecked")
+    private void prepareWorld() {
+        try {
+            String name=worldName();
+            if(!name.matches("[A-Za-z0-9_-]{1,64}"))throw new IOException("invalid void-world name "+name);
+            File marker=new File(plugin.getDataFolder(),"temporal-world-"+name+".marker");
+            if(!marker.exists() && (Bukkit.getWorld(name)!=null || new File(Bukkit.getWorldContainer(),name).exists()))
+                throw new IOException("refusing to reuse unowned world "+name);
+            plugin.getDataFolder().mkdirs();
+            Files.writeString(marker.toPath(),"Owned by Soulbound Gems Temporal Divinity\n");
+            long started=System.nanoTime();
+            World w=Bukkit.getWorld(name);
+            if(w==null)w=Bukkit.createWorld(new WorldCreator(name).environment(World.Environment.NORMAL).generateStructures(false)
+                    .keepSpawnLoaded(TriState.FALSE).generator(new VoidGenerator()));
+            if(w==null)throw new IOException("world creation returned null");
+            GameRule<?> spawnChunks=GameRule.getByName("spawnChunkRadius"); // gone since 1.21.9 (no spawn chunks); set where it still exists
+            if(spawnChunks!=null && spawnChunks.getType()==Integer.class)w.setGameRule((GameRule<Integer>)spawnChunks,0);
+            w.setTime(6000);w.setStorm(false);w.setThundering(false);
+            w.setGameRule(GameRule.DO_DAYLIGHT_CYCLE,false);w.setGameRule(GameRule.DO_WEATHER_CYCLE,false);
+            w.setGameRule(GameRule.DO_MOB_SPAWNING,false);
+            sky=w;
+            int slots=Math.max(1,Math.min(8,(int)cfg("max-sessions",4)));
+            for(int slot=0;slot<slots;slot++)for(int cx=-2;cx<=2;cx++)for(int cz=-2;cz<=2;cz++)
+                w.getChunkAtAsync(((slot*1024)>>4)+cx,cz,true); // generated off the main thread; they unload again on their own
+            plugin.getLogger().info("Temporal Divinity void world "+name+" ready in "+(System.nanoTime()-started)/1_000_000+" ms.");
+        } catch(Exception ex) {
+            sky=null;
+            plugin.getLogger().severe("Temporal Divinity is off until a restart: the void world couldn't be prepared: "+ex.getMessage());
+        }
+    }
+
+    /** Empty chunks, and a spawn point given outright, so the server never generates chunks looking for one. */
+    private static final class VoidGenerator extends ChunkGenerator {
+        @Override public boolean shouldGenerateNoise(){return false;}
+        @Override public boolean shouldGenerateSurface(){return false;}
+        @Override public boolean shouldGenerateBedrock(){return false;}
+        @Override public boolean shouldGenerateCaves(){return false;}
+        @Override public boolean shouldGenerateDecorations(){return false;}
+        @Override public boolean shouldGenerateMobs(){return false;}
+        @Override public boolean shouldGenerateStructures(){return false;}
+        @Override public Location getFixedSpawnLocation(World world,Random random) {
+            return new Location(world,0.5,Math.max(world.getMinHeight()+1,Math.min(world.getMaxHeight()-2,160)),0.5);
+        }
     }
     boolean start(Player owner) {
         RevenantMace revenant=plugin.revenant();
