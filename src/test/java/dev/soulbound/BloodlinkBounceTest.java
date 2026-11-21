@@ -45,6 +45,19 @@ class BloodlinkBounceTest {
         assertNull(HereticMath.contact(now, new BoundingBox(20, 64, 20, 21, 66, 21)));
     }
 
+    @Test void theDiveGoesWhereYouLook() {
+        Vector downForward = new Vector(0, -0.6, 0.8);
+        assertEquals(0, HereticMath.diveDirection(downForward, 0.35).subtract(downForward).length(), 1e-9, "looking down and ahead: exactly there");
+        Vector level = HereticMath.diveDirection(new Vector(1, 0, 0), 0.35);
+        assertEquals(-0.35, level.getY(), 1e-9, "looking level: still heads down");
+        assertTrue(level.getX() > 0.9 && Math.abs(level.getZ()) < 1e-9, "and the way you face");
+        Vector up = HereticMath.diveDirection(new Vector(0, 0.8, -0.6), 0.35);
+        assertTrue(up.getY() < 0 && up.getZ() < 0, "looking up: down, the way you face");
+        assertEquals(new Vector(0, -1, 0), HereticMath.diveDirection(new Vector(0, 1, 0), 0.35), "straight up: straight down");
+        for (Vector v : new Vector[] {downForward, new Vector(1, 0, 0), new Vector(0, 0.8, -0.6), new Vector(3, -1, 2)})
+            assertEquals(1, HereticMath.diveDirection(v, 0.35).length(), 1e-9, "a direction, scaled by dive-speed after");
+    }
+
     @Test void strongerDefaults() {
         YamlConfiguration c = YamlConfiguration.loadConfiguration(new File("src/main/resources/config.yml"));
         String k = "mythics.heretic.bloodlinking.";

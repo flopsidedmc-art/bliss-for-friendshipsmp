@@ -19,6 +19,22 @@ final class HereticMath {
         return anyoneLinked ? AfterSlam.BOUNCE : AfterSlam.END;
     }
 
+    /**
+     * The Bloodlinking dive's direction: where you look, but always at least {@code minDown} (0..1) of the way
+     * downward, so looking level or up still brings you down. Looking straight up dives straight down.
+     */
+    static Vector diveDirection(Vector look, double minDown) {
+        double down = Math.max(0, Math.min(1, minDown));
+        Vector d = look.clone();
+        if (d.lengthSquared() < 1e-9) return new Vector(0, -1, 0);
+        d.normalize();
+        if (d.getY() <= -down) return d;
+        Vector flat = new Vector(d.getX(), 0, d.getZ());
+        if (flat.lengthSquared() < 1e-9 || down >= 1) return new Vector(0, -1, 0);
+        flat.normalize().multiply(Math.sqrt(1 - down * down));
+        return flat.setY(-down);
+    }
+
     /** The space your hitbox covered this tick: last tick's box and this tick's together (a fast dive can't skip a body). */
     static BoundingBox swept(BoundingBox now, BoundingBox before) {
         return before == null ? now.clone() : now.clone().union(before);

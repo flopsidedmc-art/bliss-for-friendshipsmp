@@ -458,6 +458,7 @@ public final class MythicListener implements Listener {
             }
             if (t[0] == diveAfter) beginBloodlinkDive(p);
             int sinceDive = t[0] - diveAfter;
+            if (sinceDive > 0 && plugin.getConfig().getBoolean("mythics.heretic.bloodlinking.dive-follows-look", true)) steerBloodlinkDive(p);
             if (sinceDive > 0 && (p.isOnGround() && sinceDive > 2 || sinceDive > 40)) {
                 stopBloodlinkRun(id);
                 doBloodlinkSlam(p, p.getLocation());
@@ -501,11 +502,19 @@ public final class MythicListener implements Listener {
         if (!p.isOnline()) return;
         BloodlinkState state = bloodlinks.get(p.getUniqueId());
         if (state == null) return;
+        if (plugin.getConfig().getBoolean("mythics.heretic.bloodlinking.dive-follows-look", true)) { steerBloodlinkDive(p); return; }
         Location target = p.getTargetBlockExact(30) == null ? p.getLocation() : p.getTargetBlockExact(30).getLocation().add(0.5, 1, 0.5);
         Vector to = target.toVector().subtract(p.getLocation().toVector());
         if (to.lengthSquared() < 1) to = p.getLocation().getDirection().normalize().multiply(8);
         to.normalize().multiply(plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 1.3));
         p.setVelocity(to);
+    }
+
+    /** The dive goes where you look, every tick (so you can steer), always at least dive-min-down of the way down. */
+    private void steerBloodlinkDive(Player p) {
+        double speed = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 1.3);
+        double down = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-min-down", 0.35);
+        p.setVelocity(HereticMath.diveDirection(p.getLocation().getDirection(), down).multiply(speed));
     }
 
     /**

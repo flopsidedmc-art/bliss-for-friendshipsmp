@@ -1,3 +1,12 @@
+# Bloodlinking: the dive goes where you look
+
+- **The dive follows your yaw and pitch, every tick.** It used to be one push toward the block you looked at, which gravity and drag curved down short of the aim. Now your speed is set along your look direction (at `dive-speed`) every tick until you slam, so it flies straight to your crosshair and you can steer mid-dive.
+- **It always comes down:** if you look less than about 20° down (level or up), your yaw is kept and the dive tilts 20° down (`dive-min-down: 0.35`). Straight up dives straight down. `dive-min-down: 0` uses your pitch exactly.
+- **`dive-follows-look: false`** brings back the old single push.
+- **Unchanged:** contact slams, bounces, damage, radius, max slams, the 40-tick limit and no fall damage.
+- **Files:** HereticMath.java (diveDirection), MythicListener.java (steerBloodlinkDive), config.yml (`dive-follows-look`, `dive-min-down`), BloodlinkBounceTest.java (theDiveGoesWhereYouLook).
+- **Tested:** compiles, 105 unit tests pass. **Not tested in game.**
+
 # Heretic: no saw sweep particles; Bloodlinking slams on contact and bounces at once
 
 ## What I found first
