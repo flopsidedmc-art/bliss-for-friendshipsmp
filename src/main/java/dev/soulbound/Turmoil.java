@@ -3,7 +3,6 @@ package dev.soulbound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -34,7 +33,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -105,14 +103,14 @@ public final class Turmoil implements Listener {
         if (cfgB("redsky.rain", false)) p.setPlayerWeather(WeatherType.DOWNFALL);
     }
 
-    /** Optional red haze around the screen edges (the E110 frames in the pack). Off by default. */
+    /** Optional red haze around the screen edges: the pack's red frames as a camera overlay (CameraOverlay). Off by default. */
     private void overlayTick() {
         if (!cfgB("redsky.overlay", false) || ticks % 4 != 0) return;
         overlayFrame = (overlayFrame + 1) % 6;
-        Title t = Title.title(Component.text(String.valueOf((char) (0xE110 + overlayFrame))), Component.empty(),
-                Title.Times.times(Duration.ZERO, Duration.ofMillis(800L), Duration.ZERO));
+        String texture = "blissgems:overlay/red_" + overlayFrame;
         for (Player p : Bukkit.getOnlinePlayers()) {
-            if (overlayAllowed(p)) p.showTitle(t);
+            if (overlayAllowed(p)) plugin.overlay().show(p, texture);
+            else plugin.overlay().clear(p);
         }
     }
 
@@ -145,7 +143,7 @@ public final class Turmoil implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.resetPlayerTime();
                 if (cfgB("redsky.rain", false)) p.resetPlayerWeather();
-                if (cfgB("redsky.overlay", false)) p.clearTitle();
+                plugin.overlay().clear(p); // the real helmet back
             }
         }
         return true;
@@ -155,7 +153,7 @@ public final class Turmoil implements Listener {
     public boolean toggleOverlay(Player p) {
         if (overlayOff.remove(p.getUniqueId())) return true;
         overlayOff.add(p.getUniqueId());
-        p.clearTitle();
+        plugin.overlay().clear(p);
         return false;
     }
 

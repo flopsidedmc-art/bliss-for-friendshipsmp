@@ -1,3 +1,43 @@
+# Finale and Turmoil overlays: camera overlays instead of titles
+
+- **Why they were invisible:** the haze was a title glyph (E100-E105 / E110-E115, font height 288). Titles are drawn at the GUI scale ×4, so the image came out 2-3× larger than the screen, and the haze, which is only at the image's edges, was off-screen. A title's size can't suit every GUI scale.
+- **Now a camera overlay**, the way a carved pumpkin's blur is drawn:
+  - **The fake helmet:** each player is sent a fake helmet only they see (`sendEquipmentChange` for their own head). It's paper with an equippable HEAD component, `camera_overlay` set to the pack's `blissgems:overlay/gold_0..5` (or `red_0..5`), and no `asset_id`, so no helmet model is drawn, even in third person.
+  - **The real helmet is never touched.** It's sent back on stop, end, death, respawn, world change and plugin disable; logging out needs nothing.
+  - **If the real helmet changes** during the overlay (put on, taken off, damaged), the overlay goes back on the next tick.
+  - **Camera overlays fill the screen at any GUI scale.** They show in first person only, as vanilla does.
+- **Animation:** the next frame's helmet every `overlay.frame-ticks`. Frames pause during the brown flash, as before.
+- **Fades:** camera overlays have no alpha setting, so a fade steps through fainter frames. The pack now has `gold_fade_1..4` and `red_fade_1..4` (20/40/60/80% of frame 0, made by `tools/pack/overlay_fades.py`).
+  - It fades in over `fade-in-ticks` and out over `fade-out-ticks` (the sky resets at once; only the overlay fades).
+  - The Revenant's red pulse fades out red.
+  - New `finale.overlay.fade-steps` (4) is the number of fade frames: 0 means no fade, for an older pack without them.
+- **Turmoil's red haze** (`turmoil.redsky.overlay`) uses the same camera overlay with the red frames.
+- **Unchanged:**
+  - `overlay.enabled`, `overlay.style`, `frame-ticks`, and the per-player overlay toggle (`/turmoil overlay`), which now gives that player their real helmet back at once;
+  - the brown flash, still a title, which works.
+
+## Files changed
+- `CameraOverlay.java` (new): the fake-helmet overlay for one player at a time. It handles show, clear and clear-all, the real helmet's return on death, respawn and world change, re-showing after a real helmet change, and forgetting on logout.
+- `Finale.java`: the sky's overlay as camera-overlay frames, the stepped fade-in, the fade-out task after the sky stops, and cleanup on shutdown.
+- `FinaleMath.java`: `fadeInLevel()` and `fadeOutLevel()`.
+- `Turmoil.java`: the red haze as a camera overlay, cleared on stop and on the per-player toggle; unused title imports removed.
+- `SoulboundGemsPlugin.java`: creates and registers the overlay, and gives everyone their real helmet back on disable.
+- `config.yml`: `finale.overlay.fade-steps` (4), plus comments.
+- `resource-pack/overlay`: 8 fade textures and a README note. `Relay-Temporal-Pack.zip` rebuilt from it (93 files).
+- `tools/pack/overlay_fades.py` (new), `CameraOverlayTest.java` (new), `CHANGELOG.md`.
+
+## Tested and not tested
+- **Tested:** it compiles against paper-api 1.21.11, and all 94 unit tests pass (3 new):
+  - the fade timing;
+  - every overlay texture the plugin can ask for exists in the pack (a missing one would paint the screen magenta);
+  - neither Finale nor Turmoil draws the overlay as a title any more.
+- **Not tested:** nothing was seen in game. Things to check:
+  - the haze at a few GUI scales;
+  - the fades;
+  - putting a helmet on and off mid-finale;
+  - death and respawn during the finale;
+  - `/turmoil overlay` off and on.
+
 # Auratus: let go of the chain, the chain flies out and reels in; mythic HUD numbers
 
 ## What I found first

@@ -548,7 +548,7 @@ turmoil:
     enabled: true
     time: 12800
     rain: false
-    overlay: false
+    overlay: false # the red haze as a camera overlay (the pack's red frames) while the red sky is on
   passive:
     range: 24.0
     speed: 1.25
@@ -579,12 +579,13 @@ finale:
     time: 12600
     rain: true
     during-battle: false
-  overlay:
+  overlay: # a camera overlay (like a pumpkin's), from the pack's textures/overlay/<style>_0..5.png; first person only
     enabled: true
     style: gold # "gold" now holds the brown haze frames
     frame-ticks: 4
     fade-in-ticks: 30 # 1.5 s fade in when the cutscene starts (0 = pop in)
     fade-out-ticks: 30 # 1.5 s fade out when it ends (0 = cut)
+    fade-steps: 4 # fainter frames <style>_fade_1..4 in the pack used for the fades; 0 = no fade (an older pack without them)
   sparkles: true
   flash:
     enabled: true # requires matching resource-pack glyph

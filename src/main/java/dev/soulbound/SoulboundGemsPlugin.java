@@ -23,6 +23,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private Finale finale;
     private RevenantMace revenant;
     private CaptureManager captures;
+    private CameraOverlay overlay;
     private AuratusGem auratus;
 
     /** Pristine-stage energy per player per gem (showcase parity). Public by design. */
@@ -44,6 +45,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public RevenantMace revenant() { return revenant; }
     public AuratusGem auratus() { return auratus; }
     public CaptureManager captures() { return captures; }
+    CameraOverlay overlay() { return overlay; }
 
     @Override
     public void onEnable() {
@@ -54,6 +56,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         saveConfig();
         energy = new EnergyManager(this);
         gemManager = new GemManager(this);
+        overlay = new CameraOverlay(this);
         mythics = new MythicListener(this);
         auratus = new AuratusGem(this);
         listener = new GemListener(this);
@@ -87,6 +90,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(finale, this);
         Bukkit.getPluginManager().registerEvents(revenant, this);
         Bukkit.getPluginManager().registerEvents(captures, this);
+        Bukkit.getPluginManager().registerEvents(overlay, this);
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -157,6 +161,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (turmoil != null && turmoil.isActive()) turmoil.stop();
         if (stalker != null) stalker.shutdown();
         if (energy != null) energy.save();
+        if (overlay != null) overlay.clearAll(); // everyone's real helmet back
     }
 
     /**

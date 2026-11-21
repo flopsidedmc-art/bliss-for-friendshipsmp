@@ -105,6 +105,8 @@ public final class Finale implements Listener {
     private boolean skyOn;
     private int skyTicks;
     private int overlayFrame;
+    private int fadeLevel; // the fade-in frame shown now (0 = none yet)
+    private org.bukkit.scheduler.BukkitTask overlayFadeOut; // the fade-out after the sky stops
 
     private Location pedAuratus;
     private Location pedHeretic;
@@ -359,32 +361,63 @@ public final class Finale implements Listener {
         skyOn = true;
         skyTicks = 0;
         overlayFrame = 0;
+        fadeLevel = 0;
         flashUntil = -1;
+        cancelOverlayFadeOut();
         for (Player p : Bukkit.getOnlinePlayers()) applySky(p);
     }
 
     private void stopSky() {
         if (!skyOn) return;
         skyOn = false;
-        // Fade the overlay out instead of cutting it: one last frame that only fades (no fade-in, no stay).
-        int fadeOut = Math.max(0, (int) skyL("overlay.fade-out-ticks", 30L));
-        Title last = null;
-        if (skyB("overlay.enabled", true) && fadeOut > 0) {
-            last = Title.title(Component.text(String.valueOf(overlayGlyph())), Component.empty(),
-                    Title.Times.times(Duration.ZERO, Duration.ZERO, Duration.ofMillis(fadeOut * 50L)));
-        }
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.resetPlayerTime();
             p.resetPlayerWeather();
-            if (last != null && plugin.turmoil().overlayAllowed(p)) p.showTitle(last);
-            else p.clearTitle();
+        }
+        // The overlay fades out through the fainter frames over fade-out-ticks, then the real helmets go back.
+        int fadeOut = Math.max(0, (int) skyL("overlay.fade-out-ticks", 30L));
+        int steps = fadeSteps();
+        if (!skyB("overlay.enabled", true) || fadeOut <= 0 || steps <= 0) { clearOverlay(); return; }
+        String style = overlayStyle(); // captured now: the Revenant's pulse fades out red
+        int[] t = {0};
+        int[] shownLevel = {steps + 1};
+        cancelOverlayFadeOut();
+        overlayFadeOut = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            t[0]++;
+            int level = FinaleMath.fadeOutLevel(t[0], fadeOut, steps);
+            if (level <= 0) { cancelOverlayFadeOut(); clearOverlay(); return; }
+            if (level != shownLevel[0]) { shownLevel[0] = level; showOverlay(fadeTexture(style, level)); }
+        }, 1L, 1L);
+    }
+
+    // The overlay: camera overlays (CameraOverlay), the pack's textures/overlay/<style>_<frame>.png. Fades step through
+    // <style>_fade_1..N (N = overlay.fade-steps, 1 the faintest), because camera overlays have no alpha setting.
+
+    private String overlayStyle() { return pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold")) ? "red" : "gold"; }
+
+    private String overlayTexture() { return "blissgems:overlay/" + overlayStyle() + "_" + overlayFrame; }
+
+    private static String fadeTexture(String style, int level) { return "blissgems:overlay/" + style + "_fade_" + level; }
+
+    /** Fainter frames in the pack for fading; 0 = no fade (pop in, cut out). */
+    private int fadeSteps() { return (int) Math.max(0, Math.min(8, skyL("overlay.fade-steps", 4L))); }
+
+    /** Everyone who has the overlay on sees {@code texture}; anyone who switched it off sees their own helmet. */
+    private void showOverlay(String texture) {
+        CameraOverlay o = plugin.overlay();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (plugin.turmoil().overlayAllowed(p)) o.show(p, texture);
+            else o.clear(p);
         }
     }
 
-    /** The overlay glyph for the current frame: brown (the gold slot) or red. */
-    private char overlayGlyph() {
-        boolean red = pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold"));
-        return (char) ((red ? 0xE110 : 0xE100) + overlayFrame);
+    private void clearOverlay() {
+        for (Player p : Bukkit.getOnlinePlayers()) plugin.overlay().clear(p);
+    }
+
+    private void cancelOverlayFadeOut() {
+        if (overlayFadeOut != null) overlayFadeOut.cancel();
+        overlayFadeOut = null;
     }
 
     private void applySky(Player p) {
@@ -398,24 +431,20 @@ public final class Finale implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()) applySky(p);
         }
         int frameTicks = Math.max(1, (int) skyL("overlay.frame-ticks", 4L));
-        int fadeIn = Math.max(0, (int) skyL("overlay.fade-in-ticks", 30L));
-        if (skyB("overlay.enabled", true) && fadeIn > 0 && skyTicks == 1) {
-            // Fade in: one frame that fades in over fade-in-ticks. The animation waits until it has finished,
-            // because every new title restarts the client's fade.
-            Title in = Title.title(Component.text(String.valueOf(overlayGlyph())), Component.empty(),
-                    Title.Times.times(Duration.ofMillis(fadeIn * 50L), Duration.ofMillis(frameTicks * 50L * 4L), Duration.ZERO));
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (plugin.turmoil().overlayAllowed(p)) p.showTitle(in);
+        int steps = fadeSteps();
+        int fadeIn = steps > 0 ? Math.max(0, (int) skyL("overlay.fade-in-ticks", 30L)) : 0;
+        if (skyB("overlay.enabled", true)) {
+            String texture = null;
+            if (fadeIn > 0 && skyTicks <= fadeIn) { // fade in through the fainter frames, then animate
+                int level = FinaleMath.fadeInLevel(skyTicks, fadeIn, steps);
+                if (level != fadeLevel) { fadeLevel = level; texture = fadeTexture(overlayStyle(), level); }
+            } else if (fadeIn <= 0 && skyTicks == 1) {
+                texture = overlayTexture(); // no fade: the first frame at once
+            } else if (skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
+                overlayFrame = (overlayFrame + 1) % OVERLAY_FRAMES; // every frame-ticks, the next frame's helmet
+                texture = overlayTexture();
             }
-        }
-        if (skyB("overlay.enabled", true) && skyTicks > fadeIn && skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
-            overlayFrame = (overlayFrame + 1) % OVERLAY_FRAMES;
-            char glyph = overlayGlyph();
-            Title t = Title.title(Component.text(String.valueOf(glyph)), Component.empty(),
-                    Title.Times.times(Duration.ZERO, Duration.ofMillis(frameTicks * 50L * 4L), Duration.ZERO));
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (plugin.turmoil().overlayAllowed(p)) p.showTitle(t);
-            }
+            if (texture != null) showOverlay(texture);
         }
         if (skyTicks % 10 == 0 && skyB("sparkles", true)) {
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1332,6 +1361,7 @@ public final class Finale implements Listener {
     }
 
     public void shutdown() {
+        cancelOverlayFadeOut();
         endPulse();
         if (phase != Phase.IDLE) finish(null);
     }

@@ -11,3 +11,5 @@ The Revenant: adds blissgems:revenant_mace (item definition, handheld_mace model
 Auratus rebuild: no new assets. The gem uses the main pack's chain and Aegis HUD glyphs (U+22B5, U+22B4) and echo shard models 12348, 12349, 12345 and 12346.
 
 Finale: adds item models blissgems:finale_pedestal_auratus, blissgems:finale_pedestal_heretic (vanilla blackstone with gold or red trim) and blissgems:finale_seal (textures/item/finale_seal.png, a clock face laid on the ground under the merge).
+
+Finale overlay as camera overlays: the plugin now shows the haze frames (textures/overlay/gold_0..5, red_0..5) as a camera overlay, the way a carved pumpkin's blur is drawn, through a fake helmet only that player sees. Titles were drawn at the GUI scale, so the frames ended up larger than the screen and invisible. Camera overlays are stretched to the screen at any GUI scale, in first person only. Fades step through gold_fade_1..4 and red_fade_1..4 (20-80% of frame 0's opacity, made by tools/pack/overlay_fades.py); with an older pack that lacks them, set finale.overlay.fade-steps to 0. The E100-E115 glyphs are no longer used by the plugin; E120 (the brown flash) still is.

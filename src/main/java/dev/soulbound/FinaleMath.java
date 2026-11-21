@@ -4,6 +4,18 @@ import java.util.function.IntPredicate;
 
 /** The finale's placement numbers, free of Bukkit so they can be unit-tested. */
 final class FinaleMath {
+    /** The fade-in frame at {@code tick} (1-based) of {@code ticks}: 1 (faintest) up to {@code steps}, evenly. */
+    static int fadeInLevel(int tick, int ticks, int steps) {
+        if (steps <= 0 || ticks <= 0) return steps;
+        return Math.max(1, Math.min(steps, (int) Math.ceil(tick * (double) steps / ticks)));
+    }
+
+    /** The fade-out frame at {@code tick} after the stop: {@code steps} down to 1, then 0 (gone) once {@code ticks} have passed. */
+    static int fadeOutLevel(int tick, int ticks, int steps) {
+        if (steps <= 0 || ticks <= 0 || tick >= ticks) return 0;
+        return Math.max(1, Math.min(steps, steps - (int) Math.floor(tick * (double) steps / ticks)));
+    }
+
     private FinaleMath() {}
 
     /**
