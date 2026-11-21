@@ -55,7 +55,7 @@ class BloodlinkBounceTest {
         assertTrue(up.getY() < 0 && up.getZ() < 0, "looking up: down, the way you face");
         assertEquals(new Vector(0, -1, 0), HereticMath.diveDirection(new Vector(0, 1, 0), 0.35), "straight up: straight down");
         for (Vector v : new Vector[] {downForward, new Vector(1, 0, 0), new Vector(0, 0.8, -0.6), new Vector(3, -1, 2)})
-            assertEquals(1, HereticMath.diveDirection(v, 0.35).length(), 1e-9, "a direction, scaled by dive-speed after");
+            assertEquals(1, HereticMath.diveDirection(v, 0.35).length(), 1e-9, "a direction, scaled by dive-speed");
     }
 
     @Test void strongerDefaults() {
@@ -68,6 +68,15 @@ class BloodlinkBounceTest {
         assertEquals(100, c.getInt(k + "cooldown-seconds"));
         assertEquals(4, c.getInt(k + "radius"));
         assertEquals(3, c.getInt(k + "max-slams"));
+        assertEquals(2.0, c.getDouble(k + "dive-speed"), "one strong push");
+    }
+
+    @Test void theDiveIsOnePushNotSteered() throws Exception {
+        YamlConfiguration c = YamlConfiguration.loadConfiguration(new File("src/main/resources/config.yml"));
+        assertFalse(c.contains("mythics.heretic.bloodlinking.dive-follows-look"), "no steering setting");
+        String src = Files.readString(Path.of("src/main/java/dev/soulbound/MythicListener.java"));
+        assertFalse(src.contains("steerBloodlinkDive"), "the velocity is set once, when the dive starts");
+        assertEquals(1, src.split("beginBloodlinkDive\\(p\\)", -1).length - 1, "called once per flight, at the dive tick");
     }
 
     @Test void sawsHaveNoSweepParticles() throws Exception {

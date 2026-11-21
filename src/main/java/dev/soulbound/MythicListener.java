@@ -424,7 +424,7 @@ public final class MythicListener implements Listener {
     }
 
     /**
-     * One flight: rising, then diving toward the block you look at after {@code diveAfter} ticks. The tick your
+     * One flight: rising, then one strong push the way you look after {@code diveAfter} ticks (no steering after). The tick your
      * hitbox newly overlaps a living entity's (rising or diving; the space you moved through counts, so a fast dive
      * can't skip a body), the slam happens right there, centred where you touched. Otherwise it slams on landing
      * (or after 40 ticks), as before. Someone you already overlap when the flight starts doesn't count until you've
@@ -458,7 +458,6 @@ public final class MythicListener implements Listener {
             }
             if (t[0] == diveAfter) beginBloodlinkDive(p);
             int sinceDive = t[0] - diveAfter;
-            if (sinceDive > 0 && plugin.getConfig().getBoolean("mythics.heretic.bloodlinking.dive-follows-look", true)) steerBloodlinkDive(p);
             if (sinceDive > 0 && (p.isOnGround() && sinceDive > 2 || sinceDive > 40)) {
                 stopBloodlinkRun(id);
                 doBloodlinkSlam(p, p.getLocation());
@@ -498,21 +497,15 @@ public final class MythicListener implements Listener {
         bloodlinkFallGrace.put(id, now() + 2000L);
     }
 
+    /**
+     * The dive: one strong push along your yaw and pitch (always at least dive-min-down of the way down), set once.
+     * After that gravity and drag take over, so you can't steer it.
+     */
     private void beginBloodlinkDive(Player p) {
         if (!p.isOnline()) return;
         BloodlinkState state = bloodlinks.get(p.getUniqueId());
         if (state == null) return;
-        if (plugin.getConfig().getBoolean("mythics.heretic.bloodlinking.dive-follows-look", true)) { steerBloodlinkDive(p); return; }
-        Location target = p.getTargetBlockExact(30) == null ? p.getLocation() : p.getTargetBlockExact(30).getLocation().add(0.5, 1, 0.5);
-        Vector to = target.toVector().subtract(p.getLocation().toVector());
-        if (to.lengthSquared() < 1) to = p.getLocation().getDirection().normalize().multiply(8);
-        to.normalize().multiply(plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 1.3));
-        p.setVelocity(to);
-    }
-
-    /** The dive goes where you look, every tick (so you can steer), always at least dive-min-down of the way down. */
-    private void steerBloodlinkDive(Player p) {
-        double speed = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 1.3);
+        double speed = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-speed", 2.0);
         double down = plugin.getConfig().getDouble("mythics.heretic.bloodlinking.dive-min-down", 0.35);
         p.setVelocity(HereticMath.diveDirection(p.getLocation().getDirection(), down).multiply(speed));
     }
@@ -778,6 +771,7 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.heretic.bloodlinking.cooldown-seconds", Material.ENDER_EYE, "Bloodlink Cooldown", SettingKind.INT, 5, 30, 0, 600, null),
             new MythicSetting("mythics.heretic.bloodlinking.launch-y", Material.WIND_CHARGE, "Bloodlink Launch", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 3.0, null),
             new MythicSetting("mythics.heretic.bloodlinking.bounce-launch-y", Material.SLIME_BALL, "Bloodlink Bounce", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 3.0, null),
+            new MythicSetting("mythics.heretic.bloodlinking.dive-speed", Material.ARROW, "Bloodlink Dive Push", SettingKind.DOUBLE, 0.1, 0.5, 0.3, 3.5, null),
             new MythicSetting("mythics.heretic.bloodlinking.radius", Material.TNT, "Bloodlink Radius", SettingKind.INT, 1, 2, 1, 12, null),
             new MythicSetting("mythics.heretic.bloodlinking.damage", Material.MACE, "Bloodlink Damage", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             new MythicSetting("mythics.heretic.bloodlinking.max-slams", Material.ANVIL, "Bloodlink Max Slams", SettingKind.INT, 1, 1, 1, 10, null),

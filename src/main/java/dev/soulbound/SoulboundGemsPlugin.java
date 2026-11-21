@@ -171,18 +171,22 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 3) return;
+        if (version >= 4) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
             if (c.getDouble("mythics.heretic.bloodsaws.damage", 5.0) == 5.0) { c.set("mythics.heretic.bloodsaws.damage", 7.0); changed.add("Bloodsaw damage 5 -> 7"); }
             if (c.getDouble(link + "damage", 6.0) == 6.0) c.set(link + "damage", 9.0); // and on to 11 below
         }
-        // Balance 3: a stronger Bloodlinking (instant bounces on contact).
-        if (c.getDouble(link + "launch-y", 1.35) == 1.35) { c.set(link + "launch-y", 1.9); changed.add("Bloodlinking launch 1.35 -> 1.9"); }
-        if (c.getDouble(link + "damage", 9.0) == 9.0) { c.set(link + "damage", 11.0); changed.add("Bloodlinking damage -> 11"); }
-        if (c.getInt(link + "max-victims", 2) == 2) { c.set(link + "max-victims", 4); changed.add("Bloodlinking max victims 2 -> 4"); }
-        c.set("balance-version", 3);
+        if (version < 3) { // Balance 3: a stronger Bloodlinking (instant bounces on contact).
+            if (c.getDouble(link + "launch-y", 1.35) == 1.35) { c.set(link + "launch-y", 1.9); changed.add("Bloodlinking launch 1.35 -> 1.9"); }
+            if (c.getDouble(link + "damage", 9.0) == 9.0) { c.set(link + "damage", 11.0); changed.add("Bloodlinking damage -> 11"); }
+            if (c.getInt(link + "max-victims", 2) == 2) { c.set(link + "max-victims", 4); changed.add("Bloodlinking max victims 2 -> 4"); }
+        }
+        // Balance 4: the Bloodlinking dive is one strong push the way you look (no steering).
+        if (c.getDouble(link + "dive-speed", 1.3) == 1.3) { c.set(link + "dive-speed", 2.0); changed.add("Bloodlinking dive push 1.3 -> 2.0"); }
+        c.set(link + "dive-follows-look", null); // steering was taken out again
+        c.set("balance-version", 4);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 

@@ -1,11 +1,16 @@
-# Bloodlinking: the dive goes where you look
+# Bloodlinking: the dive is one strong push the way you look
 
-- **The dive follows your yaw and pitch, every tick.** It used to be one push toward the block you looked at, which gravity and drag curved down short of the aim. Now your speed is set along your look direction (at `dive-speed`) every tick until you slam, so it flies straight to your crosshair and you can steer mid-dive.
-- **It always comes down:** if you look less than about 20° down (level or up), your yaw is kept and the dive tilts 20° down (`dive-min-down: 0.35`). Straight up dives straight down. `dive-min-down: 0` uses your pitch exactly.
-- **`dive-follows-look: false`** brings back the old single push.
-- **Unchanged:** contact slams, bounces, damage, radius, max slams, the 40-tick limit and no fall damage.
-- **Files:** HereticMath.java (diveDirection), MythicListener.java (steerBloodlinkDive), config.yml (`dive-follows-look`, `dive-min-down`), BloodlinkBounceTest.java (theDiveGoesWhereYouLook).
-- **Tested:** compiles, 105 unit tests pass. **Not tested in game.**
+This replaces the steerable dive from the previous jar.
+
+- **One push, no steering:** when the dive starts, your velocity is set once along your yaw and pitch. After that, gravity and drag take over, so turning mid-air does nothing.
+- **Stronger:** `dive-speed` 1.3 → 2.0. It's in `/mythicconfig` as "Bloodlink Dive Push".
+- **It always comes down:** if you look less than about 20° down (level or up), your yaw is kept and the push tilts 20° down (`dive-min-down: 0.35`). Straight up pushes straight down.
+- **Before, it pushed toward the block you were looking at** (the same direction, unless you looked at the sky). Now it always uses your look direction.
+- **It lands a little short of your crosshair:** one push can't fight air drag the whole way. From a full launch (about 17 blocks up) looking 45° down, the crosshair is about 17 blocks out. You land about 10 blocks out at 2.0, and about 7.5 at the old 1.3. Raise `dive-speed` for more reach.
+- **Your server's config:** a `dive-speed` still on 1.3 becomes 2.0 once, at the next start. The `dive-follows-look` key from the previous jar is removed.
+- **Unchanged:** contact slams, bounces (each bounce's dive is the same push), damage, radius, max slams, the 40-tick limit and no fall damage.
+- **Files:** MythicListener.java (beginBloodlinkDive; steering removed; tuner entry), SoulboundGemsPlugin.java (balance version 4), config.yml, BloodlinkBounceTest.java (theDiveIsOnePushNotSteered, the dive-speed default), and HereticMath.java (diveDirection, from the previous change).
+- **Tested:** compiles, 106 unit tests pass. **Not tested in game.**
 
 # Heretic: no saw sweep particles; Bloodlinking slams on contact and bounces at once
 

@@ -184,9 +184,9 @@ mythics:
       cooldown-seconds: 100
       launch-y: 1.9 # upward speed of the first jump (was 1.35)
       bounce-launch-y: 1.9 # upward speed of each bounce (the same as launch-y by default)
-      dive-speed: 1.3
-      dive-follows-look: true # the dive goes where you look, every tick, so you can steer it; false = one push toward the block you looked at (the old way)
-      dive-min-down: 0.35 # 0-1: the dive always heads at least this much downward (0.35 = about 20 degrees), so looking level or up still comes down
+      dive-speed: 2.0 # the dive is one push this strong along your yaw and pitch, then no steering (was 1.3). Air drag
+      # still brings you down a bit short of your crosshair; a bigger number reaches further
+      dive-min-down: 0.35 # 0-1: the push always heads at least this much downward (0.35 = about 20 degrees), so looking level or up still comes down
       radius: 4 # around where you touched them (or landed)
       damage: 11.0 # per slam, to every living entity in the radius, pierces armour (x2 on a bleeding target)
       max-slams: 3 # every bounce counts
