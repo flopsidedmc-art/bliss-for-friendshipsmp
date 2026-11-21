@@ -586,6 +586,7 @@ finale:
     fade-in-ticks: 30 # 1.5 s fade in when the cutscene starts (0 = pop in)
     fade-out-ticks: 30 # 1.5 s fade out when it ends (0 = cut)
     fade-steps: 4 # fainter frames <style>_fade_1..4 in the pack used for the fades; 0 = no fade (an older pack without them)
+    frame-count: {gold: 5, red: 6} # frames per style in the pack: textures/overlay/<style>_0..N-1.png, played in order
   sparkles: true
   flash:
     enabled: true # requires matching resource-pack glyph

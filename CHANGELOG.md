@@ -1,3 +1,16 @@
+# New brown haze frames for the finale overlay
+
+- **The new frames:** the five frames you sent are now the brown (`gold`) style's camera-overlay frames, `gold_0..4`, played in the order sent. Frames 0 and 2 are the same image, so the loop runs A, B, A, C, D.
+- **Fades:** `gold_fade_1..4` were remade from the new first frame (20/40/60/80%).
+- **Frame counts per style:** new `finale.overlay.frame-count` (`{gold: 5, red: 6}`), so a style can have any number of frames. The red frames and the Turmoil's red haze are unchanged.
+- **`gold_5.png`** is now a copy of the new first frame. It's only kept so the old E105 font glyph still has a texture.
+- **The pack:** `Relay-Temporal-Pack.zip` rebuilt (93 files).
+- **Files changed:**
+  - `Finale.java` (frame count per style), `Turmoil.java` (red frame count from the same setting);
+  - `config.yml`, `CameraOverlayTest.java` (checks every frame the setting asks for exists in the pack);
+  - the pack's textures and README, and `CHANGELOG.md`.
+- **Tested:** it compiles against paper-api 1.21.11, and all 94 unit tests pass. **Not tested:** nothing was seen in game.
+
 # Finale and Turmoil overlays: camera overlays instead of titles
 
 - **Why they were invisible:** the haze was a title glyph (E100-E105 / E110-E115, font height 288). Titles are drawn at the GUI scale ×4, so the image came out 2-3× larger than the screen, and the haze, which is only at the image's edges, was off-screen. A title's size can't suit every GUI scale.

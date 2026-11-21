@@ -39,7 +39,9 @@ class CameraOverlayTest {
         YamlConfiguration c = YamlConfiguration.loadConfiguration(new File("src/main/resources/config.yml"));
         int steps = c.getInt("finale.overlay.fade-steps");
         for (String style : new String[] {"gold", "red"}) {
-            for (int f = 0; f < 6; f++) assertTrue(Files.exists(TEXTURES.resolve(style + "_" + f + ".png")), style + "_" + f);
+            int frames = c.getInt("finale.overlay.frame-count." + style);
+            assertTrue(frames >= 1, style + " has frames");
+            for (int f = 0; f < frames; f++) assertTrue(Files.exists(TEXTURES.resolve(style + "_" + f + ".png")), style + "_" + f);
             for (int k = 1; k <= steps; k++) assertTrue(Files.exists(TEXTURES.resolve(style + "_fade_" + k + ".png")), style + "_fade_" + k);
         }
     }

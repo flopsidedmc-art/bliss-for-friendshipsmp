@@ -106,7 +106,7 @@ public final class Turmoil implements Listener {
     /** Optional red haze around the screen edges: the pack's red frames as a camera overlay (CameraOverlay). Off by default. */
     private void overlayTick() {
         if (!cfgB("redsky.overlay", false) || ticks % 4 != 0) return;
-        overlayFrame = (overlayFrame + 1) % 6;
+        overlayFrame = (overlayFrame + 1) % Finale.overlayFrames(plugin, "red");
         String texture = "blissgems:overlay/red_" + overlayFrame;
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (overlayAllowed(p)) plugin.overlay().show(p, texture);

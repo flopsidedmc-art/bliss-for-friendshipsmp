@@ -82,7 +82,6 @@ public final class Finale implements Listener {
     private static final int FORM_AT = 160;          // the web bursts and the Relay Gem forms
     private static final int MERGE_TOTAL_TICKS = 175;
     private static final int FLIGHT_TICKS = 70;
-    private static final int OVERLAY_FRAMES = 6;
 
     private final SoulboundGemsPlugin plugin;
     private final GemManager gems;
@@ -395,7 +394,15 @@ public final class Finale implements Listener {
 
     private String overlayStyle() { return pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold")) ? "red" : "gold"; }
 
-    private String overlayTexture() { return "blissgems:overlay/" + overlayStyle() + "_" + overlayFrame; }
+    private String overlayTexture() { return "blissgems:overlay/" + overlayStyle() + "_" + (overlayFrame % overlayFrames(overlayStyle())); }
+
+    /** Frames in the pack for a style (finale.overlay.frame-count.<style>): textures/overlay/<style>_0..N-1.png. */
+    private int overlayFrames(String style) { return overlayFrames(plugin, style); }
+
+    static int overlayFrames(SoulboundGemsPlugin plugin, String style) {
+        int fallback = "gold".equals(style) ? 5 : 6;
+        return Math.max(1, Math.min(16, plugin.getConfig().getInt("finale.overlay.frame-count." + style, fallback)));
+    }
 
     private static String fadeTexture(String style, int level) { return "blissgems:overlay/" + style + "_fade_" + level; }
 
@@ -441,7 +448,7 @@ public final class Finale implements Listener {
             } else if (fadeIn <= 0 && skyTicks == 1) {
                 texture = overlayTexture(); // no fade: the first frame at once
             } else if (skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
-                overlayFrame = (overlayFrame + 1) % OVERLAY_FRAMES; // every frame-ticks, the next frame's helmet
+                overlayFrame = (overlayFrame + 1) % overlayFrames(overlayStyle()); // every frame-ticks, the next frame's helmet
                 texture = overlayTexture();
             }
             if (texture != null) showOverlay(texture);
