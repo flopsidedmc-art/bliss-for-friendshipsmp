@@ -1,3 +1,10 @@
+# Divinity void world: clearer ownership
+
+- **Why it was refused:** on a test server the void world folder existed, but `plugins/SoulboundGems/temporal-world-soulbound_temporal_void.marker` didn't (the plugin folder was reset or not copied). The plugin rightly refused to adopt an unmarked world, and Divinity stayed off.
+- **A second marker:** the plugin now also writes one inside the world folder (`soulbound-temporal-divinity.owner`), so resetting the plugin folder no longer orphans the world. Either marker counts.
+- **A clearer error:** when an unmarked folder is found, the error now says what to do. If it's the old void world, stop the server and delete the folder (it's recreated in moments); if it's a real world, set `mythics.relay.temporal.divinity.world` to another name.
+- Compiles against paper-api 1.21.11. All unit tests pass. Not run on a server.
+
 # Two crash fixes: the Divinity void world and progression checks
 
 ## Temporal Divinity froze the server (watchdog kill)

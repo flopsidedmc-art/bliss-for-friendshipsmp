@@ -100,9 +100,14 @@ final class TemporalDomain implements Listener {
         try {
             String name=worldName();
             if(!name.matches("[A-Za-z0-9_-]{1,64}"))throw new IOException("invalid void-world name "+name);
+            // Ownership: a marker in the plugin folder, and (since a plugin-folder reset lost it once) one inside the world folder.
+            File folder=new File(Bukkit.getWorldContainer(),name);
             File marker=new File(plugin.getDataFolder(),"temporal-world-"+name+".marker");
-            if(!marker.exists() && (Bukkit.getWorld(name)!=null || new File(Bukkit.getWorldContainer(),name).exists()))
-                throw new IOException("refusing to reuse unowned world "+name);
+            File inWorld=new File(folder,OWNER_FILE);
+            if(!marker.exists() && !inWorld.exists() && (Bukkit.getWorld(name)!=null || folder.exists()))
+                throw new IOException("a world folder named "+name+" exists but has no Soulbound Gems marker, so it won't be reused."
+                        +" If it's the old Divinity void world, stop the server and delete the "+name+" folder (it's recreated in moments);"
+                        +" if it's a real world, set mythics.relay.temporal.divinity.world to another name");
             plugin.getDataFolder().mkdirs();
             Files.writeString(marker.toPath(),"Owned by Soulbound Gems Temporal Divinity\n");
             long started=System.nanoTime();
@@ -110,6 +115,7 @@ final class TemporalDomain implements Listener {
             if(w==null)w=Bukkit.createWorld(new WorldCreator(name).environment(World.Environment.NORMAL).generateStructures(false)
                     .keepSpawnLoaded(TriState.FALSE).generator(new VoidGenerator()));
             if(w==null)throw new IOException("world creation returned null");
+            Files.writeString(new File(w.getWorldFolder(),OWNER_FILE).toPath(),"Owned by Soulbound Gems Temporal Divinity\n");
             GameRule<?> spawnChunks=GameRule.getByName("spawnChunkRadius"); // gone since 1.21.9 (no spawn chunks); set where it still exists
             if(spawnChunks!=null && spawnChunks.getType()==Integer.class)w.setGameRule((GameRule<Integer>)spawnChunks,0);
             w.setTime(6000);w.setStorm(false);w.setThundering(false);
@@ -125,6 +131,8 @@ final class TemporalDomain implements Listener {
             plugin.getLogger().severe("Temporal Divinity is off until a restart: the void world couldn't be prepared: "+ex.getMessage());
         }
     }
+
+    private static final String OWNER_FILE="soulbound-temporal-divinity.owner"; // inside the void world's folder
 
     /** Empty chunks, and a spawn point given outright, so the server never generates chunks looking for one. */
     private static final class VoidGenerator extends ChunkGenerator {
