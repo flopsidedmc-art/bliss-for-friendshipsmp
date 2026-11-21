@@ -1,3 +1,19 @@
+# Auratus hook drawn the right way round
+
+- **The cause:** item displays draw their model turned 180° about Y (vanilla's item display renderer does it). The plain chain strands are symmetric, so it never showed on them. The hook (chain_end, custom model data 12349) has its claw at one end, so it was drawn backwards.
+- **Why the earlier fix didn't take:** `drawChain` built its own copy of the hook's pose instead of using the shared one.
+- **The fix:** one `hookPose()` now turns the hook display 180° about its own Y (`HOOK_TURN`, the transformation's right rotation), cancelling the renderer's turn. The claw sits on the target and the hook's own links trail back toward the hand.
+  - `drawChain`, the flight out and the reel-in all use it. The reel-in keeps the hook's rotation as it flies back.
+  - The strands aren't turned; the hook and the first strand still share a link exactly, so the chain joins in step.
+- **Your pack:** this draws the model exactly as it was built in Blockbench, so the claw faces' original rotations are the right ones. Undo the texture flip: up/down back to 180, east/west back to 270.
+- **Test:** `HookOrientationTest` works out positions the way the client draws an item display, its 180° turn included. It checks:
+  - the claw's point is on the target and the hook's links run back toward the hand, in 5 directions;
+  - without the turn the claw would point back;
+  - the hook and the first strand share a link exactly;
+  - the flight's travel offset doesn't change the facing.
+- **Files changed:** `AuratusGem.java` (`HOOK_TURN`, `chainRotation`, `chainLift`, `hookPose`, `strandPose`, the layout and `drawChain` all on the shared poses), `HookOrientationTest.java` (new), `CHANGELOG.md`.
+- **Tested:** it compiles against paper-api 1.21.11, and all 98 unit tests pass. **Not tested:** nothing was seen in game.
+
 # New brown haze frames for the finale overlay
 
 - **The new frames:** the five frames you sent are now the brown (`gold`) style's camera-overlay frames, `gold_0..4`, played in the order sent. Frames 0 and 2 are the same image, so the loop runs A, B, A, C, D.

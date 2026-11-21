@@ -814,14 +814,45 @@ final class AuratusGem implements Listener {
      * hand, joined in step and ending there (pack models); or a line of gold dust. {@code bite} draws the tip that much
      * further along the chain (block hooks).
      */
+    /**
+     * Item displays draw their model turned 180 degrees about Y (vanilla's item display renderer does it). The plain
+     * strands are symmetric so it doesn't matter for them, but chain_end has its claw at one end: without turning it
+     * back, the claw ended up toward the hand and the hook's own links ran on past the target. HOOK_TURN undoes it,
+     * so the model is drawn as built: claw (its -z end) on the target, links trailing back toward the hand.
+     */
+    static final Quaternionf HOOK_TURN = new Quaternionf().rotationY((float) Math.PI);
+
+    /** Turns a chain model's -z toward {@code dir} (from the hand to the target). */
+    static Quaternionf chainRotation(Vector dir) {
+        return new Quaternionf().rotationTo(new Vector3f(0, 0, -1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
+    }
+
+    /** The strand's axis sits 8.1 px below the model's middle: lifted back onto the line. */
+    static Vector3f chainLift(Quaternionf rot, float scale) { return new Vector3f(0, (float) (STRAND_DROP * scale), 0).rotate(rot); }
+
+    /**
+     * The hook (chain_end), for the normal drawing, the flight out and the reel-in alike: claw on the target, links back
+     * toward the hand, moved by {@code offset} (the flight's travel), squashed along the chain when it's short.
+     */
+    static Transformation hookPose(Vector dir, float scale, float squash, Vector3f offset) {
+        Quaternionf rot = chainRotation(dir);
+        return new Transformation(chainLift(rot, scale).add(offset), rot, new Vector3f(scale, scale, scale * squash), new Quaternionf(HOOK_TURN));
+    }
+
+    /** A plain strand (chain): symmetric, so it isn't turned. */
+    static Transformation strandPose(Vector dir, float scale) {
+        Quaternionf rot = chainRotation(dir);
+        return new Transformation(chainLift(rot, scale), rot, new Vector3f(scale, scale, scale), new Quaternionf());
+    }
+
     /** The chain's shape from hand to tip: the direction, the models' spots back from the tip, and their poses. */
-    private record Layout(Location tip, Vector dir, double len, double[] at, float scale, Quaternionf rot, Vector3f lift) {
+    private record Layout(Location tip, Vector dir, double len, double[] at, float scale) {
         Location centre(int i) { return tip.clone().subtract(dir.clone().multiply(at[i])); }
         Transformation hookPose(Vector3f offset) {
             float squash = at.length == 1 ? (float) (len / (STRAND * scale)) : 1f; // a short chain is just the hook, squashed to fit
-            return new Transformation(new Vector3f(lift).add(offset), rot, new Vector3f(scale, scale, scale * squash), new Quaternionf());
+            return AuratusGem.hookPose(dir, scale, squash, offset);
         }
-        Transformation strandPose() { return new Transformation(new Vector3f(lift), rot, new Vector3f(scale, scale, scale), new Quaternionf()); }
+        Transformation strandPose() { return AuratusGem.strandPose(dir, scale); }
     }
 
     private Layout layout(Location from, Location to, double bite) {
@@ -832,43 +863,29 @@ final class AuratusGem implements Listener {
         Location tip = to;
         if (bite > 0) { tip = to.clone().add(dir.clone().multiply(bite)); len += bite; }
         float s = (float) Math.max(0.1, cfgD("chain.link-scale", 1.0));
-        Quaternionf rot = new Quaternionf().rotationTo(new Vector3f(0, 0, -1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
-        Vector3f lift = new Vector3f(0, (float) (STRAND_DROP * s), 0).rotate(rot); // the strand's axis onto the line
-        return new Layout(tip, dir, len, AuratusMath.chainLayout(len, STRAND * s, STRAND_STEP * s, LINK_STEP * s, 60), s, rot, lift);
+        return new Layout(tip, dir, len, AuratusMath.chainLayout(len, STRAND * s, STRAND_STEP * s, LINK_STEP * s, 60), s);
     }
 
     private void drawChain(Chain c, Location from, Location to, double bite) {
         World w = from.getWorld();
-        Vector delta = to.toVector().subtract(from.toVector());
-        double len = delta.length();
-        if (len < 0.5) { c.clear(); return; }
-        Vector dir = delta.clone().multiply(1 / len);
-        if (bite > 0) {
-            to = to.clone().add(dir.clone().multiply(bite));
-            len += bite;
-        }
+        Layout l = layout(from, to, bite);
+        if (l == null) { c.clear(); return; }
         if (!cfgB("chain.show-models", true)) {
             c.clear();
-            int points = Math.max(2, Math.min(64, (int) (len * 2)));
+            int points = Math.max(2, Math.min(64, (int) (l.len() * 2)));
             for (int i = 0; i < points; i++)
-                w.spawnParticle(Particle.DUST, from.clone().add(dir.clone().multiply(len * i / points)), 1, 0, 0, 0, 0,
+                w.spawnParticle(Particle.DUST, from.clone().add(l.dir().clone().multiply(l.len() * i / points)), 1, 0, 0, 0, 0,
                         new Particle.DustOptions(i % 3 == 0 ? PALE : GOLD, 0.9f));
             return;
         }
-        float s = (float) Math.max(0.1, cfgD("chain.link-scale", 1.0));
-        Quaternionf rot = new Quaternionf().rotationTo(new Vector3f(0, 0, -1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
-        Vector3f lift = new Vector3f(0, (float) (STRAND_DROP * s), 0).rotate(rot); // the strand's axis onto the line
-        double[] at = AuratusMath.chainLayout(len, STRAND * s, STRAND_STEP * s, LINK_STEP * s, 60);
-        // A short chain is just the hook, squashed (or stretched a little) to fit between hand and tip.
-        float squash = at.length == 1 ? (float) (len / (STRAND * s)) : 1f;
-        if (c.hook == null || !c.hook.isValid()) c.hook = display(to, CMD_HOOK);
-        place(c.hook, to.clone().subtract(dir.clone().multiply(at[0])), new Transformation(lift, rot, new Vector3f(s, s, s * squash), new Quaternionf()));
-        int n = at.length - 1;
+        if (c.hook == null || !c.hook.isValid()) c.hook = display(l.tip(), CMD_HOOK);
+        place(c.hook, l.centre(0), l.hookPose(new Vector3f())); // the same pose as the flight out and the reel-in
+        int n = l.at().length - 1;
         while (c.links.size() < n) c.links.add(display(from, CMD_LINK)); // new strands glide out from the hand
         while (c.links.size() > n) { ItemDisplay d = c.links.remove(c.links.size() - 1); if (d.isValid()) d.remove(); }
-        Transformation pose = new Transformation(lift, rot, new Vector3f(s, s, s), new Quaternionf());
-        for (int i = 0; i < n; i++) place(c.links.get(i), to.clone().subtract(dir.clone().multiply(at[i + 1])), pose);
-        if (tick % 4 == 0) w.spawnParticle(Particle.WAX_ON, from.clone().add(dir.clone().multiply(len * Math.random())), 1, 0.05, 0.05, 0.05, 0);
+        Transformation pose = l.strandPose();
+        for (int i = 0; i < n; i++) place(c.links.get(i), l.centre(i + 1), pose);
+        if (tick % 4 == 0) w.spawnParticle(Particle.WAX_ON, from.clone().add(l.dir().clone().multiply(l.len() * Math.random())), 1, 0.05, 0.05, 0.05, 0);
     }
 
     /** Moves a chain model without giving it a facing of its own (see {@link #display}). */
