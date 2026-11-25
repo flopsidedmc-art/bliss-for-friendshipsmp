@@ -57,7 +57,16 @@ commands:
   gem:
     description: Nickname your own gem.
     usage: /gem nickname <name...> | /gem nickname clear
+  rules:
+    description: The combat rules - status, reload, turn a rule on or off, and the maces.
+    usage: /rules <status|reload|toggle <rule>|mace <give <player>|list>>
+    permission: soulbound.rules.admin
+    permission-message: You lack permission.
 permissions:
+  soulbound.rules.admin:
+    default: op
+  soulbound.rules.see-invisible:
+    default: op
   soulbound.admin.names:
     default: op
   soulbound.nickname.color:

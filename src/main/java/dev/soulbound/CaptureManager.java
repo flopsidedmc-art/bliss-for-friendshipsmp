@@ -418,6 +418,11 @@ public final class CaptureManager implements Listener {
         if (p != null && !hasOwnHud(p)) p.sendActionBar(Component.empty());
     }
 
+    private static Component winLine(TextColor col, Component name, Point pt, GemType reward) {
+        return Component.text(ICON + " ", col).append(Component.text("", col, TextDecoration.BOLD).append(name))
+                .append(Component.text(" captured " + pt.name + (reward == null ? "!" : " and won the " + reward.shown() + " gem!"), NamedTextColor.WHITE));
+    }
+
     private void win(World w, Point pt, UUID winnerId) {
         Player winner = Bukkit.getPlayer(winnerId);
         String who = pt.names.getOrDefault(winnerId, winner == null ? "Someone" : winner.getName());
@@ -428,12 +433,16 @@ public final class CaptureManager implements Listener {
             for (ItemStack left : winner.getInventory().addItem(gem).values()) winner.getWorld().dropItemNaturally(winner.getLocation(), left);
         }
         TextColor col = TextColor.color(pt.color);
-        Component title = Component.text(who, col, TextDecoration.BOLD);
+        Component real = Component.text(who); // an invisible winner is a scramble, except to see-invisible admins and the console
+        Component hidden = winner != null && plugin.nameHidden(winner) ? plugin.shownNameComponent(winner) : real;
         Component sub = Component.text("captured " + pt.name + (reward == null ? "" : " and won the " + reward.shown() + " gem"), NamedTextColor.WHITE);
-        Title t = Title.title(title, sub, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000)));
-        for (Player p : Bukkit.getOnlinePlayers()) p.showTitle(t);
-        Bukkit.broadcast(Component.text(ICON + " ", col).append(Component.text(who, col, TextDecoration.BOLD))
-                .append(Component.text(" captured " + pt.name + (reward == null ? "!" : " and won the " + reward.shown() + " gem!"), NamedTextColor.WHITE)));
+        Title.Times times = Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000));
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Component name = p.hasPermission(CombatRules.SEE_INVISIBLE) ? real : hidden;
+            p.showTitle(Title.title(Component.text("", col, TextDecoration.BOLD).append(name), sub, times));
+            p.sendMessage(winLine(col, name, pt, reward));
+        }
+        Bukkit.getConsoleSender().sendMessage(winLine(col, real, pt, reward));
         if (winner != null) GemSounds.playTo(plugin, "capture.win", winner);
         burst(w, pt);
         pt.afterglowUntil = tick + 40; // the burst plays out, then the visuals turn off
@@ -465,10 +474,17 @@ public final class CaptureManager implements Listener {
         UUID lead = leader(pt);
         long t = lead == null ? 0 : pt.held.get(lead);
         if (pt.state == CaptureMath.State.CONTESTED) name = name.append(Component.text("CONTESTED", NamedTextColor.RED, TextDecoration.BOLD));
-        else name = name.append(Component.text((lead == null ? "nobody" : pt.names.getOrDefault(lead, "?")) + " " + secs(t) + "/" + secs(pt.goalTicks), NamedTextColor.WHITE));
+        else name = name.append(Component.text("", NamedTextColor.WHITE).append(lead == null ? Component.text("nobody") : nameOf(pt, lead))
+                .append(Component.text(" " + secs(t) + "/" + secs(pt.goalTicks))));
         pt.bar.name(name);
         pt.bar.progress((float) Math.max(0, Math.min(1, t / (double) pt.goalTicks)));
         pt.bar.color(bossColor(pt.color));
+    }
+
+    /** The leader's name on the bar: scrambled while they're invisible (rules.invisibility). */
+    private Component nameOf(Point pt, UUID id) {
+        Player p = Bukkit.getPlayer(id);
+        return p != null && plugin.nameHidden(p) ? plugin.shownNameComponent(p) : Component.text(pt.names.getOrDefault(id, "?"));
     }
 
     private void updateBarViewers(World w, Point pt) {

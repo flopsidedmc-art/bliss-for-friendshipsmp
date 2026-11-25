@@ -3,6 +3,7 @@ package dev.soulbound;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -57,6 +58,19 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     VortexDrain vortex() { return vortex; }
     private LifeBlessing blessing;
     LifeBlessing blessing() { return blessing; }
+    private CombatRules combatRules;
+    private MaceRules maceRules;
+
+    /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
+    String shownName(Player p) { return combatRules == null ? p.getName() : combatRules.shownName(p); }
+
+    /** The same, as a component (obfuscated while invisible). */
+    net.kyori.adventure.text.Component shownNameComponent(Player p) {
+        return combatRules == null ? net.kyori.adventure.text.Component.text(p.getName()) : combatRules.shown(p);
+    }
+
+    /** Invisible with the invisibility rule on: messages scramble their name. */
+    boolean nameHidden(Player p) { return combatRules != null && combatRules.invisible(p); }
 
     @Override
     public void onEnable() {
@@ -119,6 +133,18 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         blessing = new LifeBlessing(this);
         Bukkit.getPluginManager().registerEvents(blessing, this);
         blessing.start(); // a reload: nobody keeps blessed hearts from before
+        RuleCore rules = new RuleCore(this); // the combat rules module (rules: in config.yml)
+        combatRules = new CombatRules(this, rules);
+        Bukkit.getPluginManager().registerEvents(combatRules, this);
+        combatRules.start();
+        Bukkit.getPluginManager().registerEvents(new ItemRules(this, rules), this);
+        maceRules = new MaceRules(this, rules, combatRules);
+        Bukkit.getPluginManager().registerEvents(maceRules, this);
+        RulesCommand rulesCommand = new RulesCommand(this, rules, maceRules);
+        if (getCommand("rules") != null) {
+            getCommand("rules").setExecutor(rulesCommand);
+            getCommand("rules").setTabCompleter(rulesCommand);
+        }
 
         NamesCommand namesCommand = new NamesCommand(this);
         Bukkit.getPluginManager().registerEvents(new GemNameListener(this, namesCommand), this);
@@ -203,6 +229,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (overlay != null) overlay.clearAll(); // everyone's real helmet back
         if (loose != null) loose.shutdown();
         if (prophet != null) prophet.save();
+        if (combatRules != null) combatRules.shutdown(); // everyone hidden from the tab list is back on it
     }
 
     /**

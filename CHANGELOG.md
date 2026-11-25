@@ -1,3 +1,125 @@
+# Combat rules module
+
+## What I found first
+- **The trust list** (`GemListener.isTrusted`) only decides who gem abilities hit. Plain hits between trusted players aren't blocked, so sparring with a friend counts as a fight.
+- **The Revenant:** its mace is a mythic (`RevenantMace.isLiveItem`), so the mace rules never count or touch it. `rules.exempt-revenant` (default false) can exempt its holder from every rule.
+- **Gem abilities don't fire the item events these rules use.** Abilities launch projectiles and deal damage in code, never through a player throwing a pearl or wind charge, drinking or eating. Two spots needed care, and both are handled:
+  - **A gem hit while holding a mace:** the glide rule only takes away real smash damage (vanilla's `mace_smash` damage type), so a gem hit is never reduced.
+  - **Another plugin's revive:** the totem rule only counts real totems.
+- **Pantheon** is a separate plugin; this plugin only reads its `points.yml`. Its kill-point messages can't be scrambled from here.
+- **Capture** messages name the leader and winner; they now use the scrambled name. Bounty messages get it in the Bounty Hunter rework (next delivery).
+- **Finale and Revenant announcements** name players as story beats ("THE SIGNAL HAS CHOSEN ...", "The Revenant rises. ..."). I left them as they are.
+- **Existing overlaps:**
+  - **Potions and tipped arrows:** progression 1–2 already removes them from inventories; this module bans the harmful ones at every progression.
+  - **The finale kit** gives 64 + 64 golden apples, exactly the 128 cap.
+  - **`/blissop mace`** (the "Heirloom Mace") still works; that mace gets a hidden id and counts once a player holds it.
+- **No config helper class exists;** the plugin reads `getConfig()` directly, and so do the rules. New keys reach an existing config.yml on the next start (copy defaults), as before.
+- **SmallCaps.of** writes every refusal and the In combat / Out of combat bar.
+
+## What changed
+- **A new `rules:` section in config.yml.**
+  - **Switches:** every rule has its own `enabled`.
+  - **`rules.worlds`:** set a world to `false` to turn every rule off there (for event worlds).
+  - **Exempt from the carry caps and bans:** ops and creative players (and spectators).
+  - **Gem and mythic abilities are never affected.**
+- **Messages:**
+  - **Refusals** go on the action bar, in red small caps, at most once every 2 s per rule per player ("ᴛɪᴘᴘᴇᴅ ᴀʀʀᴏᴡꜱ ᴀʀᴇ ʙᴀɴɴᴇᴅ", "3/3 ᴇɴᴄʜᴀɴᴛᴇᴅ ɢᴀᴘᴘʟᴇꜱ ᴛʜɪꜱ ꜰɪɢʜᴛ").
+  - **Cooldowns** use the vanilla item cooldown overlay, and never shorten a longer cooldown something else set.
+- **The combat tag (`combat`):**
+  - **What starts a fight:** hurting or being hurt by a player: directly, by projectile, by their lit TNT, their tamed pet or their lingering cloud.
+  - **When it ends:** after `tag-seconds` (15) with no player damage either way.
+  - **The action bar** shows "ɪɴ ᴄᴏᴍʙᴀᴛ" when it starts and "ᴏᴜᴛ ᴏꜰ ᴄᴏᴍʙᴀᴛ" when it ends, nothing in between.
+  - **The per-fight counters** reset when the fight ends, on death and on logout.
+- **The 16 rules:**
+  1. **Enchanted golden apples:** 3 per fight; the 4th is refused and not eaten. No limit outside a fight.
+  2. **Golden apples:** you can carry at most 128.
+     - **Counted:** the inventory, off hand, cursor and bundles. Enchanted golden apples don't count.
+     - **Pickups:** you pick up only what fits; the rest stays on the ground.
+     - **Over the cap** after a container take goes back into that container. Otherwise (crafting, anything else) it drops at your feet.
+     - **Where it's taken from:** the cursor first, the off hand last.
+  3. **Totems:** one totem saves you per fight. A second doesn't activate, so you die. Carrying more is fine.
+  4. **Tipped arrows** are banned. They can't be crafted (by hand or in a crafter), shot (bows, crossbows, dispensers), picked up or bought (villager trades are removed). Old ones become normal arrows, same amount, when touched: clicked, picked up, held, on join, or when a container is opened. That includes a loaded crossbow.
+  5. **Debuff potions** are banned: any potion with an effect on `rules.debuff-potions.effects`.
+     - **The list:** the 15 from your prompt (Weakness, Slowness, Poison, Harming, Wither, Blindness, Darkness, Nausea, Mining Fatigue, Hunger, Levitation, Infested, Oozing, Weaving, Wind Charged).
+     - **Brewing** one gives water. They can't be thrown, drunk or bought, and old ones become water bottles when touched.
+     - **Positive potions are untouched.**
+     - **Turtle Master** has Slowness, so it's banned too. Take `slowness` off the list if you want to keep it.
+  6. **Cobwebs:** carry at most 128, handled like golden apples.
+  7. **Ender pearls:** a 7 s cooldown in a fight (vanilla's otherwise).
+  8. **Wind charges:** a 5 s cooldown, always.
+  9. **Chorus fruit:** a 7 s cooldown in a fight.
+  10. **Maces:** only `max-on-server` (3) can exist.
+      - **Hidden ids:** every mace gets one, recorded in `maces.yml`.
+      - **Maces from before the rule** get an id and count as soon as a survival player holds one, picks one up or joins with one. A mace in the creative menu doesn't count until a survival player has it.
+      - **Race mode** (default): crafting is open until 3 exist, and each craft is announced to everyone ("ᴀ ᴍᴀᴄᴇ ʜᴀꜱ ʙᴇᴇɴ ꜰᴏʀɢᴇᴅ (1/3)"). After that the recipe gives nothing, with a message.
+        - **Shift-click crafting** is refused, so each mace is counted.
+        - **Crafters** (the block) count too.
+      - **Event mode:** no crafting; `/rules mace give <player>` still counts toward the 3.
+      - **A lost mace** (burnt in lava or fire, blown up, fallen into the void, or despawned) is marked destroyed. With `destroyed-frees-slot: true` its slot opens again.
+      - **Enchant caps:** Density at most III and Breach at most II, lowered at the enchanting table, on the anvil, and when the mace hits.
+      - **No smash damage** while gliding or within 2 s after gliding; the hit does plain mace damage. Vanilla already blocks the smash while gliding; the 2 s after landing is new.
+  11. **End crystals** don't hurt players; they still work for the dragon. Block damage: `break-blocks`.
+  12. **Bed and respawn anchor explosions** don't hurt players. Block damage: `break-blocks`.
+  13. **TNT minecarts** can't be crafted (by hand or in a crafter), placed (by hand or by a dispenser) or used on rails.
+  14. **Riptide:** an 8 s cooldown in a fight. The cooldown is on tridents, so it also covers throwing one.
+  15. **Elytra:** no gliding for 5 s after taking damage from a player.
+  16. **Invisibility hides your name.** It covers a potion, or anything that makes you invisible, gem abilities included.
+      - **Death messages:** an invisible killer or victim is an obfuscated scramble of 4–10 letters, and "using [item]" is removed.
+      - **Chat:** only the name is scrambled, never the message (`chat-name`).
+      - **Capture:** the boss bar leader and the win title and message are scrambled.
+      - **The tab list** is left alone (`tab: false`); `true` hides them from it while invisible.
+      - **Who sees the real name:** players with `soulbound.rules.see-invisible` (ops by default) in chat, death messages and the capture win. The console log always does.
+- **`/rules`** (`soulbound.rules.admin`, ops by default, with tab completion):
+  - `status`: every rule, on or off, with its numbers, how many are in a fight, and the mace count;
+  - `reload`: reads config.yml again;
+  - `toggle <rule>`: turns one rule on or off and saves;
+  - `mace give <player>` and `mace list` (each mace's id, who was last seen with it, and how it was made).
+
+## Files
+- **New:**
+  - `RuleMath.java`: the parts that need no server (fights and their counters, carry caps, the debuff check, mace modes, the smash window, the scramble, the rule list);
+  - `RuleCore.java`: what every rule shares (on or off, per world, exemptions, refusal messages);
+  - `CombatRules.java`: the combat tag, gapples, totems, the cooldowns, elytra, crystals, beds and anchors, TNT minecarts, invisible names;
+  - `ItemRules.java`: carry caps, tipped arrows and debuff potions;
+  - `MaceRules.java`: the mace count, modes, ids, enchant caps and the smash rule;
+  - `RulesCommand.java`: `/rules`;
+  - `RulesTest.java`.
+- **Changed:**
+  - `SoulboundGemsPlugin.java`: creates and registers the module, `/rules`, and the scrambled-name helpers; puts the tab list back on disable;
+  - `CaptureManager.java`: the leader and winner names go through the scramble;
+  - `plugin.yml`: `/rules`, `soulbound.rules.admin` and `soulbound.rules.see-invisible`;
+  - `config.yml`: `rules:`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 187 unit tests pass (15 new). They cover:
+  - **The combat tag:** a fight lasts 15 s after the last hit, each hit pushes the end back, In combat / Out of combat show once, and players' fights are separate.
+  - **The per-fight counters:** 3 gapples then refused (a refused one isn't counted), no limit outside a fight, and a fresh count in the next fight. One totem per fight, and both counters reset on death or logout.
+  - **Carry caps:** what fits, a third stack refused, the excess, and the order extra is taken in (off hand last).
+  - **The debuff check:** namespaced keys, any case, Turtle Master, positive potions untouched, and all 15 effects from the prompt on the list.
+  - **Maces:** race and event modes, the 4th blocked, a give counting, the enchant caps and the smash window.
+  - **Invisible names:** the scramble is 4–10 letters (every length comes up), and the death message drops the weapon and scrambles an invisible killer or victim but not the other.
+  - **The wiring:** every rule has its own `enabled` with the prompt's defaults, every switch is read, the listeners and `/rules` are registered, the permissions exist, capture uses the scramble, the Revenant's mace is excluded, and lost maces are caught.
+- **A bug caught by the existing tests:** the carry count read the inventory in a way that throws on empty slots. Fixed before delivery.
+
+## Not tested
+- **Nothing was run in game.** Every event handler is untested on a real server:
+  - pickups, container clicks and drags, crafting, brewing, villager trades, dispensers, crossbows, the conversions;
+  - the cooldown overlays, the totem cancel, the glide cancel;
+  - crystal, bed and anchor explosions;
+  - the mace announcements, ids and `maces.yml`, the anvil and table caps, the smash damage;
+  - death message and chat scrambles, the tab list option, `/rules`.
+
+## In-game test plan
+1. **Gapples:** fight a friend; eat 3 enchanted gapples fine, the 4th is refused. After 15 s out of combat you can eat 3 again.
+2. **Totems:** pop a totem, then take lethal damage again in the same fight: you die.
+3. **Carry caps:** try to pick up a third stack of golden apples or cobwebs: refused.
+4. **Bans:** craft or shoot a tipped arrow, brew a Weakness potion, throw a Harming potion: all blocked. Old ones turn into arrows / water bottles.
+5. **Cooldowns:** pearl twice in a fight: 7 s cooldown. Wind charge: 5 s. Chorus in a fight: 7 s.
+6. **Maces:** craft 3; each is announced and the 4th is blocked. Enchant Density V: it's reduced to III. Mace-smash while gliding: no smash damage.
+7. **Explosions:** blow up an end crystal, a bed in the Nether and an anchor in the Overworld next to a friend: no damage to them.
+8. **Elytra:** take a hit, then try to glide right away: you can't for 5 s.
+9. **Invisibility:** drink Invisibility and kill a friend: the death message shows a scrambled name and no weapon. Chat while invisible: your name is scrambled and the message is normal. An admin with see-invisible sees your real name.
+
 # Renameable gems and player nicknames
 
 ## What I found first

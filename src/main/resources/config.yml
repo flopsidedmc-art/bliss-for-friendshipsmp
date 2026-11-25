@@ -754,3 +754,66 @@ capture:
     width: 0.15 # blocks
     length: 1.5 # blocks
     alpha: 0.7 # 0-1 when it appears
+
+# The combat rules (/rules, permission soulbound.rules.admin): limits on cheesy PvP items, so fights are decided by
+# gems and skill. Every rule has its own enabled. Gem and mythic abilities are never affected.
+# Ops and creative players are exempt from the carry caps and bans. Refusals show on the action bar, in small caps,
+# at most once every 2 s per rule. Cooldowns use the normal item cooldown overlay.
+rules:
+  worlds: {} # a world set to false has every rule off, for event worlds, e.g. {event_arena: false}
+  exempt-revenant: false # true: the Revenant holder ignores every rule
+  combat: # "a fight": from hurting or being hurt by a player (directly, by projectile or by something they caused)
+    enabled: true
+    tag-seconds: 15 # until this long passes with no player damage either way. The per-fight counters reset then, on death and on logout
+  enchanted-golden-apples:
+    enabled: true
+    max-per-fight: 3 # one more is refused and not eaten
+  golden-apples:
+    enabled: true
+    max-carried: 128 # can't be picked up, taken from containers or crafted past this; extra goes back or drops at your feet
+  totems:
+    enabled: true
+    max-per-fight: 1 # a second totem in the same fight doesn't save you (carrying more is fine)
+  tipped-arrows:
+    enabled: true # can't be crafted, shot (bows, crossbows, dispensers), picked up or bought; old ones become normal arrows
+  debuff-potions:
+    enabled: true # can't be brewed, thrown, drunk or bought; old ones become water bottles. Positive potions are untouched
+    effects: [weakness, slowness, poison, instant_damage, wither, blindness, darkness, nausea, mining_fatigue, hunger, levitation, infested, oozing, weaving, wind_charged]
+  cobwebs:
+    enabled: true
+    max-carried: 128 # same handling as golden apples
+  ender-pearls:
+    enabled: true
+    fight-cooldown-seconds: 7 # in a fight; the normal cooldown otherwise
+  wind-charges:
+    enabled: true
+    cooldown-seconds: 5 # always
+  chorus-fruit:
+    enabled: true
+    fight-cooldown-seconds: 7 # in a fight
+  mace: # the Revenant's mace is a mythic and is never counted or touched
+    enabled: true
+    max-on-server: 3 # every mace gets a hidden id (maces.yml); /rules mace list shows who has each
+    mode: race # race: crafting is open until the limit, each craft announced. event: no crafting, admins use /rules mace give
+    destroyed-frees-slot: false # true: a mace lost to lava, fire, the void or despawning no longer counts
+    max-density: 3 # higher levels are lowered when the mace is enchanted, combined or used
+    max-breach: 2
+    no-smash-after-gliding-seconds: 2 # no smash damage while gliding or this soon after
+  end-crystals:
+    enabled: true # crystal explosions don't hurt players (they still respawn the dragon)
+    break-blocks: true
+  bed-bombing:
+    enabled: true # beds exploding in the Nether / End and respawn anchors in the Overworld / End don't hurt players
+    break-blocks: true
+  tnt-minecarts:
+    enabled: true # can't be crafted or placed
+  riptide:
+    enabled: true
+    fight-cooldown-seconds: 8 # in a fight (the cooldown is on tridents, so it also covers throwing one)
+  elytra:
+    enabled: true
+    no-glide-after-hit-seconds: 5 # no gliding this soon after taking damage from a player
+  invisibility: # while invisible (a potion or a gem ability), death messages, chat and capture messages scramble your name
+    enabled: true
+    chat-name: true # scramble an invisible player's name in chat (never the message)
+    tab: false # true: also hide them from the tab list while invisible
