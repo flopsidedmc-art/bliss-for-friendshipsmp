@@ -48,12 +48,12 @@ public final class TurmoilCommand implements CommandExecutor, TabCompleter {
                     plugin.finale().clearPedestals();
                     sender.sendMessage("Pedestals reset: they stand either side of the finale center again. " + plugin.finale().pedestalInfo());
                 } else if (auratus == null) {
-                    sender.sendMessage(plugin.finale().pedestalInfo() + ". Set one with /turmoil pedestal <1|2> where it should stand (1 = Auratus, 2 = Heretic).");
+                    sender.sendMessage(plugin.finale().pedestalInfo() + GemNames.tx(". Set one with /turmoil pedestal <1|2> where it should stand (1 = Auratus, 2 = Heretic)."));
                 } else if (!(sender instanceof Player player)) {
                     sender.sendMessage("Run this in-game, standing where the pedestal should go.");
                 } else {
                     org.bukkit.Location at = plugin.finale().setPedestal(auratus, player.getLocation());
-                    sender.sendMessage("Pedestal " + (auratus ? "1 (Auratus)" : "2 (Heretic)") + " set at " + at.getBlockX() + " " + at.getBlockY() + " " + at.getBlockZ()
+                    sender.sendMessage("Pedestal " + (auratus ? GemNames.tx("1 (Auratus)") : GemNames.tx("2 (Heretic)")) + " set at " + at.getBlockX() + " " + at.getBlockY() + " " + at.getBlockZ()
                             + ", on the ground. It's used from the next finale on.");
                 }
             }

@@ -65,6 +65,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         for (String bad : GemSounds.unknown(this)) getLogger().warning("config.yml: unknown sound " + bad + " (it will be silent)");
         migrateBalance();
         saveConfig();
+        GemNames.use(GemNames.load(new java.io.File(getDataFolder(), "names.yml"))); // before any gem item is made
         energy = new EnergyManager(this);
         gemManager = new GemManager(this);
         overlay = new CameraOverlay(this);
@@ -118,6 +119,14 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         blessing = new LifeBlessing(this);
         Bukkit.getPluginManager().registerEvents(blessing, this);
         blessing.start(); // a reload: nobody keeps blessed hearts from before
+
+        NamesCommand namesCommand = new NamesCommand(this);
+        Bukkit.getPluginManager().registerEvents(new GemNameListener(this, namesCommand), this);
+        for (String c : new String[] {"gems", "gem"}) {
+            if (getCommand(c) == null) continue;
+            getCommand(c).setExecutor(namesCommand);
+            getCommand(c).setTabCompleter(namesCommand);
+        }
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {

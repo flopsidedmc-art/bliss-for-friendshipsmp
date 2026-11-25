@@ -185,7 +185,7 @@ final class AuratusGem implements Listener {
         for (int i = 0; i < keep.length; i++) if (kept[i] != null) cfg.set(path(keep[i]), kept[i]);
         plugin.saveConfig();
         plugin.getLogger().info("Auratus was rebuilt: its old settings in config.yml were replaced with the new ones "
-                + "(Feathered Fall and the chain model settings were kept). See AURATUS.md.");
+                + GemNames.tx("(Feathered Fall and the chain model settings were kept). See AURATUS.md."));
     }
 
     // ------------------------------------------------------------------ config and helpers

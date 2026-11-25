@@ -1,3 +1,109 @@
+# Renameable gems and player nicknames
+
+## What I found first
+- **Gem names and colours** came from fixed fields on GemType (`display`, `color`), used in 64 places: item names, chat, the `/bliss` menu and config titles, capture, finale and energy messages, `/bliss` and `/blissop` replies.
+- **Ability names** were hardcoded in about 200 player-visible strings across 17 files: the "◆ Used Crisp." lines, hit and cooldown messages, the Heretic, Auratus and Relay messages, rift and finale texts, and the tuners' labels.
+- **Each gem's lore** is written by hand, with uppercase names and icons ("🔥 FIREBALL 🔥").
+- **No separate in-game "Auratus page" exists.** The Auratus text players see is its item lore and its messages, which are covered here. AURATUS.md is a doc only.
+- **Tier names** appeared in the `/bliss` menu ("Tier I" / "Tier II"), and as "Tier 2" in the lore.
+- **Refreshing:** gems already rebuilt their lore when a version stamp changed; that's reused here.
+- **Upgrades and repairs** change the same item, so a nickname stored on it survives them. The Trader makes a new gem, so the nickname correctly doesn't follow.
+- **No `/gems` or `/gem` command existed, and nothing touched anvils.**
+
+## What changed
+- **`names.yml`** (in the plugin folder) holds every gem's name, colour and ability names, the tier names, and `max-length` (32).
+  - It's created with the current names, so nothing changes until someone edits it.
+  - It covers the mythics (Heretic, Auratus, Relay) and named passives (Phasing, Autosmelt, Hemorrhage, Feathered Fall, Tuned In ...).
+  - Generic stat passives ("Speed", "Strength", "Luck", "Fire Resistance", "Enchants Sharpness") aren't in it: they're descriptions, and swapping those words would change unrelated text.
+  - The ids (FIRE, crisp, ...) never change, so configs and saves keep working.
+- **What uses the names:**
+  - gem item names and lore (the lore heading takes the new name and colour);
+  - the `/bliss` menu (tier labels too) and `/bliss config`;
+  - the mythic tuners, every chat message, title and action-bar text that names a gem or ability;
+  - capture, finale, Prophet, Rift and death/drop messages;
+  - `/bliss` and `/blissop` replies.
+- **How the swap works:**
+  - Gem names and colours are looked up where they're used.
+  - Ability names in messages and lore go through one pass that swaps a renamed name, as written and in CAPITALS, including the old spellings ("Unfortunate", "Aegis", "Time Dilation").
+  - It works on whole words only, and only for names that were changed.
+  - With an untouched `names.yml`, every item, message and menu is exactly as before (tested).
+- **Names may use MiniMessage (`<gold>`) or `&` colour codes.** Clicks, hovers, inserts, fonts and newlines are stripped. A name can be at most `max-length` letters (colour codes don't count). A coloured name inside a line is followed by that line's own colour again.
+- **Commands** (`soulbound.admin.names`, ops by default, with tab completion):
+  - `/gems rename <gem> <name...>` and `/gems rename <gem>.<ability> <name...>` (an ability id, or its current name with `_` for spaces);
+  - `/gems color <gem> <#hex or chat colour name>`;
+  - `/gems names reset [gem]` (one gem, or everything including the tiers);
+  - `/gems names refresh` (re-reads `names.yml` after editing it by hand);
+  - `/gems info <player>` (their gems, tiers and nicknames).
+  - Every change saves `names.yml` and rebuilds every online player's gems at once.
+- **Gems also pick up the current names** on join and on a hotbar switch.
+- **Nicknames:**
+  - **Setting one:** rename your gem on an anvil, or `/gem nickname <name...>`. `/gem nickname clear` removes it, and `/gem nickname clear <player>` (admin) removes theirs.
+  - **Shown as** `"Sunny" (Fire)` (`nicknames.format`), with the server's gem name.
+  - **Stored on the gem,** so it stays through death and keep-on-death, upgrades, repairs and restarts, and doesn't move to a different gem.
+  - **The rules (`nicknames:`):**
+    - `enabled`;
+    - `max-length` 16;
+    - `allowed` characters (letters, numbers, spaces, basic punctuation);
+    - no colour codes unless you have `soulbound.nickname.color`;
+    - `blocked-words`, checked anywhere in the name, any case, even split up with dots or spaces;
+    - `cooldown-minutes` 10 (admins aren't held to it).
+  - **When a name is refused,** you get a clear message (on the action bar at the anvil).
+  - **An anvil rename** costs 1 level. A blank or unchanged name gives no result, so a gem can never lose its name.
+  - **Mythics** can be nicknamed (`mythic-nicknames`), and the nickname is wiped when one changes hands (picked up, on join, or on a hotbar switch by someone else).
+
+## Files
+- **New:**
+  - `GemNames.java`: `names.yml`, lookups, the swap pass, cleaning, colours;
+  - `Nicknames.java`: the rules, the format, the cooldown;
+  - `NamesCommand.java`: `/gems` and `/gem`;
+  - `GemNameListener.java`: refresh on join and hotbar switch, anvil nicknames, the mythic wipe;
+  - `GemNamesTest.java`.
+- **Changed:**
+  - `GemType.java`: `shown()` and `tint()`;
+  - `GemManager.java`: item names, lore through the names, the refresh stamp, nicknames on the item;
+  - `SoulboundGemsPlugin.java`: loads `names.yml` before any gem is made, and wires the commands and listener;
+  - `plugin.yml`: the two commands and two permissions;
+  - `config.yml`: `nicknames:`;
+  - `MenuGUI.java`: the tier names;
+  - Messages, titles and labels routed through the names: `GemListener`, `MythicListener`, `AuratusGem`, `RelayGem`, `RelayRift`, `Finale`, `LooseMythics`, `CaptureManager`, `CaptureCommand`, `ConfigGUI`, `EnergyManager`, `BlissCommand`, `BlissOpCommand`, `TurmoilCommand`.
+- **Left out on purpose:**
+  - `/bliss give`'s tab completion keeps the ids it parses;
+  - the Temporal domain's ownership marker file;
+  - console-only logs.
+
+## Tested
+- Compiles against paper-api 1.21.11, and 172 unit tests pass. They cover:
+  - **Name lookup:** the defaults (exactly the old names and colours, Relay's hex included), and the fallbacks for unknown abilities and tiers.
+  - **Untouched names:** text comes back exactly as given.
+  - **Renaming a gem:** in messages and CAPS headings; "Fire Resistance" is left alone; a mythic name too.
+  - **Recolouring.**
+  - **Renaming an ability:**
+    - plain, after a colour code, in CAPS, and the old spellings;
+    - longest names first, whole words only;
+    - a coloured name restoring the line's colour.
+  - **Cleaning:** clicks stripped, colours kept, no newlines, the length cap.
+  - **Tiers, and reset:** for one gem and for everything.
+  - **`names.yml`:** created with the defaults, and a round trip.
+  - **Nickname validation:** length, blocked words (even split up), characters, colour codes with and without the permission, turned off, a clear message.
+  - **The format and the cooldown,** and the config defaults.
+  - **The wiring:** every lore list goes through the names, item names use them, every "Used ..." line goes through them, more than 100 messages and labels are routed, and the commands are registered.
+
+## Not tested
+- Nothing was run in game:
+  - the anvil (PrepareAnvilEvent, the result, the cost);
+  - the commands and tab completion;
+  - how renamed and recoloured names look in lore, menus and the action bar;
+  - the refresh on join and hotbar switch;
+  - the mythic nickname wipe.
+
+## In-game test plan
+1. **`/gems rename fire Solaris` and `/gems rename fire.crisp Scorch`:** the item, action bar, menus and messages all say Solaris / Scorch right away.
+2. **`/gems color fire #FF8A2A`:** the colour changes everywhere.
+3. **Rename your gem on an anvil to "Sunny":** it shows "Sunny" (Solaris). Die, upgrade, restart: the nickname stays.
+4. **Refusals:** try a blocked word and a 30-character name; each is refused with a clear message. Try again within 10 minutes: refused with the time left.
+5. **`/gems names reset`:** everything is back to the defaults.
+6. **Mythic nicknames:** nickname Auratus, drop it, let a friend pick it up: the nickname is gone.
+
 # Life revamp
 
 ## What I found first

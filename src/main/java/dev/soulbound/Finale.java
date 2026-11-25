@@ -178,7 +178,7 @@ public final class Finale implements Listener {
     public String statusLine() {
         if (phase == Phase.IDLE) return "Finale: idle.";
         return "Finale: " + phase + (target != null ? " | target " + nameOf(target) : "")
-                + (phase == Phase.DROP ? " | Auratus " + (placedAuratus ? "placed" : "waiting") + ", Heretic " + (placedHeretic ? "placed" : "waiting") : "")
+                + (phase == Phase.DROP ? GemNames.tx(" | Auratus ") + (placedAuratus ? "placed" : "waiting") + GemNames.tx(", Heretic ") + (placedHeretic ? "placed" : "waiting") : "")
                 + (phase == Phase.BATTLE ? " | attunement " + (int) Math.floor(progress * 100) + "%" : "");
     }
 
@@ -233,7 +233,7 @@ public final class Finale implements Listener {
         StringBuilder out = new StringBuilder();
         for (boolean aur : new boolean[]{true, false}) {
             Location l = pedestalLoc(aur, center == null ? center() : center);
-            out.append(aur ? "Pedestal 1 (Auratus): " : " | Pedestal 2 (Heretic): ")
+            out.append(aur ? GemNames.tx("Pedestal 1 (Auratus): ") : GemNames.tx(" | Pedestal 2 (Heretic): "))
                     .append(l.getBlockX()).append(' ').append(l.getBlockY()).append(' ').append(l.getBlockZ())
                     .append(savedSpot(spotKey(aur)) != null ? " (set)" : " (automatic)");
         }
@@ -549,7 +549,7 @@ public final class Finale implements Listener {
             pedestalPart(at, auratus ? Material.GOLD_BLOCK : Material.REDSTONE_BLOCK, 1.0f, 0.18f, 1.0f, 1.3f);
         }
         TextDisplay label = at.getWorld().spawn(at.clone().add(0, gemHeight() + 0.9, 0), TextDisplay.class, d -> {
-            d.text(Component.text(auratus ? "AURATUS" : "HERETIC")
+            d.text(Component.text(auratus ? GemNames.tx("AURATUS") : GemNames.tx("HERETIC"))
                     .color(auratus ? NamedTextColor.GOLD : NamedTextColor.RED)
                     .decorate(TextDecoration.BOLD));
             d.setBillboard(Display.Billboard.CENTER);
@@ -578,7 +578,7 @@ public final class Finale implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             for (ItemStack it : p.getInventory().getContents()) {
                 if (!isMergeGem(it)) continue;
-                String name = gems.getType(it) == GemType.AURATUS ? "Auratus" : "Heretic";
+                String name = gems.getType(it) == GemType.AURATUS ? GemNames.tx("Auratus") : GemNames.tx("Heretic");
                 p.sendMessage(ChatColor.LIGHT_PURPLE + "The Signal calls for your " + name + " gem. Drop it on the "
                         + name + " pedestal. Once it is placed, you cannot take it back.");
             }
@@ -631,7 +631,7 @@ public final class Finale implements Listener {
                 boolean aur = gems.getType(it) == GemType.AURATUS;
                 if (aur ? placedAuratus : placedHeretic) continue;
                 Location ped = aur ? pedAuratus : pedHeretic;
-                p.sendActionBar(Component.text("Drop the " + (aur ? "Auratus" : "Heretic") + " gem on its pedestal  "
+                p.sendActionBar(Component.text("Drop the " + (aur ? GemNames.tx("Auratus") : GemNames.tx("Heretic")) + " gem on its pedestal  "
                         + arrowTo(p, ped)).color(aur ? NamedTextColor.GOLD : NamedTextColor.RED));
                 break;
             }
@@ -682,7 +682,7 @@ public final class Finale implements Listener {
         World w = ped.getWorld();
         w.spawnParticle(Particle.END_ROD, top, 40, 0.3, 0.3, 0.3, 0.1);
         playAll(Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, aur ? 1.2f : 0.8f);
-        Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + who + " has given up the " + (aur ? "Auratus" : "Heretic") + " gem.");
+        Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + who + " has given up the " + (aur ? GemNames.tx("Auratus") : GemNames.tx("Heretic")) + " gem.");
     }
 
     // ------------------------------------------------------------------ pedestal drops (PedestalDrop)
@@ -719,7 +719,7 @@ public final class Finale implements Listener {
         boolean couldNotReturn = p.getInventory().firstEmpty() == -1;
         PedestalDrop.Verdict v = drops.onDrop(type, facts(p, st), () -> e.setCancelled(true), () -> stamp(drop), couldNotReturn);
         if (v == PedestalDrop.Verdict.TOO_FAR) {
-            p.sendMessage(ChatColor.LIGHT_PURPLE + "Bring the " + (type == GemType.AURATUS ? "Auratus" : "Heretic") + " gem to its pedestal to place it.");
+            p.sendMessage(ChatColor.LIGHT_PURPLE + "Bring the " + (type == GemType.AURATUS ? GemNames.tx("Auratus") : GemNames.tx("Heretic")) + " gem to its pedestal to place it.");
         } else if (v == PedestalDrop.Verdict.CLAIMED) {
             Bukkit.getScheduler().runTask(plugin, () -> settleDrop(p, type));
         }
@@ -1064,10 +1064,10 @@ public final class Finale implements Listener {
             giveKitAndRelay(t, relay);
             w.spawnParticle(Particle.END_ROD, t.getLocation().add(0, 1, 0), 120, 0.6, 1.0, 0.6, 0.2);
             playAll(Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f);
-            Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + t.getName() + " holds the Relay Gem. Take it from them!");
+            Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + t.getName() + GemNames.tx(" holds the Relay Gem. Take it from them!"));
         } else {
             w.dropItem(hub.clone().add(0, 0.5, 0), relay);
-            Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "The Relay Gem lies loose at Spawn. First come, first served!");
+            Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + GemNames.tx("The Relay Gem lies loose at Spawn. First come, first served!"));
         }
         beginBattle();
     }
@@ -1265,7 +1265,7 @@ public final class Finale implements Listener {
         lastTickMs = System.currentTimeMillis();
         applyBorder();
         if (!cfgB("sky.during-battle", false)) stopSky();
-        Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "Attunement has begun. Whoever holds the Relay Gem fills the bar. Hold it until 100%.");
+        Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + GemNames.tx("Attunement has begun. Whoever holds the Relay Gem fills the bar. Hold it until 100%."));
     }
 
     private void battleTick() {
@@ -1307,15 +1307,15 @@ public final class Finale implements Listener {
             String suffix;
             NamedTextColor suffixColor = NamedTextColor.GRAY;
             if (holder == null) {
-                suffix = "  The Relay is loose!";
+                suffix = GemNames.tx("  The Relay is loose!");
                 suffixColor = NamedTextColor.RED;
             } else if (holder.getUniqueId().equals(p.getUniqueId())) {
-                suffix = "  You hold the Relay!";
+                suffix = GemNames.tx("  You hold the Relay!");
                 suffixColor = NamedTextColor.LIGHT_PURPLE;
             } else {
                 suffix = "  " + direction(p, holder);
             }
-            bar.name(Component.text("Relay Gem Attunement: " + pct + "%", col, TextDecoration.BOLD)
+            bar.name(Component.text(GemNames.tx("Relay Gem Attunement: ") + pct + "%", col, TextDecoration.BOLD)
                     .append(Component.text(suffix, suffixColor)));
             bar.progress((float) Math.max(0.0, Math.min(1.0, progress)));
             bar.color(bc);
@@ -1468,7 +1468,7 @@ public final class Finale implements Listener {
 
         if (completed && holder != null) {
             Bukkit.broadcastMessage(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + holder.getName()
-                    + " has attuned the Relay Gem. The world is quiet again.");
+                    + GemNames.tx(" has attuned the Relay Gem. The world is quiet again."));
             playAll(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         } else {
             Bukkit.broadcastMessage(ChatColor.GRAY + "The finale has ended.");

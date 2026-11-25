@@ -49,7 +49,19 @@ commands:
     usage: /stalker <player>
     permission: bliss.player
     permission-message: You lack permission.
+  gems:
+    description: Rename gems, abilities and tiers, recolour gems, and see a player's gems.
+    usage: /gems <rename <gem>[.<ability>] <name...>|color <gem> <colour>|names <reset [gem]|refresh>|info <player>>
+    permission: soulbound.admin.names
+    permission-message: You lack permission.
+  gem:
+    description: Nickname your own gem.
+    usage: /gem nickname <name...> | /gem nickname clear
 permissions:
+  soulbound.admin.names:
+    default: op
+  soulbound.nickname.color:
+    default: op
   soulbound.turmoil:
     default: op
   soulbound.revenant:

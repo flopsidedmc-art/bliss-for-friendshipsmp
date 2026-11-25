@@ -25,6 +25,9 @@ public class GemManager {
     private final Plugin plugin;
     /** Which lore lettering and lore version a gem was last written in, so styleLore only rebuilds on a change. */
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
+    /** A player's nickname for this gem (Nicknames), and who gave it (a mythic changing hands loses it). */
+    private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
+    private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
     private static final int LORE_VERSION = 9;
 
@@ -105,7 +108,7 @@ public class GemManager {
         m.getPersistentDataContainer().set(keyGemType, PersistentDataType.STRING, type.name());
         m.getPersistentDataContainer().set(keyTier, PersistentDataType.INTEGER, tier);
         m.getPersistentDataContainer().set(keyEnergy, PersistentDataType.INTEGER, energy);
-        m.setDisplayName(type.color + "§l" + type.display + " Gem");
+        m.setDisplayName(displayName(type, null));
         item.setItemMeta(m);
         refreshLore(item);
         refreshVisuals(item);
@@ -129,7 +132,7 @@ public class GemManager {
 
     /** The same lettering for other mythic items' lore (the Revenant). */
     public List<String> styleLoreLines(List<String> lore) {
-        return styled(lore);
+        return styled(GemNames.current().t(lore));
     }
 
     /**
@@ -139,7 +142,7 @@ public class GemManager {
      */
     public void styleLore(ItemStack item) {
         if (!isGem(item)) return;
-        String style = loreStyle() + ":" + LORE_VERSION;
+        String style = loreStyle() + ":" + LORE_VERSION + ":" + GemNames.current().version(); // a rename rebuilds it once
         ItemMeta meta = item.getItemMeta();
         if (meta == null || style.equals(meta.getPersistentDataContainer().get(keyLoreStyle, PersistentDataType.STRING))) return;
         List<String> history = new ArrayList<>();
@@ -152,7 +155,78 @@ public class GemManager {
             after.setLore(lore);
         }
         after.getPersistentDataContainer().set(keyLoreStyle, PersistentDataType.STRING, style);
+        GemType type = getType(item);
+        if (type != null) after.setDisplayName(displayName(type, getNickname(item))); // the gem's name (or its nickname) as it is now
         item.setItemMeta(after);
+    }
+
+    /** Rebuilds a gem's name and lore now (after a rename, a nickname change, /gems names refresh). */
+    public void restyle(ItemStack item) {
+        if (!isGem(item)) return;
+        ItemMeta m = item.getItemMeta();
+        if (m == null) return;
+        m.getPersistentDataContainer().remove(keyLoreStyle);
+        item.setItemMeta(m);
+        styleLore(item);
+    }
+
+    // ---- names (GemNames) and nicknames (Nicknames)
+
+    /** A gem's item name: the server's name for it in its colour, or the owner's nickname in nicknames.format. */
+    String displayName(GemType type, String nickname) {
+        GemNames n = GemNames.current();
+        if (nickname != null && !nickname.isEmpty())
+            return Nicknames.display(plugin.getConfig().getString("nicknames.format", "{color}§l\"{nickname}\" §7({gem})"), nickname, n.gem(type), n.color(type));
+        return n.color(type) + "§l" + n.gem(type) + " Gem";
+    }
+
+    public String getNickname(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        return item.getItemMeta().getPersistentDataContainer().get(keyNickname, PersistentDataType.STRING);
+    }
+
+    public java.util.UUID nicknameOwner(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        String s = item.getItemMeta().getPersistentDataContainer().get(keyNickOwner, PersistentDataType.STRING);
+        try { return s == null ? null : java.util.UUID.fromString(s); } catch (IllegalArgumentException e) { return null; }
+    }
+
+    /** Sets (or with null clears) the nickname, and shows it at once. */
+    public void setNickname(ItemStack item, String nickname, java.util.UUID owner) {
+        if (!isGem(item)) return;
+        ItemMeta m = item.getItemMeta();
+        if (nickname == null) {
+            m.getPersistentDataContainer().remove(keyNickname);
+            m.getPersistentDataContainer().remove(keyNickOwner);
+        } else {
+            m.getPersistentDataContainer().set(keyNickname, PersistentDataType.STRING, nickname);
+            if (owner != null) m.getPersistentDataContainer().set(keyNickOwner, PersistentDataType.STRING, owner.toString());
+        }
+        GemType type = getType(item);
+        if (type != null) m.setDisplayName(displayName(type, nickname));
+        item.setItemMeta(m);
+    }
+
+    /**
+     * The lore with the server's names (GemNames): renamed abilities swapped in, the heading rewritten if the gem's
+     * name or colour changed, and the tier names if those changed. With untouched names it's returned as it was.
+     */
+    private List<String> named(GemType type, List<String> lore) {
+        GemNames n = GemNames.current();
+        List<String> out = new ArrayList<>(n.t(lore));
+        if (type != null && n.gemChanged(type) && !lore.isEmpty()) { // the heading, from the line as it was written
+            String head = lore.get(0), old = type.display.toUpperCase(java.util.Locale.ROOT);
+            int at = head.indexOf(old);
+            if (at >= 0) out.set(0, n.color(type) + GemNames.plain(n.gem(type)).toUpperCase(java.util.Locale.ROOT) + head.substring(at + old.length()));
+        }
+        if (n.tiersChanged()) for (int i = 0; i < out.size(); i++) {
+            java.util.regex.Matcher t = java.util.regex.Pattern.compile("Tier ([0-9])\\b").matcher(out.get(i));
+            StringBuilder b = new StringBuilder();
+            while (t.find()) t.appendReplacement(b, java.util.regex.Matcher.quoteReplacement(n.tier(Integer.parseInt(t.group(1)))));
+            t.appendTail(b);
+            out.set(i, b.toString());
+        }
+        return out;
     }
 
     /** Lore text. Strength layout matches user-provided screenshots; wording is user-supplied. */
@@ -194,7 +268,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -224,7 +298,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -260,7 +334,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -290,7 +364,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -321,7 +395,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -351,7 +425,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -383,7 +457,7 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
@@ -414,11 +488,11 @@ public class GemManager {
             if (energy == 0) lore.add(ChatColor.DARK_RED + "BROKEN: no passives or powers.");
             else if (energy == 1) lore.add(ChatColor.RED + "RUINED: powers only, no passives.");
             else if (energy == 2) lore.add(ChatColor.RED + "SHATTERED: passives only, no powers.");
-            m.setLore(styled(lore));
+            m.setLore(styled(named(type, lore)));
             item.setItemMeta(m);
             return;
         }
-        lore.add(ChatColor.GRAY + "Inspired gem • " + type.display + " • Tier " + tier);
+        lore.add(ChatColor.GRAY + "Inspired gem • " + type.shown() + " • Tier " + tier);
         lore.add(ChatColor.YELLOW + "Energy: " + energy + "/10 (" + stage + ")");
         lore.add("");
         lore.add(ChatColor.LIGHT_PURPLE + "Passive: " + ChatColor.GRAY + type.passiveBlurb);
@@ -441,7 +515,7 @@ public class GemManager {
             lore.add(ChatColor.GREEN + "Hold in hand/offhand for live status above hotbar.");
         }
         lore.add(ChatColor.DARK_GRAY + "Keep in offhand for passives, main hand to use.");
-        m.setLore(styled(lore));
+        m.setLore(styled(named(type, lore)));
         // T2 glow hint via enchant glint handled by listener (Glowing potion on player instead for simplicity)
         item.setItemMeta(m);
     }
@@ -494,7 +568,7 @@ public class GemManager {
         m.getPersistentDataContainer().set(keyGemType, PersistentDataType.STRING, type.name());
         m.getPersistentDataContainer().set(keyTier, PersistentDataType.INTEGER, 0);
         m.getPersistentDataContainer().set(keyEnergy, PersistentDataType.INTEGER, 0);
-        m.setDisplayName(type.color + "§l" + type.display + " Gem");
+        m.setDisplayName(displayName(type, null));
         m.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS);
         int cmd = switch (type) {
             case HERETIC -> 12360;
@@ -562,7 +636,7 @@ public class GemManager {
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         }
-        m.setLore(styled(lore));
+        m.setLore(styled(named(type, lore)));
         item.setItemMeta(m);
     }
 

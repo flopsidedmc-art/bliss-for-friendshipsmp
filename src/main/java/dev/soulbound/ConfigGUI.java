@@ -93,41 +93,41 @@ public class ConfigGUI implements Listener {
         String c = "cooldowns.";
         return switch (gem) {
             case STRENGTH -> List.of(
-                    new StdSetting(c + "chad", Material.REDSTONE, "Chad Strength", 5, 30, 0, 900),
-                    new StdSetting(c + "nullify", Material.MILK_BUCKET, "Nullify", 5, 30, 0, 900),
-                    new StdSetting(c + "bounty", Material.COMPASS, "Bounty Hunter", 5, 30, 0, 900),
+                    new StdSetting(c + "chad", Material.REDSTONE, GemNames.tx("Chad Strength"), 5, 30, 0, 900),
+                    new StdSetting(c + "nullify", Material.MILK_BUCKET, GemNames.tx("Nullify"), 5, 30, 0, 900),
+                    new StdSetting(c + "bounty", Material.COMPASS, GemNames.tx("Bounty Hunter"), 5, 30, 0, 900),
                     new StdSetting("passives.strength-level", Material.IRON_SWORD, "Strength Level", 1, 1, 0, 3));
             case FIRE -> List.of(
-                    new StdSetting(c + "fireball", Material.FIRE_CHARGE, "Fireball", 5, 30, 0, 900),
-                    new StdSetting(c + "cozy", Material.CAMPFIRE, "Cozy Campfire", 5, 30, 0, 900),
-                    new StdSetting(c + "crisp", Material.NETHERRACK, "Crisp", 5, 30, 0, 900));
+                    new StdSetting(c + "fireball", Material.FIRE_CHARGE, GemNames.tx("Fireball"), 5, 30, 0, 900),
+                    new StdSetting(c + "cozy", Material.CAMPFIRE, GemNames.tx("Cozy Campfire"), 5, 30, 0, 900),
+                    new StdSetting(c + "crisp", Material.NETHERRACK, GemNames.tx("Crisp"), 5, 30, 0, 900));
             case SPEED -> List.of(
-                    new StdSetting(c + "blur", Material.VEX_SPAWN_EGG, "Blur", 5, 30, 0, 900),
-                    new StdSetting(c + "storm", Material.LIGHTNING_ROD, "Speedy Storm", 5, 30, 0, 900),
-                    new StdSetting(c + "thunderstep", Material.ENDER_PEARL, "Thunderstep", 5, 30, 0, 900),
+                    new StdSetting(c + "blur", Material.VEX_SPAWN_EGG, GemNames.tx("Blur"), 5, 30, 0, 900),
+                    new StdSetting(c + "storm", Material.LIGHTNING_ROD, GemNames.tx("Speedy Storm"), 5, 30, 0, 900),
+                    new StdSetting(c + "thunderstep", Material.ENDER_PEARL, GemNames.tx("Thunderstep"), 5, 30, 0, 900),
                     new StdSetting("passives.speed-level", Material.FEATHER, "Speed Level", 1, 1, 0, 3));
             case WEALTH -> List.of(
-                    new StdSetting(c + "itemlock", Material.CHEST, "Item Lock", 5, 30, 0, 900),
-                    new StdSetting(c + "richrush", Material.GOLD_INGOT, "Rich Rush", 5, 30, 0, 900),
-                    new StdSetting(c + "amp", Material.ENCHANTING_TABLE, "Amplification", 5, 30, 0, 900),
-                    new StdSetting(c + "pockets", Material.BARREL, "Pockets", 5, 30, 0, 900));
+                    new StdSetting(c + "itemlock", Material.CHEST, GemNames.tx("Item Lock"), 5, 30, 0, 900),
+                    new StdSetting(c + "richrush", Material.GOLD_INGOT, GemNames.tx("Rich Rush"), 5, 30, 0, 900),
+                    new StdSetting(c + "amp", Material.ENCHANTING_TABLE, GemNames.tx("Amplification"), 5, 30, 0, 900),
+                    new StdSetting(c + "pockets", Material.BARREL, GemNames.tx("Pockets"), 5, 30, 0, 900));
             case FLUX -> List.of(
-                    new StdSetting(c + "beam", Material.BEACON, "Energy Beam", 5, 30, 0, 900),
+                    new StdSetting(c + "beam", Material.BEACON, GemNames.tx("Energy Beam"), 5, 30, 0, 900),
                     new StdSetting(c + "overdrive", Material.REPEATER, "Overdrive", 5, 30, 0, 900),
-                    new StdSetting(c + "burst", Material.TNT, "Kinetic Burst", 5, 30, 0, 900));
+                    new StdSetting(c + "burst", Material.TNT, GemNames.tx("Kinetic Burst"), 5, 30, 0, 900));
             case ASTRA -> List.of(
-                    new StdSetting(c + "daggers", Material.ARROW, "Daggers", 5, 30, 0, 900),
+                    new StdSetting(c + "daggers", Material.ARROW, GemNames.tx("Daggers"), 5, 30, 0, 900),
                     new StdSetting(c + "projection", Material.ENDER_EYE, "Projection", 5, 30, 0, 900),
-                    new StdSetting(c + "void", Material.DRAGON_BREATH, "Astral Void", 5, 30, 0, 900),
-                    new StdSetting(c + "drift", Material.CHORUS_FRUIT, "Dimensional Drift", 5, 30, 0, 900));
+                    new StdSetting(c + "void", Material.DRAGON_BREATH, GemNames.tx("Astral Void"), 5, 30, 0, 900),
+                    new StdSetting(c + "drift", Material.CHORUS_FRUIT, GemNames.tx("Dimensional Drift"), 5, 30, 0, 900));
             case LIFE -> List.of(
-                    new StdSetting(c + "heartdrainer", Material.REDSTONE_BLOCK, "Heart Drainer", 5, 30, 0, 900),
-                    new StdSetting(c + "circle", Material.APPLE, "Circle of Life", 5, 30, 0, 900),
-                    new StdSetting(c + "vortex", Material.VINE, "Vitality Vortex", 5, 30, 0, 900));
+                    new StdSetting(c + "heartdrainer", Material.REDSTONE_BLOCK, GemNames.tx("Heart Drainer"), 5, 30, 0, 900),
+                    new StdSetting(c + "circle", Material.APPLE, GemNames.tx("Circle of Life"), 5, 30, 0, 900),
+                    new StdSetting(c + "vortex", Material.VINE, GemNames.tx("Vitality Vortex"), 5, 30, 0, 900));
             case PUFF -> List.of(
-                    new StdSetting(c + "bash", Material.BREEZE_ROD, "Breezy Bash", 5, 30, 0, 900),
-                    new StdSetting(c + "dash", Material.WIND_CHARGE, "Dash", 5, 30, 0, 900),
-                    new StdSetting(c + "doublejump", Material.RABBIT_FOOT, "Double Jump", 5, 30, 0, 900));
+                    new StdSetting(c + "bash", Material.BREEZE_ROD, GemNames.tx("Breezy Bash"), 5, 30, 0, 900),
+                    new StdSetting(c + "dash", Material.WIND_CHARGE, GemNames.tx("Dash"), 5, 30, 0, 900),
+                    new StdSetting(c + "doublejump", Material.RABBIT_FOOT, GemNames.tx("Double Jump"), 5, 30, 0, 900));
             default -> List.of();
         };
     }
@@ -141,11 +141,11 @@ public class ConfigGUI implements Listener {
             plugin.mythics().openMythicConfig(p, "mythics.auratus.");
             return;
         }
-        Inventory gui = Bukkit.createInventory(new SubHolder(gem), 54, gem.display + " Config");
+        Inventory gui = Bukkit.createInventory(new SubHolder(gem), 54, gem.shown() + " Config");
         fill(gui);
         List<StdSetting> settings = settingsFor(gem);
         for (int i = 0; i < settings.size(); i++) gui.setItem(settingSlot(i, settings.size()), renderStd(settings.get(i)));
-        gui.setItem(4, label(Material.COMPARATOR, ChatColor.GOLD + gem.display + " Config", "Left +, right -, shift for big steps."));
+        gui.setItem(4, label(Material.COMPARATOR, ChatColor.GOLD + gem.shown() + " Config", "Left +, right -, shift for big steps."));
         if (settings.isEmpty()) {
             ItemStack info = new ItemStack(Material.GOLD_INGOT);
             ItemMeta m = info.getItemMeta();

@@ -74,8 +74,14 @@ public enum GemType {
         this.tier2Blurb = tier2Blurb;
     }
 
+    /** The name players see (names.yml; the default is {@link #display}). */
+    public String shown() { return GemNames.current().gem(this); }
+
+    /** The colour players see (names.yml; the default is {@link #color}). */
+    public String tint() { return GemNames.current().color(this); }
+
     public String coloredName() {
-        return color + display + " Gem";
+        return tint() + shown() + " Gem";
     }
 
     public boolean isMythic() {

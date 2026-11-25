@@ -153,7 +153,7 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
         }
         int tier = args.length >= 3 ? parseInt(args[2], 1) : 1;
         player.getInventory().addItem(plugin.gems().createGem(type, tier));
-        player.sendMessage(Component.text("Granted " + type.display + " (tier " + tier + ")", NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Granted " + type.shown() + " (tier " + tier + ")", NamedTextColor.GREEN));
     }
 
     private void mythic(CommandSender sender, String[] args) {
@@ -170,7 +170,7 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
         Player target = targetOrSelf(sender, args, 2);
         if (target != null) {
             target.getInventory().addItem(plugin.gems().createMythic(type));
-            target.sendMessage(Component.text("The " + type.display + " gem chooses you.", NamedTextColor.LIGHT_PURPLE));
+            target.sendMessage(Component.text("The " + type.shown() + " gem chooses you.", NamedTextColor.LIGHT_PURPLE));
         }
     }
 
@@ -191,7 +191,7 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
         } else {
             plugin.energy.addEnergy(target, type, units);
         }
-        sender.sendMessage(Component.text(target.getName() + " → " + type.display
+        sender.sendMessage(Component.text(target.getName() + " → " + type.shown()
                 + " " + EnergyManager.stageLabel(plugin.energy.stageOf(target, type)), NamedTextColor.GREEN));
     }
 

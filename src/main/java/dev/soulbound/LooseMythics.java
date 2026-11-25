@@ -161,7 +161,7 @@ final class LooseMythics implements Listener {
     private void rescue(Item item) {
         if (!item.isValid()) return;
         ItemStack st = item.getItemStack();
-        String name = gems.getType(st) == GemType.AURATUS ? "Auratus" : "Heretic";
+        String name = gems.getType(st) == GemType.AURATUS ? GemNames.tx("Auratus") : GemNames.tx("Heretic");
         Player holder = lastHolder(item);
         if (holder != null && holder.getInventory().firstEmpty() >= 0) {
             item.remove();

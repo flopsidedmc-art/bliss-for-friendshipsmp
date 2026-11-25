@@ -757,9 +757,9 @@ public final class MythicListener implements Listener {
     private final List<MythicSetting> mythicSettings = List.of(
             // Heretic passives
             new MythicSetting("mythics.heretic.passives.crit-multiplier", Material.DIAMOND_SWORD, "Crit Multiplier", SettingKind.DOUBLE, 0.1, 0.5, 1.0, 5.0, null),
-            new MythicSetting("mythics.heretic.passives.bleed-multiplier", Material.REDSTONE, "Hemorrhage Multiplier", SettingKind.DOUBLE, 0.5, 1.0, 1.0, 5.0, null),
+            new MythicSetting("mythics.heretic.passives.bleed-multiplier", Material.REDSTONE, GemNames.tx("Hemorrhage Multiplier"), SettingKind.DOUBLE, 0.5, 1.0, 1.0, 5.0, null),
             new MythicSetting("mythics.heretic.passives.blood-hardening-max-damage", Material.IRON_CHESTPLATE, "Hardening Cap (HP)", SettingKind.DOUBLE, 1.0, 5.0, 1.0, 40.0, null),
-            new MythicSetting("mythics.heretic.passives.shield-disable-ticks", Material.SHIELD, "Heretic Shield Jam", SettingKind.INT, 20, 100, 0, 600, null),
+            new MythicSetting("mythics.heretic.passives.shield-disable-ticks", Material.SHIELD, GemNames.tx("Heretic Shield Jam"), SettingKind.INT, 20, 100, 0, 600, null),
             // Heretic saws
             new MythicSetting("mythics.heretic.bloodsaws.damage", Material.IRON_AXE, "Saw Damage", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 20.0, null),
             new MythicSetting("mythics.heretic.bloodsaws.recharge-ms", Material.CLOCK, "Saw Recharge", SettingKind.LONG, 500, 2000, 0, 60000, null),
@@ -768,10 +768,10 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.heretic.bloodsaws.hit-radius", Material.STICK, "Saw Hit Radius", SettingKind.DOUBLE, 0.1, 0.5, 0.2, 5.0, null),
             new MythicSetting("mythics.heretic.bloodsaws.max-bounces", Material.SLIME_BALL, "Saw Max Bounces (-1=inf)", SettingKind.INT, 1, 5, -1, 20, null),
             new MythicSetting("mythics.heretic.bloodsaws.drag-ticks", Material.LEAD, "Saw Drag Ticks", SettingKind.INT, 5, 20, 0, 100, null),
-            new MythicSetting("mythics.heretic.bloodsaws.spore-window-ms", Material.SPORE_BLOSSOM, "Spore Combo Window", SettingKind.LONG, 50, 250, 0, 10000, null),
+            new MythicSetting("mythics.heretic.bloodsaws.spore-window-ms", Material.SPORE_BLOSSOM, GemNames.tx("Spore Combo Window"), SettingKind.LONG, 50, 250, 0, 10000, null),
             // Heretic spore + link
-            new MythicSetting("mythics.heretic.spore.radius", Material.CRIMSON_FUNGUS, "Spore Radius", SettingKind.DOUBLE, 0.5, 2.0, 1.0, 12.0, null),
-            new MythicSetting("mythics.heretic.spore.duration-ms", Material.REDSTONE_TORCH, "Spore Duration", SettingKind.LONG, 1000, 5000, 0, 60000, null),
+            new MythicSetting("mythics.heretic.spore.radius", Material.CRIMSON_FUNGUS, GemNames.tx("Spore Radius"), SettingKind.DOUBLE, 0.5, 2.0, 1.0, 12.0, null),
+            new MythicSetting("mythics.heretic.spore.duration-ms", Material.REDSTONE_TORCH, GemNames.tx("Spore Duration"), SettingKind.LONG, 1000, 5000, 0, 60000, null),
             new MythicSetting("mythics.heretic.spore.bleed-ms", Material.REDSTONE_BLOCK, "Bleed Duration", SettingKind.LONG, 1000, 5000, 0, 60000, null),
             new MythicSetting("mythics.heretic.bloodlinking.cooldown-seconds", Material.ENDER_EYE, "Bloodlink Cooldown", SettingKind.INT, 5, 30, 0, 600, null),
             new MythicSetting("mythics.heretic.bloodlinking.launch-y", Material.WIND_CHARGE, "Bloodlink Launch", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 3.0, null),
@@ -792,12 +792,12 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.chain.max-reel-ticks", Material.ARROW, "Chain Max Reel Ticks", SettingKind.INT, 2, 10, 4, 200, null),
             new MythicSetting("mythics.auratus.chain.link-scale", Material.MAGMA_CREAM, "Chain Link Scale", SettingKind.DOUBLE, 0.05, 0.25, 0.1, 3.0, null),
             // Auratus Aegis + Echo Anchor
-            new MythicSetting("mythics.auratus.aegis.cooldown-seconds", Material.SHIELD, "Aegis Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
-            new MythicSetting("mythics.auratus.aegis.success-cooldown-seconds", Material.CLOCK, "Aegis Cooldown After a Parry (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
-            new MythicSetting("mythics.auratus.aegis.window-ms", Material.TOTEM_OF_UNDYING, "Aegis Window", SettingKind.LONG, 250, 1000, 100, 10000, null),
-            new MythicSetting("mythics.auratus.aegis.reflect", Material.CACTUS, "Aegis Reflect Share", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 2.0, null),
-            new MythicSetting("mythics.auratus.aegis.heal-hp", Material.GOLDEN_APPLE, "Aegis Heal (HP)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
-            new MythicSetting("mythics.auratus.aegis.strike-damage", Material.GOLDEN_SWORD, "Aegis Strike Damage", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 20.0, null),
+            new MythicSetting("mythics.auratus.aegis.cooldown-seconds", Material.SHIELD, GemNames.tx("Aegis Cooldown (s)"), SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
+            new MythicSetting("mythics.auratus.aegis.success-cooldown-seconds", Material.CLOCK, GemNames.tx("Aegis Cooldown After a Parry (s)"), SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
+            new MythicSetting("mythics.auratus.aegis.window-ms", Material.TOTEM_OF_UNDYING, GemNames.tx("Aegis Window"), SettingKind.LONG, 250, 1000, 100, 10000, null),
+            new MythicSetting("mythics.auratus.aegis.reflect", Material.CACTUS, GemNames.tx("Aegis Reflect Share"), SettingKind.DOUBLE, 0.05, 0.25, 0.0, 2.0, null),
+            new MythicSetting("mythics.auratus.aegis.heal-hp", Material.GOLDEN_APPLE, GemNames.tx("Aegis Heal (HP)"), SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
+            new MythicSetting("mythics.auratus.aegis.strike-damage", Material.GOLDEN_SWORD, GemNames.tx("Aegis Strike Damage"), SettingKind.DOUBLE, 0.5, 2.0, 0.0, 20.0, null),
             new MythicSetting("mythics.auratus.aegis.anchor-seconds", Material.BEACON, "Echo Anchor (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
             // Auratus slam
             new MythicSetting("mythics.auratus.slam.cooldown-seconds", Material.ANVIL, "Slam Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
@@ -807,20 +807,20 @@ public final class MythicListener implements Listener {
             new MythicSetting("mythics.auratus.slam.min-height", Material.SCAFFOLDING, "Slam Min Height", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 40.0, null),
             new MythicSetting("mythics.auratus.slam.dive-speed", Material.RABBIT_FOOT, "Slam Dive Speed", SettingKind.DOUBLE, 0.1, 0.5, 0.3, 6.0, null),
             // Auratus Flagpole
-            new MythicSetting("mythics.auratus.flagpole.window-ms", Material.LEVER, "Catch Window (Flagpole / Launch)", SettingKind.LONG, 50, 250, 50, 3000, null),
+            new MythicSetting("mythics.auratus.flagpole.window-ms", Material.LEVER, GemNames.tx("Catch Window (Flagpole / Launch)"), SettingKind.LONG, 50, 250, 50, 3000, null),
             new MythicSetting("mythics.auratus.flagpole.finisher-damage", Material.NETHERITE_SWORD, "Launch Hit (raw HP)", SettingKind.DOUBLE, 1.0, 10.0, 0.0, 200.0, null),
             new MythicSetting("mythics.auratus.flagpole.finisher-launch-height", Material.FIREWORK_ROCKET, "Launch Height", SettingKind.DOUBLE, 1.0, 5.0, 1.0, 60.0, null),
-            new MythicSetting("mythics.auratus.flagpole.cooldown-seconds", Material.WHITE_BANNER, "Flagpole Cooldown (s)", SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
-            new MythicSetting("mythics.auratus.flagpole.hold-seconds", Material.PHANTOM_MEMBRANE, "Flagpole Hold (s)", SettingKind.DOUBLE, 0.5, 1.0, 0.5, 10.0, null),
-            new MythicSetting("mythics.auratus.flagpole.height", Material.LADDER, "Flagpole Height", SettingKind.DOUBLE, 0.5, 1.0, 1.0, 12.0, null),
+            new MythicSetting("mythics.auratus.flagpole.cooldown-seconds", Material.WHITE_BANNER, GemNames.tx("Flagpole Cooldown (s)"), SettingKind.DOUBLE, 1.0, 5.0, 0.0, 300.0, null),
+            new MythicSetting("mythics.auratus.flagpole.hold-seconds", Material.PHANTOM_MEMBRANE, GemNames.tx("Flagpole Hold (s)"), SettingKind.DOUBLE, 0.5, 1.0, 0.5, 10.0, null),
+            new MythicSetting("mythics.auratus.flagpole.height", Material.LADDER, GemNames.tx("Flagpole Height"), SettingKind.DOUBLE, 0.5, 1.0, 1.0, 12.0, null),
             // Auratus passives
-            new MythicSetting("mythics.auratus.passives.feathered-fall-damage-multiplier", Material.FEATHER, "Feathered Fall Multiplier", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 1.0, null),
+            new MythicSetting("mythics.auratus.passives.feathered-fall-damage-multiplier", Material.FEATHER, GemNames.tx("Feathered Fall Multiplier"), SettingKind.DOUBLE, 0.05, 0.25, 0.0, 1.0, null),
             new MythicSetting("mythics.auratus.passives.hauling-strike-extra-reach", Material.TRIDENT, "Haul Extra Reach", SettingKind.DOUBLE, 0.25, 1.0, 0.0, 3.0, null),
             new MythicSetting("mythics.auratus.passives.hauling-strike-pull", Material.STICK, "Haul Pull", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 2.0, null),
             new MythicSetting("mythics.auratus.passives.hauling-strike-shield-ticks", Material.IRON_AXE, "Haul Shield Jam", SettingKind.INT, 20, 100, 0, 600, null),
-            new MythicSetting("mythics.auratus.passives.angels-grasp-seconds", Material.HEART_OF_THE_SEA, "Angels Grasp (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
-            new MythicSetting("mythics.auratus.passives.angels-grasp-chain-seconds", Material.PRISMARINE_SHARD, "Angels Grasp from Chains (s)", SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
-            new MythicSetting("mythics.auratus.passives.divine-purity-multiplier", Material.MILK_BUCKET, "Divine Purity Multiplier", SettingKind.DOUBLE, 0.05, 0.25, 0.0, 1.0, null)
+            new MythicSetting("mythics.auratus.passives.angels-grasp-seconds", Material.HEART_OF_THE_SEA, GemNames.tx("Angels Grasp (s)"), SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
+            new MythicSetting("mythics.auratus.passives.angels-grasp-chain-seconds", Material.PRISMARINE_SHARD, GemNames.tx("Angels Grasp from Chains (s)"), SettingKind.DOUBLE, 0.5, 2.0, 0.0, 30.0, null),
+            new MythicSetting("mythics.auratus.passives.divine-purity-multiplier", Material.MILK_BUCKET, GemNames.tx("Divine Purity Multiplier"), SettingKind.DOUBLE, 0.05, 0.25, 0.0, 1.0, null)
     );
 
     private static class MythicConfigHolder implements InventoryHolder {
@@ -841,8 +841,8 @@ public final class MythicListener implements Listener {
 
     public void openMythicConfig(Player p, String prefix) {
         configFilter.put(p.getUniqueId(), prefix);
-        String title = prefix.contains("heretic") ? "Heretic Config"
-                : prefix.contains("auratus") ? "Auratus Config" : "Mythic Config";
+        String title = prefix.contains("heretic") ? GemNames.tx("Heretic Config")
+                : prefix.contains("auratus") ? GemNames.tx("Auratus Config") : "Mythic Config";
         Inventory gui = Bukkit.createInventory(new MythicConfigHolder(), 54, title);
         List<MythicSetting> visible = visibleSettings(p);
         for (int i = 0; i < visible.size() && i < 54; i++) gui.setItem(i, renderSetting(visible.get(i)));

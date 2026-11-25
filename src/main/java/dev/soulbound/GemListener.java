@@ -894,7 +894,7 @@ public class GemListener implements Listener {
         int bountyEnergy = bountyGem == null ? 5 : gems.getEnergy(bountyGem);
         cdStart(p, "bounty", cooldownMs("bounty", bountyEnergy));
         setBounty(p, target);
-        usedOn(p, "Bounty Hunter", target.getName());
+        usedOn(p, GemNames.tx("Bounty Hunter"), target.getName());
         GemSounds.playTo(plugin, "strength.bounty-hunter", p);
         target.sendMessage(ChatColor.GRAY + "You feel like you are being watched...");
     }
@@ -1327,7 +1327,7 @@ public class GemListener implements Listener {
             }
         }
         GemSounds.play(plugin, "strength.nullify", p.getLocation());
-        usedGroup(p, "Nullify", cleared);
+        usedGroup(p, GemNames.tx("Nullify"), cleared);
     }
 
     /** Chad Strength [Right Click]: self + trusted in radius deal double damage on every 4th hit. */
@@ -1343,11 +1343,11 @@ public class GemListener implements Listener {
             if (!isTrusted(p, o)) continue;
             chadUntil.put(o.getUniqueId(), until);
             hitCount.put(o.getUniqueId(), 0);
-            o.sendMessage(ChatColor.RED + "Chad Strength: your 4th hit deals double damage!");
+            o.sendMessage(ChatColor.RED + GemNames.tx("Chad Strength: your 4th hit deals double damage!"));
             allies++;
         }
         GemSounds.play(plugin, "strength.chad-strength", p.getLocation());
-        usedGroup(p, "Chad Strength", allies + 1);
+        usedGroup(p, GemNames.tx("Chad Strength"), allies + 1);
     }
 
     // ================= FIRE (user kit) =================
@@ -1359,7 +1359,7 @@ public class GemListener implements Listener {
         if (started == null) {
             if (cdRemain(p, "fireball") > 0) return; // still cooling down: cannot start a new charge
             fireballChargeStart.put(id, System.currentTimeMillis());
-            p.sendMessage(ChatColor.GOLD + "Fireball charging... left-click again to unleash.");
+            p.sendMessage(ChatColor.GOLD + GemNames.tx("Fireball charging... left-click again to unleash."));
             GemSounds.play(plugin, "fire.fireball-charge", p.getLocation());
             startFireballCharge(p);
             return;
@@ -1369,7 +1369,7 @@ public class GemListener implements Listener {
         double level = fireballCharge.getOrDefault(id, 0.0);
         fireballCharge.remove(id);
         if (level < 0.15) {
-            p.sendMessage(ChatColor.GRAY + "Fireball fizzled (too quick). Hold the charge a little longer.");
+            p.sendMessage(ChatColor.GRAY + GemNames.tx("Fireball fizzled (too quick). Hold the charge a little longer."));
             return;
         }
         var fb = p.launchProjectile(org.bukkit.entity.SmallFireball.class);
@@ -1383,7 +1383,7 @@ public class GemListener implements Listener {
         }
         if (plugin.getConfig().getBoolean("fire.fireball.model.enabled", true)) fireballModel(fb, level);
         GemSounds.play(plugin, "fire.fireball-launch", p.getLocation());
-        used(p, "Fireball");
+        used(p, GemNames.tx("Fireball"));
         cdStart(p, "fireball", cooldownMs("fireball", energy));
     }
 
@@ -1467,15 +1467,15 @@ public class GemListener implements Listener {
         bar.progress((float) Math.max(0.0, Math.min(1.0, level)));
         if (level < 0.15) {
             bar.color(net.kyori.adventure.bossbar.BossBar.Color.WHITE);
-            bar.name(Component.text("Fireball charging " + percent + "% (too weak to fire)" + x2,
+            bar.name(Component.text(GemNames.tx("Fireball charging ") + percent + "% (too weak to fire)" + x2,
                     boosted ? BOOSTED : net.kyori.adventure.text.format.NamedTextColor.GRAY));
         } else if (level >= 1.0) {
             bar.color(net.kyori.adventure.bossbar.BossBar.Color.RED);
-            bar.name(Component.text("Fireball FULLY CHARGED - left-click to unleash",
+            bar.name(Component.text(GemNames.tx("Fireball FULLY CHARGED - left-click to unleash"),
                     net.kyori.adventure.text.format.NamedTextColor.RED));
         } else {
             bar.color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW); // boss bars have no orange: the text is
-            bar.name(Component.text("Fireball charging " + percent + "%" + x2,
+            bar.name(Component.text(GemNames.tx("Fireball charging ") + percent + "%" + x2,
                     boosted ? BOOSTED : net.kyori.adventure.text.format.NamedTextColor.GOLD));
         }
     }
@@ -1612,7 +1612,7 @@ public class GemListener implements Listener {
         }
         GemSounds.play(plugin, "fire.crisp", c);
         w.spawnParticle(Particle.FLAME, c, 80, radius / 2.0, 2, radius / 2.0, 0.1);
-        used(p, "Crisp");
+        used(p, GemNames.tx("Crisp"));
     }
 
     private Material smeltResult(Material m) {
@@ -1656,7 +1656,7 @@ public class GemListener implements Listener {
         campfires.put(p.getUniqueId(), new FireCamp(place.getLocation(), System.currentTimeMillis() + 60_000L, radius));
         p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 200, 1));
         GemSounds.play(plugin, "fire.cozy-campfire", p.getLocation());
-        used(p, "Cozy Campfire");
+        used(p, GemNames.tx("Cozy Campfire"));
     }
 
     /** Per-tick fire visuals: meteors, campfires, (chad dots + tracking line handled in tick). */
@@ -1950,12 +1950,12 @@ public class GemListener implements Listener {
     private void openPockets(Player p) {
         org.bukkit.inventory.Inventory inv = pockets.get(p.getUniqueId());
         if (inv == null) {
-            inv = Bukkit.createInventory(null, 9, "Pockets");
+            inv = Bukkit.createInventory(null, 9, GemNames.tx("Pockets"));
             pockets.put(p.getUniqueId(), inv);
         }
         p.openInventory(inv);
         GemSounds.play(plugin, "wealth.pockets", p.getLocation());
-        used(p, "Pockets");
+        used(p, GemNames.tx("Pockets"));
     }
 
     /** Item Lock [Left Click]: lock held consumables of nearby untrusted. */
@@ -1974,7 +1974,7 @@ public class GemListener implements Listener {
             }
         }
         GemSounds.play(plugin, "wealth.item-lock", p.getLocation());
-        usedGroup(p, "Item Lock", locked);
+        usedGroup(p, GemNames.tx("Item Lock"), locked);
     }
 
     private boolean isLockableConsumable(ItemStack item) {
@@ -1991,7 +1991,7 @@ public class GemListener implements Listener {
         richRushUntil.put(p.getUniqueId(), System.currentTimeMillis() + 8 * 60_000L);
         p.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 8 * 60 * 20, 0, true, false, false));
         GemSounds.play(plugin, "wealth.rich-rush", p.getLocation());
-        used(p, "Rich Rush");
+        used(p, GemNames.tx("Rich Rush"));
     }
 
     /** Amplification [Right-click entity]: +1 to all enchants of self + trusted for 30s. */
@@ -2005,11 +2005,11 @@ public class GemListener implements Listener {
         for (Player t : targets) {
             boostEnchants(t);
             if (!t.getUniqueId().equals(caster.getUniqueId())) {
-                t.sendMessage(ChatColor.GREEN + "Amplification: enchants +1 for 30s!");
+                t.sendMessage(ChatColor.GREEN + GemNames.tx("Amplification: enchants +1 for 30s!"));
             }
             GemSounds.play(plugin, "wealth.amplification", t.getLocation());
         }
-        used(caster, "Amplification");
+        used(caster, GemNames.tx("Amplification"));
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             for (Player t : targets) revertEnchantBoost(t);
         }, 30 * 20L);
@@ -2100,7 +2100,7 @@ public class GemListener implements Listener {
         p.setFallDistance(0);
         GemSounds.play(plugin, "speed.thunderstep", p.getLocation());
         p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 40, 0.5, 1, 0.5, 0.2);
-        used(p, "Thunderstep");
+        used(p, GemNames.tx("Thunderstep"));
     }
 
     private Player aimPlayerWithin(Player p, double maxDist) {
@@ -2124,9 +2124,9 @@ public class GemListener implements Listener {
         // Store cloud count in a field so subsequent clicks can summon more
         p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 600, 1, true, false, false));
         GemSounds.play(plugin, "speed.speedy-storm", p.getLocation());
-        p.sendMessage(ChatColor.AQUA + "Speedy Storm unleashed. Charges left: "
+        p.sendMessage(ChatColor.AQUA + GemNames.tx("Speedy Storm unleashed. Charges left: ")
                 + ChargePools.available(plugin, p, "storm") + "/" + ChargePools.maxCharges(plugin, "storm") + ".");
-        used(p, "Speedy Storm");
+        used(p, GemNames.tx("Speedy Storm"));
     }
 
     /**
@@ -2236,7 +2236,7 @@ public class GemListener implements Listener {
         }
         blurRuns.put(id, run);
         GemSounds.play(plugin, "speed.blur", p.getLocation());
-        usedOn(p, "Blur", victim.getName());
+        usedOn(p, GemNames.tx("Blur"), victim.getName());
     }
 
     /** Ends a Blur: clones vanish and the cooldown starts now, not when it was activated. */
@@ -2342,7 +2342,7 @@ public class GemListener implements Listener {
                 if (victim.isValid()) abilityDamage(victim, 6.0, attacker);
             }, 10L);
         }, 15L);
-        usedOn(attacker, "Breezy Bash", victim.getName());
+        usedOn(attacker, GemNames.tx("Breezy Bash"), victim.getName());
     }
 
     /** Breezy Bash [Left Click]: launch a single target straight up, then crash them down. */
@@ -2357,7 +2357,7 @@ public class GemListener implements Listener {
             if (d < bestDist) { bestDist = d; target = o; }
         }
         if (target == null) {
-            p.sendMessage(ChatColor.GRAY + "Breezy Bash: no target in range.");
+            p.sendMessage(ChatColor.GRAY + GemNames.tx("Breezy Bash: no target in range."));
             return;
         }
         // Launch straight up
@@ -2373,7 +2373,7 @@ public class GemListener implements Listener {
             }, 10L);
         }, 15L);
         p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 40, 2, 1, 2, 0.1);
-        usedOn(p, "Breezy Bash", target.getName());
+        usedOn(p, GemNames.tx("Breezy Bash"), target.getName());
     }
 
     /**
@@ -2401,7 +2401,7 @@ public class GemListener implements Listener {
                 p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 10, 0.3, 0.3, 0.3, 0.05);
             }, i);
         }
-        used(p, "Dash");
+        used(p, GemNames.tx("Dash"));
     }
 
     /** One hit now and one each following second. A second apart, every hit lands (no hurt-immunity overlap). */
@@ -2455,7 +2455,7 @@ public class GemListener implements Listener {
         horse.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 140, 3, true, false, false));
         horse.addPassenger(p);
         p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 100, 0, false, false, false));
-        used(p, "Dimensional Drift");
+        used(p, GemNames.tx("Dimensional Drift"));
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             horse.remove();
             p.sendMessage(ChatColor.GRAY + "The drift fades...");
@@ -2467,7 +2467,7 @@ public class GemListener implements Listener {
         Volley v = volleys.get(p.getUniqueId());
         if (v == null) v = summonVolley(p);
         if (!fireAstraDagger(p)) return;
-        used(p, "Daggers");
+        used(p, GemNames.tx("Daggers"));
         if (v.thrown >= AstraMath.DAGGERS) endVolley(p.getUniqueId(), false); // the fifth: the cooldown starts
     }
 
@@ -2494,12 +2494,12 @@ public class GemListener implements Listener {
         if (last != null && now - last < 30_000) return;
         if (plugin.astral() == null || !plugin.astral().startUnbounded(p, host)) return;
         unboundedLast.put(p.getUniqueId(), now);
-        usedOn(p, "Unbounded", host.getName());
+        usedOn(p, GemNames.tx("Unbounded"), host.getName());
     }
 
     /** Coming out of Unbounded darkens your own gem for 30 s (as before). */
     void unboundedExit(Player rider) {
-        disableGem(rider, 30_000L, "Unbounded exit");
+        disableGem(rider, 30_000L, GemNames.tx("Unbounded exit"));
         rider.sendMessage(ChatColor.GRAY + "You slip out. Your gem goes dark for 30s.");
     }
 
@@ -2513,7 +2513,7 @@ public class GemListener implements Listener {
         if (plugin.astral() == null || !plugin.astral().startProjection(p)) return;
         endVolley(p.getUniqueId(), false);
         cdStart(p, "projection", cooldownMs("projection", energy));
-        used(p, "Astral Projection");
+        used(p, GemNames.tx("Astral Projection"));
     }
 
     /** Astral Void [Right-click anywhere that isn't a player] T2: the same mass gem disable as before, around you. */
@@ -2572,12 +2572,12 @@ public class GemListener implements Listener {
         for (Entity e : around.getWorld().getNearbyEntities(around, radius, radius / 2, radius)) {
             if (!(e instanceof Player o)) continue;
             if (o.getUniqueId().equals(p.getUniqueId()) || isTrusted(p, o)) continue;
-            disableGem(o, 20_000L, "Astral Void");
+            disableGem(o, 20_000L, GemNames.tx("Astral Void"));
             hit++;
         }
         GemSounds.play(plugin, "astra.astral-void", p.getLocation());
         p.getWorld().spawnParticle(Particle.DRAGON_BREATH, around, 60, 3, 2, 3, 0.1);
-        usedGroup(p, "Astral Void", hit);
+        usedGroup(p, GemNames.tx("Astral Void"), hit);
     }
 
     // ================= LIFE (user kit, Vortex offhand-only) =================
@@ -2633,7 +2633,7 @@ public class GemListener implements Listener {
         p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, dur * 20, 1));
         w.spawnParticle(Particle.HEART, c, 40, 2, 2, 2, 0.1);
         GemSounds.play(plugin, "life.vitality-vortex", c);
-        used(p, "Vitality Vortex");
+        used(p, GemNames.tx("Vitality Vortex"));
     }
 
     /** Heart Drainer [Left Click]: remove 4 hearts from untrusted enemies for 20s. */
@@ -2644,11 +2644,11 @@ public class GemListener implements Listener {
             if (!(e instanceof Player o) || o.getUniqueId().equals(p.getUniqueId()) || isTrusted(p, o)) continue;
             double base = heartOrig.getOrDefault(o.getUniqueId(), baseMaxHealth(o));
             lockHearts(o, Math.max(2.0, base - 8.0), 20_000L);
-            o.sendMessage(ChatColor.RED + "Heart Drainer: -4 hearts for 20s!");
+            o.sendMessage(ChatColor.RED + GemNames.tx("Heart Drainer: -4 hearts for 20s!"));
             hit++;
         }
         GemSounds.play(plugin, "life.heart-drainer", p.getLocation());
-        usedGroup(p, "Heart Drainer", hit);
+        usedGroup(p, GemNames.tx("Heart Drainer"), hit);
     }
 
     /**
@@ -2679,7 +2679,7 @@ public class GemListener implements Listener {
             // The blessing: you and your trusted players in the ring
             if (plugin.blessing() != null) plugin.blessing().cast(p, this::isTrusted);
             p.getWorld().spawnParticle(Particle.HEART, p.getLocation(), 10, 1, 1, 1, 0.05);
-            used(p, "Circle of Life");
+            used(p, GemNames.tx("Circle of Life"));
             return;
         }
 
@@ -2692,7 +2692,7 @@ public class GemListener implements Listener {
                 heartOrig.put(t.getUniqueId(), targetBase);
             }
             lockHearts(t, targetNewMax, 30_000L);
-            t.sendMessage(ChatColor.RED + "Circle of Life: " + p.getName() + " stole 5 hearts from you!");
+            t.sendMessage(ChatColor.RED + GemNames.tx("Circle of Life: ") + p.getName() + " stole 5 hearts from you!");
             stolenFrom++;
         }
 
@@ -2705,10 +2705,10 @@ public class GemListener implements Listener {
         }
         lockHearts(p, userNewMax, 30_000L);
         p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, 1, true, false, false));
-        p.sendMessage(ChatColor.GREEN + "Circle of Life: Stole 5 hearts from " + stolenFrom + " target(s)!");
+        p.sendMessage(ChatColor.GREEN + GemNames.tx("Circle of Life: Stole 5 hearts from ") + stolenFrom + " target(s)!");
         GemSounds.play(plugin, "life.circle-of-life", p.getLocation());
         p.getWorld().spawnParticle(Particle.HEART, p.getLocation(), 30, 2, 1, 2, 0.1);
-        usedGroup(p, "Circle of Life", stolenFrom);
+        usedGroup(p, GemNames.tx("Circle of Life"), stolenFrom);
     }
 
     // ================= FLUX (user kit, Burst offhand-only) =================
@@ -2725,7 +2725,7 @@ public class GemListener implements Listener {
     private void useKineticBurst(Player p, int tier, int energy) {
         int charge = fluxOf(fluxCharge, p.getUniqueId());
         if (charge < 10) {
-            p.sendMessage(ChatColor.GRAY + "Kinetic Burst: not charged yet (take hits to charge: " + charge + "/100).");
+            p.sendMessage(ChatColor.GRAY + GemNames.tx("Kinetic Burst: not charged yet (take hits to charge: ") + charge + "/100).");
             fluxBurstCooldown.remove(p.getUniqueId()); // a failed burst costs no cooldown (this used to clear the wrong timer)
             return;
         }
@@ -2745,14 +2745,14 @@ public class GemListener implements Listener {
         fluxCharge.put(p.getUniqueId(), 0);
         GemSounds.play(plugin, "flux.kinetic-burst", p.getLocation());
         p.getWorld().spawnParticle(Particle.ELECTRIC_SPARK, p.getLocation(), 60, 2, 1, 2, 0.2);
-        used(p, "Kinetic Burst");
+        used(p, GemNames.tx("Kinetic Burst"));
     }
 
     /** Energy Beam [Left Click]: ray of wattage. Consumes 30 watts. */
     private void useEnergyBeam(Player p, int energy) {
         int watts = fluxOf(fluxWatts, p.getUniqueId());
         if (watts < 10) {
-            p.sendMessage(ChatColor.GRAY + "Energy Beam: no wattage (feed ingots or convert ore energy: " + watts + "/100).");
+            p.sendMessage(ChatColor.GRAY + GemNames.tx("Energy Beam: no wattage (feed ingots or convert ore energy: ") + watts + "/100).");
             fluxBeamCooldown.remove(p.getUniqueId());
             return;
         }
@@ -2772,7 +2772,7 @@ public class GemListener implements Listener {
         }
         fluxAdd(fluxWatts, p.getUniqueId(), -30);
         GemSounds.play(plugin, "flux.energy-beam", p.getLocation());
-        used(p, "Energy Beam");
+        used(p, GemNames.tx("Energy Beam"));
     }
 
     /** Ground [Hit]: wattage damage + stun; 100% watts scrambles the victim's inventory. */
@@ -2781,7 +2781,7 @@ public class GemListener implements Listener {
         int stunSecs = Math.max(1, watts / 20);
         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, stunSecs * 20, 8, true, false, false));
         victim.sendMessage(ChatColor.GRAY + "Grounded: stunned " + stunSecs + "s!");
-        usedOn(attacker, "Ground", victim.getName());
+        usedOn(attacker, GemNames.tx("Ground"), victim.getName());
         if (watts >= 100) {
             ItemStack[] contents = victim.getInventory().getContents();
             List<ItemStack> items = new ArrayList<>();
@@ -2790,7 +2790,7 @@ public class GemListener implements Listener {
             for (int i = 0; i < contents.length; i++) contents[i] = items.get(i);
             victim.getInventory().setContents(contents);
             victim.sendMessage(ChatColor.RED + "Your inventory scrambles!");
-            attacker.sendMessage(ChatColor.YELLOW + "Ground: 100% watts scrambled " + victim.getName() + "!");
+            attacker.sendMessage(ChatColor.YELLOW + GemNames.tx("Ground: 100% watts scrambled ") + victim.getName() + "!");
         }
     }
 
@@ -2800,7 +2800,7 @@ public class GemListener implements Listener {
         overdriveTaken.put(p.getUniqueId(), 0);
         overdriveArmed.put(p.getUniqueId(), false);
         GemSounds.play(plugin, "flux.overdrive", p.getLocation());
-        used(p, "Kinetic Overdrive");
+        used(p, GemNames.tx("Kinetic Overdrive"));
     }
 
     /** T2 ingot tap: gem in offhand + ingot/block in main + right-click converts it to watts. */
@@ -2825,7 +2825,7 @@ public class GemListener implements Listener {
         else p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
         fluxAdd(fluxWatts, p.getUniqueId(), gain);
         GemSounds.playTo(plugin, "flux.ingot-to-watts", p);
-        p.sendMessage(ChatColor.YELLOW + "Conduction: +" + gain + " watts (" + fluxOf(fluxWatts, p.getUniqueId()) + "/100).");
+        p.sendMessage(ChatColor.YELLOW + GemNames.tx("Conduction: +") + gain + " watts (" + fluxOf(fluxWatts, p.getUniqueId()) + "/100).");
         return true;
     }
 
@@ -2857,11 +2857,11 @@ public class GemListener implements Listener {
             case STRENGTH -> {
                 Player t = getBounty(p);
                 if (t == null) {
-                    p.sendMessage(ChatColor.GRAY + "Bounty Hunter: hold their player head in offhand + right-click to track.");
+                    p.sendMessage(ChatColor.GRAY + GemNames.tx("Bounty Hunter: hold their player head in offhand + right-click to track."));
                 } else if (t.isOnline()) {
                     p.setCompassTarget(t.getLocation());
                     int d = (int) p.getLocation().distance(t.getLocation());
-                    p.sendMessage(ChatColor.RED + "Bounty Hunter: " + t.getName() + " §7(" + d + "m) — compass updated.");
+                    p.sendMessage(ChatColor.RED + GemNames.tx("Bounty Hunter: ") + t.getName() + " §7(" + d + "m) — compass updated.");
                 } else {
                     p.sendMessage(ChatColor.GRAY + "Bounty target offline.");
                 }
@@ -2869,11 +2869,11 @@ public class GemListener implements Listener {
             case FIRE -> {
                 Block target = p.getTargetBlockExact(6);
                 if (target == null) {
-                    p.sendMessage(ChatColor.GRAY + "Cozy Campfire: aim at a block within 6m (or right-click a block).");
+                    p.sendMessage(ChatColor.GRAY + GemNames.tx("Cozy Campfire: aim at a block within 6m (or right-click a block)."));
                 } else {
                     long rem = remain(cozyCooldown, p.getUniqueId());
                     if (rem > 0) {
-                        p.sendMessage(ChatColor.RED + "Cozy Campfire on cooldown: " + (rem / 1000) + "s");
+                        p.sendMessage(ChatColor.RED + GemNames.tx("Cozy Campfire on cooldown: ") + (rem / 1000) + "s");
                     } else {
                         cozyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("cozy", energy));
                         useCozyCampfire(p, target, energy);
@@ -2986,7 +2986,7 @@ public class GemListener implements Listener {
                 else p.getInventory().setItemInOffHand(replacement);
                 consumeOne(p, inHand);
                 p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_TRADE, 1, 1);
-                p.sendMessage(ChatColor.AQUA + "Time for a change: " + cur.display + " → " + next.display);
+                p.sendMessage(ChatColor.AQUA + "Time for a change: " + cur.shown() + " → " + next.shown());
             }
             case "repairkit" -> {
                 ItemStack gem = offOrMainGem(p);
@@ -3109,7 +3109,7 @@ public class GemListener implements Listener {
                     && !le.getUniqueId().equals(shooter.getUniqueId())) {
                 abilityDamage(le, plugin.getConfig().getDouble("astra.dagger-hit-damage", 2.5), shooter);
                 le.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 200, 0)); // what the spectral arrow did
-                if (le instanceof Player hit) disableGem(hit, 8_000L, "Daggers");
+                if (le instanceof Player hit) disableGem(hit, 8_000L, GemNames.tx("Daggers"));
             }
             return;
         }
@@ -3145,7 +3145,7 @@ public class GemListener implements Listener {
                     && e.getEntity() instanceof Player hit) {
                 meteorUntil.put(hit.getUniqueId(), System.currentTimeMillis() + 30_000L);
                 meteorLastShot.put(hit.getUniqueId(), 0L);
-                usedOn(p, "Meteor Shower", hit.getName());
+                usedOn(p, GemNames.tx("Meteor Shower"), hit.getName());
             }
             return;
         }
@@ -3155,8 +3155,8 @@ public class GemListener implements Listener {
             // Unfortunate [Hit] T2: 50% of the victim's actions fizzle for 15s
             if (wTier >= 2 && EnergyStage.allowsPowers(wEnergy) && e.getEntity() instanceof Player hit) {
                 unfortunateUntil.put(hit.getUniqueId(), System.currentTimeMillis() + 15_000L);
-                hit.sendMessage(ChatColor.RED + "Unfortunate: half your actions will fail for 15s!");
-                usedOn(p, "Unfortunate", hit.getName());
+                hit.sendMessage(ChatColor.RED + GemNames.tx("Unfortunate: half your actions will fail for 15s!"));
+                usedOn(p, GemNames.tx("Unfortunate"), hit.getName());
             }
             // Durability Chip T2: mend own armor, chew victim armor
             if (wTier >= 2 && EnergyStage.allowsPassives(wEnergy)) {
@@ -3213,8 +3213,8 @@ public class GemListener implements Listener {
             if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
                     && e.getEntity() instanceof Player hit) {
                 lockHearts(hit, Math.max(2.0, hit.getHealth()), 15_000L);
-                hit.sendMessage(ChatColor.RED + "Heartlock: your hearts freeze for 15s!");
-                usedOn(p, "Heartlock", hit.getName());
+                hit.sendMessage(ChatColor.RED + GemNames.tx("Heartlock: your hearts freeze for 15s!"));
+                usedOn(p, GemNames.tx("Heartlock"), hit.getName());
             }
             return;
         }
@@ -3250,7 +3250,7 @@ public class GemListener implements Listener {
         // Frailer [Hit]: victim takes more damage (armor effectiveness cut) + Weakness
         if (e.getEntity() instanceof LivingEntity le) {
             le.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 0));
-            usedOn(p, "Frailer", le.getName());
+            usedOn(p, GemNames.tx("Frailer"), le.getName());
             if (le instanceof Player vp) {
                 frailUntil.put(vp.getUniqueId(), System.currentTimeMillis() + 8_000L);
             } else {
@@ -3263,7 +3263,7 @@ public class GemListener implements Listener {
             int n = hitCount.getOrDefault(p.getUniqueId(), 0) + 1;
             if (n == 4) {
                 e.setDamage(e.getDamage() * 2.0);
-                p.sendMessage(ChatColor.RED + "CHAD STRENGTH x2! (hit 4)");
+                p.sendMessage(ChatColor.RED + GemNames.tx("CHAD STRENGTH x2! (hit 4)"));
                 GemSounds.play(plugin, "strength.chad-fourth-hit", p.getLocation());
                 n = 0;
             }
@@ -3292,7 +3292,7 @@ public class GemListener implements Listener {
         Long un2 = unfortunateUntil.get(p.getUniqueId());
         if (un2 != null && un2 > System.currentTimeMillis() && Math.random() < 0.5) {
             e.setCancelled(true);
-            p.sendMessage(ChatColor.GRAY + "Unfortunate: it slips from your grasp...");
+            p.sendMessage(ChatColor.GRAY + GemNames.tx("Unfortunate: it slips from your grasp..."));
         }
     }
 
@@ -3307,7 +3307,7 @@ public class GemListener implements Listener {
         if (gems.getType(inHand) == GemType.WEALTH && gems.getTier(inHand) >= 2
                 && EnergyStage.allowsPowers(gems.getEnergy(inHand)) && !isGemDisabled(p)) {
             long rem = remain(amplifyCooldown, p.getUniqueId());
-            if (rem > 0) { p.sendMessage(ChatColor.RED + "Amplification on cooldown: " + (rem / 1000) + "s"); return; }
+            if (rem > 0) { p.sendMessage(ChatColor.RED + GemNames.tx("Amplification on cooldown: ") + (rem / 1000) + "s"); return; }
             amplifyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("amp", gems.getEnergy(inHand)));
             useAmplification(p, p, gems.getEnergy(inHand));
             return;
@@ -3450,7 +3450,7 @@ public class GemListener implements Listener {
         if (!EnergyStage.allowsPassives(gems.getEnergy(gem)) || isGemDisabled(p)) return;
         fluxAdd(fluxCharge, p.getUniqueId(), 8);
         if (fluxOf(fluxCharge, p.getUniqueId()) >= 100) {
-            p.sendMessage(ChatColor.YELLOW + "Flux fully charged (100)! Unleash Kinetic Burst!");
+            p.sendMessage(ChatColor.YELLOW + GemNames.tx("Flux fully charged (100)! Unleash Kinetic Burst!"));
             fluxCharge.put(p.getUniqueId(), 100);
         }
         Long od = overdriveUntil.get(p.getUniqueId());
@@ -3628,7 +3628,7 @@ public class GemListener implements Listener {
             if (banked > 0 && EnergyStage.allowsPowers(gems.getEnergy(dropped)) && !isGemDisabled(e.getPlayer())) {
                 fluxOre.put(e.getPlayer().getUniqueId(), 0);
                 fluxAdd(fluxWatts, e.getPlayer().getUniqueId(), banked);
-                e.getPlayer().sendMessage(ChatColor.YELLOW + "Conduction: converted " + banked + " ore energy into "
+                e.getPlayer().sendMessage(ChatColor.YELLOW + GemNames.tx("Conduction: converted ") + banked + " ore energy into "
                         + fluxOf(fluxWatts, e.getPlayer().getUniqueId()) + "/100 watts!");
                 e.setCancelled(true);
                 return;

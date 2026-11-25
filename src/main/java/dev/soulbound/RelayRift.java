@@ -225,7 +225,7 @@ final class RelayRift implements Listener {
         if (relay.inDomain(p.getUniqueId()) || p.getWorld().getName().equals(domainWorld())) return;
         if (casts.containsKey(p.getUniqueId())) return;
         Menu menu = new Menu(p.getUniqueId());
-        menu.inventory = Bukkit.createInventory(menu, 9, Component.text("Rift", TextColor.color(0xB0703A)));
+        menu.inventory = Bukkit.createInventory(menu, 9, Component.text(GemNames.tx("Rift"), TextColor.color(0xB0703A)));
         fillMenu(p, menu.inventory);
         p.openInventory(menu.inventory);
         GemSounds.playTo(plugin, "relay.rift-menu", p);
@@ -256,7 +256,7 @@ final class RelayRift implements Listener {
         UUID id = p.getUniqueId();
         long cd = cooldownLeft(id), combat = combatLeft(id);
         String status = cd > 0 ? "§bRecharging: " + fmt(cd) : combat > 0 ? "§6Unstable: in combat (" + fmt(combat) + ")" : "§aReady";
-        inv.setItem(STATUS, button(Material.CLOCK, RELAY + "Rift", List.of(status)));
+        inv.setItem(STATUS, button(Material.CLOCK, RELAY + GemNames.tx("Rift"), List.of(status)));
     }
 
     private static ItemStack button(Material m, String name, List<String> lore) {
@@ -298,7 +298,7 @@ final class RelayRift implements Listener {
         if (l == null || l.getWorld() == null) return "that world isn't loaded";
         if (finaleRunning()) return "rifts are sealed while the finale runs";
         String w = l.getWorld().getName();
-        if (w.equals(domainWorld())) return "rifts can't anchor inside Temporal Divinity";
+        if (w.equals(domainWorld())) return GemNames.tx("rifts can't anchor inside Temporal Divinity");
         String capture = plugin.captures() == null ? null : plugin.captures().riftBlocked(l);
         if (capture != null) return "rifts can't anchor inside the capture point " + capture + " while it runs";
         return configuredBlock(l);
@@ -311,7 +311,7 @@ final class RelayRift implements Listener {
     String configuredBlock(Location l) {
         if (l == null || l.getWorld() == null) return null;
         String w = l.getWorld().getName();
-        if (w.equals(domainWorld())) return "rifts can't anchor inside Temporal Divinity";
+        if (w.equals(domainWorld())) return GemNames.tx("rifts can't anchor inside Temporal Divinity");
         for (String b : plugin.getConfig().getStringList("mythics.relay.rift.blocked-worlds")) {
             if (b.equalsIgnoreCase(w)) return "rifts can't anchor in this world";
         }
@@ -464,7 +464,7 @@ final class RelayRift implements Listener {
                     breakChannel(c, "§6Rift broken: you moved.", true);
                     continue;
                 }
-                if (!holdsRelay(p)) { breakChannel(c, "§6Rift broken: you let go of the Relay.", true); continue; }
+                if (!holdsRelay(p)) { breakChannel(c, GemNames.tx("§6Rift broken: you let go of the Relay."), true); continue; }
                 if (relay.inDomain(c.owner)) { breakChannel(c, null, false); continue; }
                 int total = channelTicks();
                 if (c.age <= 10) {
@@ -736,7 +736,7 @@ final class RelayRift implements Listener {
             boolean kept = file.renameTo(broken);
             profiles.clear();
             plugin.getLogger().severe("relay-rift.yml could not be read (" + ex.getMessage() + "); "
-                    + (kept ? "moved to " + broken.getName() : "left in place") + ". Rift anchors start empty.");
+                    + (kept ? "moved to " + broken.getName() : "left in place") + GemNames.tx(". Rift anchors start empty."));
         }
     }
 

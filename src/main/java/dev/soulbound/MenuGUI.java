@@ -52,9 +52,10 @@ public class MenuGUI implements Listener {
         frame.setItemMeta(frm);
         for (int i = 0; i < 9; i++) { menu.setItem(i, frame); menu.setItem(45 + i, frame); } // dark top and bottom rows
         menu.setItem(4, label(Material.AMETHYST_CLUSTER, ChatColor.LIGHT_PURPLE + "Soulbound Gems", "Click a gem to take it."));
-        menu.setItem(13, label(Material.IRON_NUGGET, ChatColor.WHITE + "Tier I", "The row of Tier 1 gems."));
-        menu.setItem(22, label(Material.GOLD_NUGGET, ChatColor.GOLD + "Tier II", "The row of Tier 2 gems."));
-        menu.setItem(31, label(Material.ECHO_SHARD, ChatColor.DARK_AQUA + "Mythics", "Heretic, Auratus and Relay."));
+        GemNames names = GemNames.current();
+        menu.setItem(13, label(Material.IRON_NUGGET, ChatColor.WHITE + names.tier(1), "The row of " + (names.tiersChanged() ? names.tier(1) : "Tier 1") + " gems."));
+        menu.setItem(22, label(Material.GOLD_NUGGET, ChatColor.GOLD + names.tier(2), "The row of " + (names.tiersChanged() ? names.tier(2) : "Tier 2") + " gems."));
+        menu.setItem(31, label(Material.ECHO_SHARD, ChatColor.DARK_AQUA + "Mythics", GemNames.tx("Heretic, Auratus and Relay.")));
         for (int i = 0; i < ORDER.length; i++) {
             menu.setItem(T1_SLOTS[i], gems.createGem(ORDER[i], 1, 5));
             menu.setItem(T2_SLOTS[i], gems.createGem(ORDER[i], 2, 5));
@@ -166,7 +167,7 @@ public class MenuGUI implements Listener {
             } else {
                 p.getInventory().setItemInOffHand(replacement);
             }
-            p.sendMessage(ChatColor.AQUA + "Traded: " + cur.display + " -> " + next.display + ".");
+            p.sendMessage(ChatColor.AQUA + "Traded: " + cur.shown() + " -> " + next.shown() + ".");
         }
     }
 }

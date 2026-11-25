@@ -64,7 +64,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             int energy = plugin.getConfig().getInt("energy.start", 5);
             ItemStack gem = gems.createGem(type, tier, energy);
             t.getInventory().addItem(gem);
-            s.sendMessage(ChatColor.GREEN + "Gave " + type.display + (type.isMythic() ? "" : " T" + tier) + " to " + t.getName());
+            s.sendMessage(ChatColor.GREEN + "Gave " + type.shown() + (type.isMythic() ? "" : " T" + tier) + " to " + t.getName());
             return true;
         }
         if (cmd.getName().equalsIgnoreCase("progression")) {
@@ -82,7 +82,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
         if (a.length == 0) {
             s.sendMessage(ChatColor.YELLOW + "/bliss give <player> <gem> [tier] [energy]  (includes admin-test Mythics)");
             s.sendMessage(ChatColor.YELLOW + "/bliss info | /bliss withdraw | /bliss setenergy <player> <0-10> | /bliss giveitem <...>");
-            s.sendMessage(ChatColor.YELLOW + "/bliss track <player> (Bounty Hunter) | /bliss trust <add|remove|list> [player]");
+            s.sendMessage(ChatColor.YELLOW + GemNames.tx("/bliss track <player> (Bounty Hunter) | /bliss trust <add|remove|list> [player]"));
             return true;
         }
         switch (a[0].toLowerCase()) {
@@ -102,10 +102,10 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                 }
                 t.getInventory().addItem(gem);
                 if (type.isMythic()) {
-                    s.sendMessage(ChatColor.GREEN + "Gave Mythic " + type.display + " to " + t.getName());
-                    t.sendMessage(ChatColor.GOLD + "You received the Mythic " + type.display + " Gem!");
+                    s.sendMessage(ChatColor.GREEN + "Gave Mythic " + type.shown() + " to " + t.getName());
+                    t.sendMessage(ChatColor.GOLD + "You received the Mythic " + type.shown() + " Gem!");
                 } else {
-                    s.sendMessage(ChatColor.GREEN + "Gave " + type.display + " T" + tier + " (" + energy + "/10) to " + t.getName());
+                    s.sendMessage(ChatColor.GREEN + "Gave " + type.shown() + " T" + tier + " (" + energy + "/10) to " + t.getName());
                     t.sendMessage(ChatColor.YELLOW + "You received a " + type.coloredName() + ChatColor.YELLOW + "!");
                 }
                 return true;
@@ -251,7 +251,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                     if (!(s instanceof Player p)) { s.sendMessage("Players only."); return true; }
                     if (a.length < 2) { p.sendMessage(ChatColor.RED + "Usage: /bliss track <player>"); return true; }
                     ItemStack gem = plugin.listener().findGem(p);
-                    if (gem == null || gems.getType(gem) != GemType.STRENGTH) { p.sendMessage(ChatColor.RED + "You need a Strength gem."); return true; }
+                    if (gem == null || gems.getType(gem) != GemType.STRENGTH) { p.sendMessage(ChatColor.RED + GemNames.tx("You need a Strength gem.")); return true; }
                     Player t = Bukkit.getPlayerExact(a[1]);
                     if (t == null) { p.sendMessage(ChatColor.RED + "Player not found."); return true; }
                     plugin.listener().setBounty(p, t);
@@ -261,7 +261,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                         GemType trackType = gems.getType(trackGem);
                         diamond = (gems.getTier(trackGem) >= 2 && trackType != null ? trackType.color : "§7") + "◆";
                     }
-                    p.sendMessage(diamond + " §7Used Bounty Hunter on " + t.getName() + ".");
+                    p.sendMessage(diamond + GemNames.tx(" §7Used Bounty Hunter on ") + t.getName() + ".");
                     t.sendMessage(ChatColor.GRAY + "You feel like you are being watched...");
                     return true;
                 }
@@ -283,7 +283,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                     if (t == null) { p.sendMessage(ChatColor.RED + "Player not found."); return true; }
                     if (a[1].equalsIgnoreCase("add")) {
                         plugin.listener().addTrust(p, t);
-                        p.sendMessage(ChatColor.GREEN + "Trusted " + t.getName() + " (Nullify skips them, Chad buffs them).");
+                        p.sendMessage(ChatColor.GREEN + "Trusted " + t.getName() + GemNames.tx(" (Nullify skips them, Chad buffs them)."));
                         return true;
                     } else if (a[1].equalsIgnoreCase("remove")) {
                         plugin.listener().removeTrust(p, t);

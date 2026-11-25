@@ -248,7 +248,7 @@ public final class CaptureManager implements Listener {
         if (Bukkit.getWorld(pt.world) == null) return "Its world (" + pt.world + ") isn't loaded.";
         if (reward != null && !force) {
             String where = mythicWhere(reward);
-            if (where != null) return "The " + reward.display + " gem already exists (" + where + "). Add \"force\" at the end to start anyway.";
+            if (where != null) return "The " + reward.shown() + " gem already exists (" + where + "). Add \"force\" at the end to start anyway.";
         }
         pt.running = true;
         pt.goalTicks = Math.max(1, holdSeconds) * 20L;
@@ -429,11 +429,11 @@ public final class CaptureManager implements Listener {
         }
         TextColor col = TextColor.color(pt.color);
         Component title = Component.text(who, col, TextDecoration.BOLD);
-        Component sub = Component.text("captured " + pt.name + (reward == null ? "" : " and won the " + reward.display + " gem"), NamedTextColor.WHITE);
+        Component sub = Component.text("captured " + pt.name + (reward == null ? "" : " and won the " + reward.shown() + " gem"), NamedTextColor.WHITE);
         Title t = Title.title(title, sub, Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000)));
         for (Player p : Bukkit.getOnlinePlayers()) p.showTitle(t);
         Bukkit.broadcast(Component.text(ICON + " ", col).append(Component.text(who, col, TextDecoration.BOLD))
-                .append(Component.text(" captured " + pt.name + (reward == null ? "!" : " and won the " + reward.display + " gem!"), NamedTextColor.WHITE)));
+                .append(Component.text(" captured " + pt.name + (reward == null ? "!" : " and won the " + reward.shown() + " gem!"), NamedTextColor.WHITE)));
         if (winner != null) GemSounds.playTo(plugin, "capture.win", winner);
         burst(w, pt);
         pt.afterglowUntil = tick + 40; // the burst plays out, then the visuals turn off

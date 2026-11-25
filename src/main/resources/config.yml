@@ -483,6 +483,18 @@ life:
     # built or with a block entity, never a capture point, Rift blocked area or the finale's arena, and never a block
     # that holds back water or lava. Breaking a drained block drops its dead version.
 
+# Gem nicknames: a player names their own gem on an anvil or with /gem nickname <name...> (/gem nickname clear removes
+# it). It's stored on the gem, so it stays through death, upgrades, repairs and restarts, and doesn't move to another
+# gem. Gem, ability and tier names for everyone are in names.yml (/gems).
+nicknames:
+  enabled: true
+  max-length: 16
+  allowed: "[A-Za-z0-9 .,!?'\"()_-]+" # the characters a nickname may use; colour codes only with soulbound.nickname.color
+  blocked-words: [admin, moderator, owner, staff] # refused anywhere in a nickname (letters only, any case); add your own
+  cooldown-minutes: 10 # between renames (admins aren't held to it)
+  format: '{color}§l"{nickname}" §7({gem})' # how a nicknamed gem is shown: "Sunny" (Fire), with the server's gem name
+  mythic-nicknames: true # mythics can be nicknamed too; the nickname is wiped when one changes hands
+
 # The Prophet: Auratus and Heretic don't go in boxes. One tick after a player puts one in any container (a chest, an
 # ender chest, a shulker, a barrel, a hopper, a dropper, a dispenser, a crafter, a furnace, a bundle, an item frame, an
 # armor stand, an allay, a decorated pot ...) it's pulled back out to them (at their feet if they're full), the screen

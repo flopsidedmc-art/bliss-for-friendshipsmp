@@ -394,9 +394,9 @@ public final class RelayGem implements Listener {
         long[] slots=rewindSlots.get(id);
         for(int i=0;i<max;i++) { long t=slots!=null && i<slots.length?slots[i]:0; if(t<=n)ready++; else next=Math.min(next,t-n); }
         boolean glyphs=cfgB("temporal.hud.use-glyphs",true);
-        String rg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rewind-glyph","\uE040"):"Rewind";
+        String rg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rewind-glyph","\uE040"):GemNames.tx("Rewind");
         String dg=glyphs?plugin.getConfig().getString("mythics.relay.hud.dilation-glyph","\uE041"):"Dilate";
-        String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):"Rift";
+        String rfg=glyphs?plugin.getConfig().getString("mythics.relay.hud.rift-glyph","\uE043"):GemNames.tx("Rift");
         String dvg=glyphs?plugin.getConfig().getString("mythics.relay.hud.divinity-glyph","\uE044"):"Divinity";
         String meter=glyphs?tunedGlyph(id):null;
         // Icons and timers only, no words (HudStatus): bright when ready, dimmed with a timer while recharging.

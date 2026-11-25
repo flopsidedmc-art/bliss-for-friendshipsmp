@@ -147,12 +147,12 @@ public class EnergyManager implements Listener {
      * (the subtitle wording is decorative; replace with the per-gem motto if wanted)
      */
     public static String stageSuffixLine(GemType type, int stage) {
-        return net.kyori.adventure.text.format.TextColor.color(0xFFD966) + type.display.toUpperCase()
+        return net.kyori.adventure.text.format.TextColor.color(0xFFD966) + type.shown().toUpperCase()
                 + " GEM (" + stageLabel(stage) + ")";
     }
 
     public static void announceStage(Player player, GemType type, int stage) {
-        Component gem = Component.text(type.display.toUpperCase(), NamedTextColor.AQUA)
+        Component gem = Component.text(type.shown().toUpperCase(), NamedTextColor.AQUA)
                 .append(Component.text(" GEM", NamedTextColor.GOLD));
         boolean gained = stage > 0;
         Component msg = Component.text(gained ? "You gained energy, your " : "You lost energy, your ",

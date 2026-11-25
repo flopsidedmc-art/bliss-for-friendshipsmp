@@ -140,7 +140,7 @@ public final class CaptureCommand implements CommandExecutor, TabCompleter {
         String err = caps().start(a[1], hold, reward, by, force);
         if (err != null) { s.sendMessage("§c" + err); return; }
         CaptureManager.Point pt = caps().get(a[1]);
-        s.sendMessage("§6Started " + pt.name + ": hold it for " + hold + " s" + (reward == null ? "" : " to win the " + reward.display + " gem") + ".");
+        s.sendMessage("§6Started " + pt.name + ": hold it for " + hold + " s" + (reward == null ? "" : " to win the " + reward.shown() + " gem") + ".");
     }
 
     private void info(CommandSender s, String[] a) {
@@ -151,7 +151,7 @@ public final class CaptureCommand implements CommandExecutor, TabCompleter {
         s.sendMessage("§6" + pt.name + " §7(" + pt.world + ") " + b[0] + " " + b[1] + " " + b[2] + " to " + b[3] + " " + b[4] + " " + b[5]
                 + ", " + z[0] + "x" + z[1] + "x" + z[2] + ", " + CaptureMath.hex(pt.color));
         if (!pt.running) { s.sendMessage("§7Not running."); return; }
-        s.sendMessage("§aRunning: §fhold " + CaptureManager.secs(pt.goalTicks) + " s, reward " + (pt.reward == null ? "none" : pt.reward.display)
+        s.sendMessage("§aRunning: §fhold " + CaptureManager.secs(pt.goalTicks) + " s, reward " + (pt.reward == null ? "none" : pt.reward.shown())
                 + ", " + pt.state.name().toLowerCase(Locale.ROOT) + ", " + pt.on.size() + " on the point.");
         List<Map.Entry<UUID, Long>> top = new ArrayList<>(pt.held.entrySet());
         top.sort(Map.Entry.<UUID, Long>comparingByValue(Comparator.reverseOrder()));
