@@ -829,7 +829,9 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         for (UUID id : want) if (barViewers.add(id)) { Player o = Bukkit.getPlayer(id); if (o != null) o.showBossBar(bar); }
     }
 
-    private String captureHud(Player p) { return plugin.captures() == null ? "" : plugin.captures().hudSuffix(p); }
+    private String captureHud(Player p) {
+        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p));
+    }
 
     private void hudTick(Player h) {
         if (h == null || !hudActive(h)) {

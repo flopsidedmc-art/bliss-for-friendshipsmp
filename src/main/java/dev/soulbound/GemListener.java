@@ -42,7 +42,6 @@ import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -53,9 +52,7 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Transformation;
@@ -79,7 +76,6 @@ public class GemListener implements Listener {
     private final Map<UUID, Boolean> chadArmed = new HashMap<>();
     private final Map<UUID, ItemStack> pendingRespawnGem = new HashMap<>();
     // Strength systems (user-supplied kit)
-    private final Map<UUID, UUID> bountyTarget = new HashMap<>();
     private final Map<UUID, Long> nullifiedUntil = new HashMap<>();
     private final Map<UUID, Long> chadUntil = new HashMap<>();
     private final Map<UUID, Integer> critCount = new HashMap<>();
@@ -392,11 +388,8 @@ public class GemListener implements Listener {
             ItemStack held = heldGem(p);
             if (held != null) {
                 if (plugin.revenant() == null || !plugin.revenant().hudActive(p)) sendActionbar(p, held); // the Revenant HUD has the bar
-                if (type == GemType.STRENGTH) {
-                    updateBountyCompass(p);
-                    drawTrackingLine(p);
-                    proximityHint(p, energy);
-                }
+                if (type == GemType.STRENGTH && (plugin.bounty() == null || !plugin.bounty().hunting(p)))
+                    proximityHint(p, energy); // a hunt shows its own time instead (BountyHunt)
             }
         }
         tickAstraDaggers();
@@ -588,7 +581,9 @@ public class GemListener implements Listener {
     }
 
     /** Your time on a running capture point, at the end of the bar (empty when you're not on one). */
-    private String captureHud(Player p) { return plugin.captures() == null ? "" : plugin.captures().hudSuffix(p); }
+    private String captureHud(Player p) {
+        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p));
+    }
 
     /** One ability on the action bar: icons and timers only, no words (HudStatus). */
     private String hudEntry(String icon, long remainMs, boolean active) {
@@ -678,45 +673,10 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Tracking line: plain dotted line from tracker toward the bounty target. */
-    private void drawTrackingLine(Player p) {
-        UUID tracked = bountyTarget.get(p.getUniqueId());
-        if (tracked == null) return;
-        Player t = Bukkit.getPlayer(tracked);
-        if (t == null || !t.isOnline() || !t.getWorld().equals(p.getWorld())) return;
-        Location from = p.getEyeLocation();
-        Location to = t.getEyeLocation();
-        double dist = from.distance(to);
-        if (dist < 3 || dist > 200) return;
-        Vector dir = to.toVector().subtract(from.toVector()).normalize();
-        int points = Math.min(50, (int) (dist / 2));
-        for (int i = 1; i <= points; i++) {
-            Location at = from.clone().add(dir.clone().multiply(i * 2));
-            p.getWorld().spawnParticle(Particle.CRIT, at, 1, 0, 0, 0, 0);
-        }
-    }
-
-    /** Bounty tracking alerts in pure red, overriding the cooldown bar for 3s. */
+    /** Holding Strength with no hunt running: the nearest player within 50 blocks, in pure red, over the cooldown bar for 3s. */
     private void proximityHint(Player p, int energy) {
         if (!EnergyStage.allowsPowers(energy)) return;
         long alertUntil = System.currentTimeMillis() + 3000L;
-        UUID tracked = bountyTarget.get(p.getUniqueId());
-        Player t = tracked == null ? null : Bukkit.getPlayer(tracked);
-        if (t != null && t.isOnline() && t.getWorld().equals(p.getWorld())) {
-            double d2 = p.getLocation().distanceSquared(t.getLocation());
-            if (d2 < 50 * 50) {
-                p.sendActionBar(Component.text("§cYou can feel your victim closer…"));
-                t.sendActionBar(Component.text("§cYour hunter is nearby"));
-            } else {
-                int m = (int) Math.sqrt(d2);
-                p.sendActionBar(Component.text("§cYou feel your victim nearby... (" + m + "m)"));
-                t.sendActionBar(Component.text("§cSomeone is watching you…"));
-            }
-            trackAlertUntil.put(p.getUniqueId(), alertUntil);
-            trackAlertUntil.put(t.getUniqueId(), alertUntil);
-            return;
-        }
-        // No bounty: fall back to the nearest player, same red treatment.
         Player nearest = null;
         double best = 100 * 100;
         for (Entity e : p.getNearbyEntities(100, 60, 100)) {
@@ -733,15 +693,6 @@ public class GemListener implements Listener {
             nearest.sendActionBar(Component.text("§cSomeone is watching you…"));
             trackAlertUntil.put(p.getUniqueId(), alertUntil);
             trackAlertUntil.put(nearest.getUniqueId(), alertUntil);
-        }
-    }
-
-    private void updateBountyCompass(Player p) {
-        UUID tracked = bountyTarget.get(p.getUniqueId());
-        if (tracked == null) return;
-        Player t = Bukkit.getPlayer(tracked);
-        if (t != null && t.isOnline() && t.getWorld().equals(p.getWorld())) {
-            p.setCompassTarget(t.getLocation());
         }
     }
 
@@ -764,155 +715,27 @@ public class GemListener implements Listener {
         return trusted.getOrDefault(owner.getUniqueId(), Set.of());
     }
 
-    public void setBounty(Player tracker, Player target) {
-        bountyTarget.put(tracker.getUniqueId(), target.getUniqueId());
-        tracker.setCompassTarget(target.getLocation());
-    }
+    // ---------- Bounty Hunter (the board, the offering and the hunts are in BountyHunt) ----------
 
-    public Player getBounty(Player tracker) {
-        UUID id = bountyTarget.get(tracker.getUniqueId());
-        return (id == null) ? null : Bukkit.getPlayer(id);
-    }
-
-    // ---------- bounty board (Strength tracker UI) ----------
-
-    private final Map<UUID, UUID> bountyOffer = new HashMap<>();
-    private final Map<UUID, Map<Integer, UUID>> boardSlots = new HashMap<>();
     private final Map<UUID, Long> trackAlertUntil = new HashMap<>();
 
-    private static class BoardHolder implements InventoryHolder {
-        @Override public Inventory getInventory() { return null; }
-    }
-
-    private static class OfferHolder implements InventoryHolder {
-        final UUID target;
-        OfferHolder(UUID target) { this.target = target; }
-        @Override public Inventory getInventory() { return null; }
-    }
-
-    /** Large chest of player heads; clicking one opens the hopper offering. */
-    public void openBountyBoard(Player p) {
-        Inventory board = Bukkit.createInventory(new BoardHolder(), 54, "Bounty Board");
-        Map<Integer, UUID> slots = new HashMap<>();
-        int slot = 0;
-        for (Player o : Bukkit.getOnlinePlayers()) {
-            if (o.getUniqueId().equals(p.getUniqueId()) || slot >= 54) continue;
-            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-            SkullMeta meta = (SkullMeta) head.getItemMeta();
-            meta.setOwningPlayer(o);
-            meta.setDisplayName(ChatColor.RED + o.getName());
-            head.setItemMeta(meta);
-            board.setItem(slot, head);
-            slots.put(slot, o.getUniqueId());
-            slot++;
-        }
-        if (slots.isEmpty()) {
-            p.sendMessage(ChatColor.GRAY + "No one to hunt right now.");
-            return;
-        }
-        boardSlots.put(p.getUniqueId(), slots);
-        p.openInventory(board);
-    }
-
-    private void openBountyOffer(Player p, Player target) {
-        bountyOffer.put(p.getUniqueId(), target.getUniqueId());
-        Inventory hopper = Bukkit.createInventory(new OfferHolder(target.getUniqueId()), InventoryType.HOPPER,
-                "Offer for " + target.getName());
-        p.openInventory(hopper);
-        p.sendMessage(ChatColor.GRAY + "Place something " + target.getName() + " owned, then close.");
-    }
-
-    /** Owner name from provenance lore ("STOLEN/GIFTED/STORED by X"), or null. */
-    private String provenanceName(ItemStack item) {
-        if (item == null || !item.hasItemMeta() || item.getItemMeta().getLore() == null) return null;
-        for (String line : item.getItemMeta().getLore()) {
-            String s = ChatColor.stripColor(line).trim();
-            String low = s.toLowerCase();
-            for (String prefix : new String[]{"stolen by ", "gifted by ", "stored by "}) {
-                if (low.startsWith(prefix)) return s.substring(prefix.length()).trim();
-            }
-        }
-        return null;
-    }
-
-    @EventHandler
-    public void onBountyClick(InventoryClickEvent e) {
-        if (!(e.getWhoClicked() instanceof Player p)) return;
-        if (e.getInventory().getHolder() instanceof BoardHolder) {
-            e.setCancelled(true);
-            if (e.getClickedInventory() == null || !(e.getClickedInventory().getHolder() instanceof BoardHolder)) return;
-            UUID targetId = boardSlots.getOrDefault(p.getUniqueId(), Map.of()).get(e.getSlot());
-            if (targetId == null) return;
-            Player target = Bukkit.getPlayer(targetId);
-            if (target == null || !target.isOnline()) {
-                p.sendMessage(ChatColor.GRAY + "They slipped away.");
-                p.closeInventory();
-                return;
-            }
-            openBountyOffer(p, target);
-            return;
-        }
-        // Offer hopper: let players arrange items freely; validated on close.
-    }
-
-    @EventHandler
-    public void onBountyClose(InventoryCloseEvent e) {
-        if (!(e.getPlayer() instanceof Player p)) return;
-        if (!(e.getInventory().getHolder() instanceof OfferHolder offer)) return;
-        UUID targetId = bountyOffer.remove(p.getUniqueId());
-        if (targetId == null || !targetId.equals(offer.target)) targetId = offer.target;
-        Player target = Bukkit.getPlayer(targetId);
-        List<ItemStack> leftovers = new ArrayList<>();
-        boolean valid = false;
-        for (ItemStack s : e.getInventory().getContents()) {
-            if (s == null || s.getType() == Material.AIR) continue;
-            leftovers.add(s.clone());
-            if (valid || target == null) continue;
-            if (s.getType() == Material.PLAYER_HEAD && s.getItemMeta() instanceof SkullMeta skull
-                    && skull.getOwningPlayer() != null && skull.getOwningPlayer().getUniqueId() != null
-                    && skull.getOwningPlayer().getUniqueId().equals(targetId)) {
-                valid = true;
-            } else {
-                String owner = provenanceName(s);
-                if (owner != null && target != null && owner.equalsIgnoreCase(target.getName())) valid = true;
-            }
-        }
-        e.getInventory().clear();
-        for (ItemStack s : leftovers) {
-            if (p.getInventory().firstEmpty() == -1) p.getWorld().dropItemNaturally(p.getLocation(), s);
-            else p.getInventory().addItem(s);
-        }
-        if (target == null || !target.isOnline()) {
-            p.sendMessage(ChatColor.GRAY + "They slipped away.");
-            return;
-        }
-        if (!valid) {
-            p.sendMessage(ChatColor.RED + "The trail needs something " + target.getName() + " owned.");
-            return;
-        }
+    /** A hunt began (BountyHunt): the Bounty Hunter cooldown starts now, with its sound. */
+    void bountyBegan(Player p) {
         ItemStack bountyGem = findGem(p);
         int bountyEnergy = bountyGem == null ? 5 : gems.getEnergy(bountyGem);
         cdStart(p, "bounty", cooldownMs("bounty", bountyEnergy));
-        setBounty(p, target);
-        usedOn(p, GemNames.tx("Bounty Hunter"), target.getName());
         GemSounds.playTo(plugin, "strength.bounty-hunter", p);
-        target.sendMessage(ChatColor.GRAY + "You feel like you are being watched...");
     }
 
+    /** Milliseconds until Bounty Hunter can be used again. */
+    long bountyCooldownLeft(Player p) { return cdRemain(p, "bounty"); }
+
     @EventHandler
-    public void onBountyQuit(PlayerQuitEvent e) {
+    public void onLeave(PlayerQuitEvent e) {
         Player p = e.getPlayer();
         restoreHearts(p); // a heart lock running out while they're away would never put them back
-        bountyOffer.remove(p.getUniqueId());
-        boardSlots.remove(p.getUniqueId());
         trackAlertUntil.remove(p.getUniqueId());
         clearAstraDaggers(p.getUniqueId());
-        if (p.getOpenInventory().getTopInventory().getHolder() instanceof OfferHolder) {
-            for (ItemStack s : p.getOpenInventory().getTopInventory().getContents()) {
-                if (s != null && s.getType() != Material.AIR) p.getWorld().dropItemNaturally(p.getLocation(), s);
-            }
-            p.getOpenInventory().getTopInventory().clear();
-        }
     }
 
     private boolean isCriticalHit(Player p) {
@@ -1010,14 +833,9 @@ public class GemListener implements Listener {
         }
         if (left && type != GemType.FIRE && type != GemType.WEALTH && type != GemType.PUFF && type != GemType.ASTRA && type != GemType.LIFE && type != GemType.FLUX) return;
 
-        // Strength routing on RIGHT click: abilities are offhand-only, so main-hand
-        // gem + head only hints. Chad Strength (power) works from the main hand.
+        // Strength routing on RIGHT click: Bounty Hunter is offhand-only (BountyHunt).
+        // Chad Strength (power) works from the main hand.
         if (type == GemType.STRENGTH) {
-            Player headTarget = headTargetFromOffhand(p);
-            if (headTarget != null) {
-                // Silenced — no chat spam
-                return;
-            }
             if (tier < 2) {
                 // Silenced — no chat spam
                 return;
@@ -1220,7 +1038,7 @@ public class GemListener implements Listener {
         if (type == GemType.STRENGTH) {
             long rem = cdRemain(p, "bounty");
             if (rem > 0) { /* Silenced */ return; }
-            openBountyBoard(p);
+            if (plugin.bounty() != null) plugin.bounty().openBoard(p); // the cooldown starts when a hunt begins
             return;
         }
         if (type == GemType.WEALTH) {
@@ -1270,40 +1088,6 @@ public class GemListener implements Listener {
             fluxBurstCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("burst", energy));
             useKineticBurst(p, tier, energy);
         }
-    }
-
-    private Player headTargetFromMainhand(Player p) {
-        ItemStack main = p.getInventory().getItemInMainHand();
-        if (main == null || gems.isGem(main)) return null;
-        if ((main.getType() == Material.PLAYER_HEAD || main.getType().name().endsWith("_HEAD"))
-                && main.getItemMeta() instanceof SkullMeta skull && skull.getOwningPlayer() != null) {
-            String name = skull.getOwningPlayer().getName();
-            if (name != null) {
-                Player t = Bukkit.getPlayerExact(name);
-                if (t != null) return t;
-            }
-            if (skull.getOwningPlayer().getUniqueId() != null) {
-                return Bukkit.getPlayer(skull.getOwningPlayer().getUniqueId());
-            }
-        }
-        return null;
-    }
-
-    private Player headTargetFromOffhand(Player p) {
-        ItemStack off = p.getInventory().getItemInOffHand();
-        if (off == null) return null;
-        if ((off.getType() == Material.PLAYER_HEAD || off.getType().name().endsWith("_HEAD"))
-                && off.getItemMeta() instanceof SkullMeta skull) {
-            if (skull.getOwningPlayer() != null && skull.getOwningPlayer().getUniqueId() != null) {
-                Player t = Bukkit.getPlayer(skull.getOwningPlayer().getUniqueId());
-                if (t != null) return t;
-                // offline owner: still allow by name lookup attempt
-            }
-            if (skull.getOwningPlayer() != null && skull.getOwningPlayer().getName() != null) {
-                return Bukkit.getPlayerExact(skull.getOwningPlayer().getName());
-            }
-        }
-        return null;
     }
 
     /** Nullify [Left Click]: strip Strength, Speed, and Fire Resistance from untrusted opponents in radius. */
@@ -2855,16 +2639,9 @@ public class GemListener implements Listener {
     private void useTier2(Player p, GemType type, int energy) {
         switch (type) {
             case STRENGTH -> {
-                Player t = getBounty(p);
-                if (t == null) {
-                    p.sendMessage(ChatColor.GRAY + GemNames.tx("Bounty Hunter: hold their player head in offhand + right-click to track."));
-                } else if (t.isOnline()) {
-                    p.setCompassTarget(t.getLocation());
-                    int d = (int) p.getLocation().distance(t.getLocation());
-                    p.sendMessage(ChatColor.RED + GemNames.tx("Bounty Hunter: ") + t.getName() + " §7(" + d + "m) — compass updated.");
-                } else {
-                    p.sendMessage(ChatColor.GRAY + "Bounty target offline.");
-                }
+                Player t = plugin.bounty() == null ? null : plugin.bounty().target(p);
+                if (t == null) p.sendMessage(ChatColor.GRAY + GemNames.tx("Bounty Hunter: Strength in your off hand + right-click opens the Bounty Board."));
+                else p.sendMessage(ChatColor.RED + GemNames.tx("Bounty Hunter: ") + plugin.shownName(t) + ChatColor.GRAY + " — follow the thread.");
             }
             case FIRE -> {
                 Block target = p.getTargetBlockExact(6);

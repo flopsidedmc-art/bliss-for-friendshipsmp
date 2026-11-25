@@ -1,3 +1,154 @@
+# Item provenance + Bounty Hunter rework
+
+## What I found first
+- **ItemProvenanceListener (before):**
+  - **No owners:** it wrote a lore line, "STOLEN by X" (red), "GIFTED by X" (yellow) or "STORED by X" (blue), and kept only a name and a kind in the PDC. There was no owner UUID, so a renamed player broke the link, and bounties matched names in the lore text.
+  - **"STOLEN by X" named the victim,** so "by" really meant "from".
+  - **Lines never cleared:** an item given back to its owner kept its STOLEN or GIFTED line forever.
+  - **Container takes:** taking an item out became STOLEN only if a "STORED by" line was on it.
+  - **Missing item types:** it tracked swords, axes, pickaxes, shovels, hoes, armour, bows, crossbows, tridents, maces, shields and elytra, but not shears, fishing rods, flint and steel or brushes.
+  - **Not excluded:** the plugin's own items (the Revenant, the Prismatic Edge, the finale kit) could pick up lines.
+  - **A real bug:** it treated *any* hopper-type inventory as a container, the bounty offering included.
+    - **What happened:** putting a stolen item into the offering rewrote its line to "STORED by <you>". The offering then read your own name and refused it.
+    - **Result:** the provenance half of the old offering could never work; only the target's player head did.
+- **The old Bounty Hunter:**
+  - **What it already had:** activation was already Strength in the off hand + right-click. That opened a 54-slot "Bounty Board" of heads (no pages, so players past 54 were cut off). A head opened a hopper ("Offer for <name>").
+  - **The offering:** on close it was valid if it held the target's head or an item whose lore line named them. Nothing was used up; every item came back. The 35 s cooldown started then.
+  - **The tracking:** it then lasted forever:
+    - the compass pointed at them;
+    - a CRIT particle line toward them, which everyone nearby could see;
+    - the target was told "You feel like you are being watched..." and got "Your hunter is nearby" / "Someone is watching you…" on their action bar.
+  - **`/bliss track <player>`** set a bounty for free, with no offering.
+  - **A player head in the off hand** stopped Strength's main-hand right-click (Chad Strength).
+- **SmallCaps:**
+  - `of()` writes small caps.
+  - `isHistoryLine` keeps the old history lines out of small caps, and gem lore carries them over when it's rebuilt.
+- **Strength config:**
+  - `cooldowns.bounty: 35` (fallback `cooldowns-seconds.tier2-ability`), the `strength.bounty-hunter` sound and the HUD icon.
+  - There was no `bounty:` section.
+- **Strength's other powers** (Nullify, Chad Strength, Frailer, Bloodthorns, the passive) are untouched.
+
+## What changed
+### Item provenance (`provenance:`)
+- **Tracked:**
+  - all armour (elytra, shields and the turtle shell too);
+  - swords, axes, bows, crossbows, tridents and maces;
+  - pickaxes, shovels, hoes, shears, fishing rods, flint and steel and brushes.
+- **Never tracked:** gems, mythics, the Revenant's mace, the Prismatic Edge and the finale kit.
+- **One owner, who never changes,** and one status, kept in the item's PDC: `prov_owner` (UUID), `prov_name` (their name at the time) and `prov_type` (the status). The old keys are reused, so nothing new is needed on disk.
+- **The rule** (applied whenever an item reaches a player):
+  - **Nobody owns it yet:** it becomes theirs, ORIGINAL. That covers crafted, bought, looted, fished, mob drops, and any item from before this update.
+  - **The owner gets it:** ORIGINAL again.
+  - **The owner dropped it alive (Q, or dragged out of the inventory)** and someone else picks it up: GIFTED.
+  - **Anyone else gets the owner's ORIGINAL item** any other way (their death drop, a chest, a frame, an armour stand, a pot): STOLEN.
+  - **Passed on again:** it keeps its status and owner (stolen from Moon stays stolen from Moon).
+- **How it's applied:** at pickups, and to everything in your inventory after clicks, closing a container, joining, armour stands, frames and pots. So no single way of taking an item can be missed.
+- **STORED** is only the display while an item sits in a real container: a chest, barrel, shulker box, ender chest, hopper, dispenser, dropper, pot, frame or armour stand. It's set when you open or use one, or when a hopper picks it up. Plugin menus never count.
+- **Keeping provenance through changes:**
+  - **Anvils, smithing (diamond to netherite), enchanting and grindstones** keep it: they keep the item's data.
+  - **A crafting-grid repair** (two worn tools), dyed leather and a shield with a banner keep the first item's provenance.
+  - **Hoppers and droppers** moving items change nothing.
+- **The line:** one small-caps line at the bottom of the lore, no italics, replaced (never doubled) whenever the status changes.
+  - **ORIGINAL:** "ᴏʀɪɢɪɴᴀʟ" (#D8C3A0) "·" Moon
+  - **STOLEN:** "ꜱᴛᴏʟᴇɴ" (#E04848) "ꜰʀᴏᴍ" Moon
+  - **GIFTED:** "ɢɪꜰᴛᴇᴅ" (#FFC846) "ʙʏ" Moon
+  - **STORED:** "ꜱᴛᴏʀᴇᴅ" (#8FD3FF) "·" Moon
+  - **Colours:** the joining word is gray #9A9A9A and the name white.
+  - **Config:** words, joiners and colours are all under `provenance:`; `show-line: false` keeps tracking without the line; `enabled: false` turns it all off.
+  - **The owner's name** is written as it's spelled (`name-small-caps: true` to change that).
+- **Old items:** their "STOLEN by X" lines are removed, and they become ORIGINAL for the next player who holds them.
+
+### Bounty Hunter (`bounty:`)
+- **The board:** Strength in your off hand + right-click (off cooldown) opens a 54-slot "Bounty Board".
+  - **The heads:** every online player except you, sorted by name. Hover shows their name.
+  - **Pages:** with more than 45, arrows on the bottom row and "Page n/m".
+  - **Another dimension** shows "ɪɴ ᴀɴᴏᴛʜᴇʀ ʀᴇᴀʟᴍ".
+  - **An invisible player** is a faceless head with a scrambled name (rule 16), except for see-invisible admins.
+- **The offering:** clicking a head opens a 5-slot hopper, "Offer to the hunt: <name>".
+  - **What counts:** items stolen from or gifted by that player, by owner UUID. ORIGINAL items and items linked to anyone else don't count.
+  - **On close:** each counting item is used up for 1 minute (`seconds-per-item` 60), up to `max-seconds` (300) left at once. Only the items needed are used; the rest come back, at your feet if your inventory is full.
+  - **Messages:** "The hunt begins: 3 minutes." Offering again on the same target adds time: "The hunt grows: 4 minutes left."
+  - **Nothing counted:** nothing happens and there's no cooldown, with a line saying why.
+  - **The 35 s cooldown** starts when a hunt begins, with the existing sound.
+  - **Closing it any other way** (logout, death, teleport, another menu, the plugin stopping) gives everything back. On death the items drop with yours, or stay with keep-inventory.
+- **The hunt:**
+  - **The thread:** only the hunter sees two thin intertwined DUST strands, #111111 and #8B0000, refreshed every 5 ticks.
+    - **Where it runs:** from 1.5 blocks ahead of you toward the target, 14 blocks long (`trail-length`), curving and swaying slightly like a thread. It ends at the target if they're closer.
+  - **In another dimension:** no thread, and "ᴛʜᴇʏ ᴡᴀʟᴋ ᴀɴᴏᴛʜᴇʀ ʀᴇᴀʟᴍ" while the timer keeps running.
+  - **The time left** is on the action bar: at the end of the gem, mythic or Revenant bar, or on its own otherwise.
+  - **When it ends:**
+    - when the time runs out ("ᴛʜᴇ ʜᴜɴᴛ ɪꜱ ᴏᴠᴇʀ");
+    - when the target logs out (the time is lost) or dies;
+    - when the hunter logs out.
+  - **The target isn't told** (`notify-target: false`); `true` sends them "ʏᴏᴜ ꜰᴇᴇʟ ᴡᴀᴛᴄʜᴇᴅ".
+  - **Removed:** the compass, the CRIT line, and the target's messages.
+- **Other changes:**
+  - **`/bliss track <player>`** opens the same offering (on the same cooldown) instead of a free bounty.
+  - **`/bliss info`** says who you're hunting.
+  - **The nearest-player hint** you get holding Strength is unchanged, and is skipped while you're hunting.
+  - **Chad Strength** now also works with a player head in your off hand.
+- **Cleanup:** a hunt is held only by player ids, and logouts, deaths and the plugin stopping end everything. Nothing lingers.
+
+## Files
+- **New:**
+  - `ProvenanceMath.java`: the statuses, the rule, what counts for a bounty, the line text;
+  - `BountyMath.java`: the offering, the pages, the thread;
+  - `BountyHunt.java`: the board, the offering, the hunts, the thread, the action bar, cleanup;
+  - `ProvenanceTest.java` and `BountyTest.java`.
+- **Changed:**
+  - `ItemProvenanceListener.java`: rewritten on the same keys (owners, the rule, STORED, the new line, exclusions, more item types);
+  - `GemListener.java`: the old board, offering, compass, line and head checks are removed; it routes to BountyHunt, starts the cooldown and adds the hunt to the gem bar; the quit handler is renamed `onLeave`;
+  - `MythicListener.java` and `RevenantMace.java`: the hunt's time on their action bars;
+  - `BlissCommand.java`: `/bliss track` and `/bliss info`;
+  - `SoulboundGemsPlugin.java`: wiring and shutdown;
+  - `SmallCaps.java`: a comment;
+  - `config.yml`: `provenance:` and `bounty:`;
+  - `LifeTest.java`: follows the renamed quit handler.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 211 unit tests pass (24 new). They cover:
+  - **What's tracked:** the full list, nothing else (not horse or wolf armour, totems, heads...), and the game items excluded.
+  - **Status changes:**
+    - crafted is ORIGINAL;
+    - the owner's death drop is STOLEN;
+    - a Q drop picked up by a friend is GIFTED;
+    - someone else taking it out of a chest is STOLEN;
+    - back to the owner (stolen or gifted) is ORIGINAL with the original name;
+    - passed on keeps STOLEN or GIFTED and the owner;
+    - items from before become the next holder's.
+  - **The offering:**
+    - only that player's stolen or gifted items count;
+    - a minute each, at most 5 minutes;
+    - adding time uses only what's needed;
+    - at the limit, everything comes back.
+  - **The lore line:**
+    - the small-caps text for all four statuses;
+    - found again so it's never doubled, with other lore left alone;
+    - the three colours, no italics, and the config defaults.
+  - **The thread:** it starts 1.5 blocks ahead and is about 14 blocks long, the two strands wind round each other, a close target is where it ends, and the bend is slight.
+  - **Pages of 45.**
+  - **The wiring:** the new board, offering, messages, particles and cleanup; the old head-and-compass version is gone.
+
+## Not tested
+- **Nothing was run in game:**
+  - the board, its pages and heads;
+  - the offering hopper and its close reasons;
+  - how the thread looks;
+  - the action bars;
+  - the real pickup, container, frame, stand and pot events;
+  - smithing, anvil and grindstone results keeping the line;
+  - how the line looks in the inventory.
+- **Smithing, anvils and grindstones** keeping provenance relies on the game copying the item's data (it does in 1.21). It isn't seen running here.
+
+## In-game test plan
+1. **Craft a sword:** "ᴏʀɪɢɪɴᴀʟ" in beige, "·" in gray, your name in white.
+2. **Containers:** put it in your chest: it shows "ꜱᴛᴏʀᴇᴅ" in light blue. Take it out yourself: original again. A friend takes it: "ꜱᴛᴏʟᴇɴ ꜰʀᴏᴍ you" in red. They give it back: original again.
+3. **Gifts:** drop it with Q and a friend picks it up: "ɢɪꜰᴛᴇᴅ ʙʏ you" in gold.
+4. **Death drops:** kill a friend and take their armour: stolen from them.
+5. **The board:** Strength gem in off hand + right-click shows every online head. Click a friend and put in 2 of their stolen items and 1 random item: 2 minutes of trail, and the random item comes back.
+6. **The trail:** follow the black and red thread to them. They go to the Nether: "They walk another realm".
+7. **Smithing:** netherite-upgrade a stolen chestplate: still stolen.
+
 # Combat rules module
 
 ## What I found first

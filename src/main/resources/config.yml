@@ -817,3 +817,34 @@ rules:
     enabled: true
     chat-name: true # scramble an invisible player's name in chat (never the message)
     tab: false # true: also hide them from the tab list while invisible
+
+# Item provenance: every piece of armour (elytra, shields and the turtle shell too), every weapon (swords, axes, bows,
+# crossbows, tridents, maces) and tool (pickaxes, shovels, hoes, shears, fishing rods, flint and steel, brushes) has
+# one owner, who never changes, and a status, shown as one line at the bottom of its lore:
+#   ORIGINAL: with its owner (they made it, bought it, looted, fished or first picked it up).
+#   STOLEN: someone else has it without being given it (the owner's death drop, or taken out of a container, frame,
+#     armour stand or pot the owner put it in).
+#   GIFTED: the owner dropped it alive and someone else picked it up.
+#   STORED: how it shows while it sits in a container (only the display: its status stays the same).
+# Back with its owner it's ORIGINAL again; passed on, it keeps its status. Anvils, smithing, enchanting and grindstones
+# keep it. Gems, mythics, the Revenant, the Prismatic Edge and the finale kit are never tracked.
+provenance:
+  enabled: true # false: nothing is tracked or written
+  show-line: true # false: tracked (the Bounty Hunter still uses it), but no lore line
+  name-small-caps: false # true: the owner's name in small caps too (it's written as is by default)
+  joiner-color: "#9A9A9A" # the joining words
+  name-color: "#FFFFFF"
+  original: {word: "Original", joiner: "·", color: "#D8C3A0"} # words are written in small caps
+  stolen: {word: "Stolen", joiner: "from", color: "#E04848"}
+  gifted: {word: "Gifted", joiner: "by", color: "#FFC846"}
+  stored: {word: "Stored", joiner: "·", color: "#8FD3FF"}
+
+# Strength's Bounty Hunter: Strength in your off hand + right-click opens the Bounty Board. Pick a player, offer items
+# stolen from or gifted by them; each gives seconds-per-item of hunt (cooldowns.bounty starts when a hunt begins).
+bounty:
+  seconds-per-item: 60
+  max-seconds: 300 # a hunt never has more than this left at once
+  trail-length: 14 # blocks of thread, starting 1.5 blocks ahead of you (it ends at the target if they're closer)
+  trail-colors: ["#111111", "#8B0000"] # the two strands
+  trail-size: 0.6 # particle size
+  notify-target: false # true: the target is told "ʏᴏᴜ ꜰᴇᴇʟ ᴡᴀᴛᴄʜᴇᴅ" when a hunt on them begins

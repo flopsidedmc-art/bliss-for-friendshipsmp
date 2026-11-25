@@ -71,7 +71,7 @@ class LifeTest {
         assertTrue(gl.substring(i, i + 400).contains("heartOrig.put(v.getUniqueId(), baseMaxHealth(v))"),
                 "the lock keeps your own max health, not the blessed one");
         assertFalse(gl.contains("maxHealthOf("), "nothing reads max health with bonuses for a lock");
-        int q = gl.indexOf("public void onBountyQuit(");
+        int q = gl.indexOf("public void onLeave(PlayerQuitEvent e)");
         assertTrue(gl.substring(q, q + 200).contains("restoreHearts(p)"), "a logout mid-lock gives the hearts back");
         int s = gl.indexOf("void shutdown() {");
         assertTrue(gl.substring(s, s + 200).contains("restoreHearts(p)"), "so does a server stop");

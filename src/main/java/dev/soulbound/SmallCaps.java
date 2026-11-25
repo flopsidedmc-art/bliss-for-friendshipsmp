@@ -57,7 +57,10 @@ final class SmallCaps {
         return out.toString();
     }
 
-    /** "STOLEN by X", "GIFTED by X", "STORED by X": written and read back by ItemProvenanceListener and bounties. */
+    /**
+     * "STOLEN by X", "GIFTED by X", "STORED by X": the item-history lines from before the provenance rework. Left alone
+     * here; ItemProvenanceListener replaces them with its own line (ProvenanceMath) when it next touches the item.
+     */
     static boolean isHistoryLine(String line) {
         String s = stripCodes(line).trim().toLowerCase(Locale.ROOT);
         return s.startsWith("stolen by ") || s.startsWith("gifted by ") || s.startsWith("stored by ");

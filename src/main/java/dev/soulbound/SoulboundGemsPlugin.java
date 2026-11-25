@@ -59,6 +59,10 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private LifeBlessing blessing;
     LifeBlessing blessing() { return blessing; }
     private CombatRules combatRules;
+    private ItemProvenanceListener provenance;
+    ItemProvenanceListener provenance() { return provenance; }
+    private BountyHunt bounty;
+    BountyHunt bounty() { return bounty; }
     private MaceRules maceRules;
 
     /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
@@ -108,7 +112,11 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(menu, this);
         Bukkit.getPluginManager().registerEvents(pedestal, this);
         Bukkit.getPluginManager().registerEvents(configGui, this);
-        Bukkit.getPluginManager().registerEvents(new ItemProvenanceListener(this), this);
+        provenance = new ItemProvenanceListener(this);
+        Bukkit.getPluginManager().registerEvents(provenance, this);
+        bounty = new BountyHunt(this); // Strength's Bounty Hunter: the board, offerings and hunts
+        Bukkit.getPluginManager().registerEvents(bounty, this);
+        bounty.start();
         Bukkit.getPluginManager().registerEvents(energy, this);
         Bukkit.getPluginManager().registerEvents(edge, this);
         Bukkit.getPluginManager().registerEvents(stalker, this);
@@ -230,6 +238,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (loose != null) loose.shutdown();
         if (prophet != null) prophet.save();
         if (combatRules != null) combatRules.shutdown(); // everyone hidden from the tab list is back on it
+        if (bounty != null) bounty.shutdown(); // open offerings go back to their players, every hunt ends
     }
 
     /**

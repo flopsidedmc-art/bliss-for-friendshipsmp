@@ -129,8 +129,8 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                             + plugin.listener().fluxOf(plugin.listener().fluxOre, p.getUniqueId()) + "/100");
                 }
                 if (plugin.listener().isGemDisabled(p)) p.sendMessage(ChatColor.DARK_PURPLE + "Your gem is DISABLED.");
-                Player bounty = plugin.listener().getBounty(p);
-                if (bounty != null) p.sendMessage(ChatColor.RED + "Tracking: " + bounty.getName());
+                Player bounty = plugin.bounty() == null ? null : plugin.bounty().target(p);
+                if (bounty != null) p.sendMessage(ChatColor.RED + "Hunting: " + plugin.shownName(bounty));
                 return true;
             }
             case "setenergy" -> {
@@ -254,15 +254,10 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                     if (gem == null || gems.getType(gem) != GemType.STRENGTH) { p.sendMessage(ChatColor.RED + GemNames.tx("You need a Strength gem.")); return true; }
                     Player t = Bukkit.getPlayerExact(a[1]);
                     if (t == null) { p.sendMessage(ChatColor.RED + "Player not found."); return true; }
-                    plugin.listener().setBounty(p, t);
-                    ItemStack trackGem = plugin.listener().findGem(p);
-                    String diamond = "§7◆";
-                    if (trackGem != null) {
-                        GemType trackType = gems.getType(trackGem);
-                        diamond = (gems.getTier(trackGem) >= 2 && trackType != null ? trackType.color : "§7") + "◆";
-                    }
-                    p.sendMessage(diamond + GemNames.tx(" §7Used Bounty Hunter on ") + t.getName() + ".");
-                    t.sendMessage(ChatColor.GRAY + "You feel like you are being watched...");
+                    if (t.equals(p)) { p.sendMessage(ChatColor.RED + "You can't hunt yourself."); return true; }
+                    long wait = plugin.listener().bountyCooldownLeft(p);
+                    if (wait > 0) { p.sendMessage(ChatColor.GRAY + GemNames.tx("Bounty Hunter is ready in ") + HudStatus.time(wait) + "."); return true; }
+                    if (plugin.bounty() != null) plugin.bounty().openOffer(p, t); // the same offering as the Bounty Board's
                     return true;
                 }
                 if (a[0].equalsIgnoreCase("trust")) {
