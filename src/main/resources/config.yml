@@ -818,8 +818,8 @@ rules:
     chat-name: true # scramble an invisible player's name in chat (never the message)
     tab: false # true: also hide them from the tab list while invisible
 
-# Item provenance: every piece of armour (elytra, shields and the turtle shell too), every weapon (swords, axes, bows,
-# crossbows, tridents, maces) and tool (pickaxes, shovels, hoes, shears, fishing rods, flint and steel, brushes) has
+# Item provenance: every piece of armour (elytra, shields and the turtle shell too), every weapon (swords, spears, axes,
+# bows, crossbows, tridents, maces) and tool (pickaxes, shovels, hoes, shears, fishing rods, flint and steel, brushes) has
 # one owner, who never changes, and a status, shown as one line at the bottom of its lore:
 #   ORIGINAL: with its owner (they made it, bought it, looted, fished or first picked it up).
 #   STOLEN: someone else has it without being given it (the owner's death drop, or taken out of a container, frame,

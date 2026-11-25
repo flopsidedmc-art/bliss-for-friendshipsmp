@@ -32,7 +32,7 @@
 ### Item provenance (`provenance:`)
 - **Tracked:**
   - all armour (elytra, shields and the turtle shell too);
-  - swords, axes, bows, crossbows, tridents and maces;
+  - swords, spears (all seven, wooden to netherite and copper), axes, bows, crossbows, tridents and maces;
   - pickaxes, shovels, hoes, shears, fishing rods, flint and steel and brushes.
 - **Never tracked:** gems, mythics, the Revenant's mace, the Prismatic Edge and the finale kit.
 - **One owner, who never changes,** and one status, kept in the item's PDC: `prov_owner` (UUID), `prov_name` (their name at the time) and `prov_type` (the status). The old keys are reused, so nothing new is needed on disk.

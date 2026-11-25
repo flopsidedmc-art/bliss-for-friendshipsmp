@@ -81,13 +81,13 @@ public class ItemProvenanceListener implements Listener {
         kFinaleKit = new NamespacedKey(plugin, "finale_kit");
     }
 
-    /** Armour (elytra, shields and the turtle shell too), weapons and tools. Nothing else. */
+    /** Armour (elytra, shields and the turtle shell too), weapons (spears too) and tools. Nothing else. */
     public static boolean isTracked(ItemStack item) {
         return item != null && isTracked(item.getType().name());
     }
 
     static boolean isTracked(String n) {
-        return n.endsWith("_SWORD") || n.endsWith("_AXE") || n.endsWith("_PICKAXE")
+        return n.endsWith("_SWORD") || n.endsWith("_SPEAR") || n.endsWith("_AXE") || n.endsWith("_PICKAXE")
                 || n.endsWith("_SHOVEL") || n.endsWith("_HOE") || n.endsWith("_HELMET")
                 || n.endsWith("_CHESTPLATE") || n.endsWith("_LEGGINGS") || n.endsWith("_BOOTS")
                 || n.equals("BOW") || n.equals("CROSSBOW") || n.equals("TRIDENT")

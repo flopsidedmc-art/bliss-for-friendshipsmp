@@ -32,7 +32,7 @@ class ProvenanceTest {
     @Test void armourWeaponsAndToolsOnly() {
         for (String m : List.of("DIAMOND_SWORD", "NETHERITE_AXE", "IRON_PICKAXE", "STONE_SHOVEL", "GOLDEN_HOE", "LEATHER_HELMET",
                 "CHAINMAIL_CHESTPLATE", "IRON_LEGGINGS", "NETHERITE_BOOTS", "TURTLE_HELMET", "ELYTRA", "SHIELD", "BOW", "CROSSBOW",
-                "TRIDENT", "MACE", "SHEARS", "FISHING_ROD", "FLINT_AND_STEEL", "BRUSH")) assertTrue(ItemProvenanceListener.isTracked(m), m);
+                "TRIDENT", "MACE", "WOODEN_SPEAR", "NETHERITE_SPEAR", "SHEARS", "FISHING_ROD", "FLINT_AND_STEEL", "BRUSH")) assertTrue(ItemProvenanceListener.isTracked(m), m);
         for (String m : List.of("DIAMOND", "STICK", "AMETHYST_SHARD", "IRON_HORSE_ARMOR", "WOLF_ARMOR", "CARVED_PUMPKIN", "PLAYER_HEAD",
                 "TOTEM_OF_UNDYING", "GOLDEN_APPLE", "ARROW", "COMPASS", "ENDER_PEARL")) assertFalse(ItemProvenanceListener.isTracked(m), m);
     }
