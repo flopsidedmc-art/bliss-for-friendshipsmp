@@ -25,8 +25,8 @@ public class GemManager {
     private final Plugin plugin;
     /** Which lore lettering and lore version a gem was last written in, so styleLore only rebuilds on a change. */
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
-    /** Bump when gem lore text changes, so existing gems rebuild their lore once (7: Auratus' Aegis on right-click). */
-    private static final int LORE_VERSION = 7;
+    /** Bump when gem lore text changes, so existing gems rebuild their lore once (8: Astra's new controls). */
+    private static final int LORE_VERSION = 8;
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -335,14 +335,14 @@ public class GemManager {
             lore.add("§7— Soul Healing");
             lore.add("§7— Soul Capture");
             lore.add("§d● §bABILITY");
-            lore.add("§7— §dDimensional Drift");
+            lore.add("§7— §dDimensional Drift §8[Offhand: right-click]");
             lore.add("§d● §bPOWERS");
             if (tier >= 2) {
-                lore.add("§7— §d🔪 DAGGERS §c🔥");
-                lore.add("§7— §d⛓ UNBOUNDED §c🔥");
+                lore.add("§7— §d🔪 DAGGERS §c🔥 §8[Left-click]");
+                lore.add("§7— §d⛓ UNBOUNDED §c🔥 §8[Right-click a player]");
                 lore.add("");
-                lore.add("§7— §5👁 ASTRAL PROJECTION §a〰");
-                lore.add("§7— §5◉ ASTRAL VOID §a〰");
+                lore.add("§7— §5👁 ASTRAL PROJECTION §a〰 §8[Sneak + right-click]");
+                lore.add("§7— §5◉ ASTRAL VOID §a〰 §8[Right-click]");
             } else {
                 lore.add("§8Unknown");
             }

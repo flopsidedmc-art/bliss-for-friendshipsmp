@@ -1,3 +1,122 @@
+# Astra revamp
+
+## What I found first
+- **Controls (Tier 2, gem in the main hand):**
+  - left-click Daggers;
+  - right-click air or a block: Projection;
+  - right-click a creature: Astral Void;
+  - hitting something: Unbounded;
+  - off-hand right-click: Drift.
+- **Drift:** Tier 1 was the ghost horse; Tier 2 was Speed V and Jump III. Both lasted 5 s, with a 15 s cooldown.
+- **Daggers** always circled in front of you while the Tier 2 gem was held, snapped into place every tick. Each click threw a hidden arrow carrying the dagger model, and the 90 s cooldown started after the 5th.
+- **Projection:**
+  - Invisibility and flight (not spectator) for up to 60 s, leaving a zombie body.
+  - It already sent you back to the body at the end.
+  - Ghost hits disabled the victim's gem for 10 s at half damage.
+  - **Its real cooldown is 20 s,** not 120: `projection` isn't in the cooldown table, so it falls back to `cooldowns-seconds.power`. It's kept at 20 s, and the config comment is fixed.
+- **Unbounded:** on a hit, you rode the creature as an invisible passenger for up to 15 s, with 30 s between uses. Leaving disabled your own gem for 30 s. Nothing happened to the target.
+- **Void:** a 120 s cooldown; it disabled untrusted players' gems within 10 blocks for 20 s, centred on the creature you clicked.
+- **Phasing:** a 10% (Tier 1) or 15% (Tier 2) dodge, with portal particles.
+- **Mannequin** is in paper-api 1.21.11 (and 26.2).
+
+## What changed
+- **Controls (Tier 2, main hand):**
+  - left-click Daggers;
+  - right-click a player: Unbounded;
+  - right-click anywhere else: Astral Void;
+  - sneak + right-click: Astral Projection (nothing else uses it, so there's no clash);
+  - off-hand right-click: Drift, unchanged.
+  - A right-click on a player can arrive as two clicks in the same tick; only the first counts.
+- **Lore, guide text and menu:** the gem lore now shows each control, and the guide blurbs are rewritten. Existing gems rebuild their lore once (lore version 8).
+- **Dimensional Drift:** the ghost horse at both tiers. The Tier 2 speed surge is gone. Same 5 s and 15 s cooldown.
+- **Daggers:**
+  - **None until you use them.** The first left-click makes 5 appear in a fan behind your shoulders, tips forward, growing in over 4 ticks, and throws the first at once. Each click after throws the next one from behind you, at what's under your crosshair (same speed and damage).
+  - **Following you:** the waiting daggers follow you smoothly and turn with you. They glide to you every 2 ticks, smoothed by the client, and their turning is an interpolated pose.
+    - **Why not mount them:** a player carrying passengers can't be teleported by plugin abilities, so Rift, Rewind or the finale would silently fail.
+  - **The linger timer:** `astra.daggers.linger-seconds` (8) without a throw, and the rest fade out and the cooldown starts, as if all 5 were thrown. The cooldown still starts after the 5th.
+  - **Cleanup:** death, logout, world change, gem swap, projection and plugin disable all clear the waiting daggers and start the cooldown, so swapping can't reset a volley.
+- **Astral Projection:**
+  - **Spectator** for `projection.seconds` (10). Your body is left exactly where you stood: a Mannequin with your skin and armour (copies), or on a server without Mannequin, a no-AI silent zombie with your head and armour.
+  - **The body** can't burn, despawn, drop anything or be pushed, isn't saved to the world, and hangs in place even mid-air.
+  - **Limits:** you can't go past `max-distance` (48) from your body (pulled back to the edge), can't possess anything, and can't use portals or the spectator teleport menu.
+  - **Tagging:** left-click a player within `tag-range` (4) to tag them.
+    - Their gem locks for `tag-lock-seconds` (6) through the existing gem disable.
+    - They get the spook: `sounds.astra.tag-spook` (Vex charge plus quiet cave ambience, only they hear it), a 1.5 s Darkness pulse, and purple soul particles at their face, which only they see.
+    - Each player is tagged once per projection, at most `max-tags` (3) times in all.
+    - They're never told who did it: their message says "something unseen".
+    - Trusted players can't be tagged, as with Astral Void.
+  - **Hits on the body come to you** (`body-takes-hits`): attacks, arrows and explosions only, never a fall. One that would kill you ends the projection first and lands on you in your body.
+  - **The end:** time up, sneak, or a lethal body hit puts you back at the body's exact spot and facing, in your old game mode, and the body goes.
+- **Unbounded:**
+  - **Entering:** right-click a player. You go into spectator with your camera inside them for `unbounded.seconds` (4). They hear a faint whisper (`unbounded-whisper`).
+  - **Leaving:** sneak is the only early way out. Clicking someone else or the teleport menu does nothing.
+  - **Coming out:** just behind them, facing their back (the nearest safe spot if that's in a wall or over lava), in your old game mode. If they die, log out or change worlds, it ends at once and you come out where they were.
+  - **Kept as before:** the 30 s between uses, and leaving disables your own gem for 30 s. It still does nothing to the target.
+- **Never left in spectator:**
+  - **One path out:** every way out goes through one place that restores your game mode and spot exactly once. That covers time up, sneak, a body hit, the target leaving, logout, death, world change, someone else changing your game mode, plugin disable and server stop.
+  - **The restore record:** a record in `astral-restore.yml` is written when you go out. A logout restores you on the spot and again when you rejoin, and a crash restores you when you rejoin. A record never restores anyone to spectator.
+- **Astral Void:**
+  - Right-click anywhere that isn't a player: the same mass gem disable as before.
+  - It's now centred on you (it was centred on the creature you clicked).
+  - It no longer says "on cooldown" in chat: right-clicking the air is common.
+- **Phasing:** when you dodge, a ring of amethyst-purple and white dust and portal particles flashes at your waist, and you vanish for `phasing.vanish-ticks` (8) ticks.
+  - **How:** invisibility, plus client-side equipment changes that hide your armour and held items on other players' screens only. The real ones are sent back afterwards, and your items are never touched.
+  - Same dodge chances and Soul Healing.
+- **New sounds** (`sounds.astra`): `daggers-summon` (amethyst resonate, soft), `projection-end`, `unbounded-enter`, `unbounded-exit`, `unbounded-whisper`, `tag-spook`, `phasing` (a quiet, high Enderman teleport). The sound test allows the amethyst resonate to be shared with the Auratus Aegis, since you asked for it.
+- **Removed:**
+  - the old orbiting daggers;
+  - Unbounded on hit and its passenger ride;
+  - the invisible flying projection, its "ghost hits" and its right-click return;
+  - the Tier 2 Drift surge.
+
+## Files
+- **New:**
+  - `AstraMath.java`: controls, fan, linger, leash;
+  - `SpectatorSessions.java`: every end path;
+  - `AstralSpectate.java`: Projection, Unbounded, body, tagging, safety;
+  - `MannequinBody.java`: the Mannequin, isolated for servers without it;
+  - `AstraTest.java`.
+- **Changed:**
+  - `GemListener.java`: the routing, daggers, Drift, Phasing, Void, HUD; the old Unbounded and Projection removed.
+  - `GemType.java` and `GemManager.java`: lore and guide text, lore version 8.
+  - `SoulboundGemsPlugin.java`: wiring, with the restore done first on disable.
+  - `config.yml`: `astra.daggers`, `astra.projection`, `astra.unbounded`, `astra.phasing`, the new sounds, and the cooldown comment.
+  - `AstraDaggerTest.java`: the new volley.
+  - `GemSoundsTest.java`: the shared resonate.
+
+## Tested
+- Compiles against paper-api 1.21.11, and 144 unit tests pass. They cover:
+  - **Control routing:** left, right on a player, right elsewhere, sneak.
+  - **The linger timer:** 7.999 s vs 8 s, and a throw restarting it.
+  - **The fan:** behind your shoulders, symmetric, turning with your yaw.
+  - **The leash:** inside it is left alone; past 48 you're pulled to 47.5 along your path.
+  - **Every end path,** for both kinds:
+    - it restores the old game mode exactly once;
+    - Projection always goes back to the body's spot and facing;
+    - Unbounded comes out behind the target, or where they were if they're gone;
+    - each path is wired to its event, plugin disable restores first, and a record never restores spectator.
+  - **Drift and the config:** Drift has no Tier 2 branch, and all the config values are in.
+
+## Not tested
+- Nothing was run in game. Everything that needs a real server or client is unverified:
+  - how the Mannequin and the zombie body look;
+  - spectator behaviour (the possess click being cancelled and turned into a tag, camera lock-in, portals, the teleport menu);
+  - the daggers' glide and fade;
+  - Phasing's hidden equipment;
+  - the restore after a real logout or crash.
+
+## In-game test plan
+1. **Drift** at Tier 1 and Tier 2: both give the ghost horse.
+2. **Daggers:** left-click and 5 fan out behind you, one throws per click. Wait 8 s with some left: they fade and the cooldown starts. Swap off the gem mid-volley: they go and the cooldown starts.
+3. **Projection:** sneak + right-click.
+   - You're in spectator, and your body stays behind with your skin and armour.
+   - Fly past 48 blocks: you're pulled back. Hit the body: you take the damage. When it ends you snap back to the body.
+   - Left-click a player: their gem locks for 6 s and they get the spook (sound, darkness pulse, particles). A 4th tag, or tagging the same player twice, does nothing.
+4. **Unbounded:** right-click a player. You see through their eyes for 4 s, then pop out behind them. Sneak to leave early.
+5. **Void:** right-click the air: Astral Void as before, around you.
+6. **Phasing:** take hits until you dodge: a purple ring, and you vanish (armour and items too) for a moment.
+7. **Safety:** log out mid-projection and mid-Unbounded, then rejoin: you're back in survival at the right spot. Also try `/stop` mid-projection, and `/kill` on the body.
+
 # Next batch: pedestal follow-ups, the Spore fountain, the Tier 2 bar, the fireball, droppable mythics and the Prophet
 
 ## What I found first

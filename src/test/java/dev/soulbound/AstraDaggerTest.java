@@ -23,8 +23,10 @@ class AstraDaggerTest {
         assertFalse(click.contains("cdStart(p, \"daggers\""), "a left-click must not start the cooldown itself");
         int h = s.indexOf("private void handleAstraDaggers(");
         String handle = s.substring(h, s.indexOf("\n    }", h));
-        assertTrue(handle.contains("fireAstraDagger(p)") && handle.contains("<= 0) cdStart(p, \"daggers\""),
+        assertTrue(handle.contains("fireAstraDagger(p)") && handle.contains("v.thrown >= AstraMath.DAGGERS) endVolley("),
                 "the cooldown starts once the last dagger of the volley is fired");
+        int e = s.indexOf("private void endVolley(");
+        assertTrue(s.substring(e, s.indexOf("\n    }\n", e)).contains("cdStart(p, \"daggers\""), "ending a volley starts the cooldown");
     }
 
     @Test void flyingDaggerPointsAlongItsFlight() {

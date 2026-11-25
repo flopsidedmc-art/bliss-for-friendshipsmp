@@ -124,18 +124,14 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> amplifyCooldown = new HashMap<>();
     // Astra systems (user-supplied kit). Abilities are offhand-right-click only.
     private final Map<UUID, Long> gemDisabledUntil = new HashMap<>();
-    private final Map<UUID, UUID> unboundedHost = new HashMap<>();
-    private final Map<UUID, Long> unboundedLast = new HashMap<>();
-    private final Map<UUID, org.bukkit.entity.Zombie> projectionBody = new HashMap<>();
+    private final Map<UUID, Long> unboundedLast = new HashMap<>(); // Unbounded: 30 s between uses (AstralSpectate does the rest)
     private final Map<UUID, Long> voidCooldown = new HashMap<>();
+    private final Map<UUID, Integer> astraRightTick = new HashMap<>(); // one Astra right-click a tick (a click on a player arrives twice)
     private final Set<UUID> daggerShots = new HashSet<>();
-    // Astra Daggers (T2): hovering semi-circle system
-    private final Map<UUID, List<ItemDisplay>> astraDaggers = new HashMap<>();
-    private final Map<UUID, Integer> astraDaggerIndex = new HashMap<>();
+    // Astra Daggers (T2): a fan of 5 behind you, summoned by the first throw (Volley)
+    private final Map<UUID, Volley> volleys = new HashMap<>();
     private final Map<UUID, Long> astraDaggerFireCooldown = new HashMap<>();
-    private final Map<UUID, Integer> astraDaggersLeft = new HashMap<>(); // daggers left in this volley (5 when it's full)
-    private final Set<ItemDisplay> flyingDaggers = new HashSet<>(); // dagger models following their arrows
-    private static final int ASTRA_DAGGERS = 5;
+    private final Set<ItemDisplay> flyingDaggers = new HashSet<>(); // dagger models following their arrows, or fading out
     private static final int ASTRA_DAGGER_CMD = 12350; // the pack's Astra dagger (blissgems:custom/astra_dagger), not the Spirit Dagger
     // Life systems (user-supplied kit). Vortex is offhand-right-click only.
     private final Map<UUID, Double> heartOrig = new HashMap<>();
@@ -571,9 +567,9 @@ public class GemListener implements Listener {
                     hudEntry(ability, cdRemain(p, "doublejump"), false),
                     hudEntry(icon(type, "right"), cdRemain(p, "dash"), false)));
             case ASTRA -> bar.addAll(HudStatus.gemBar(t2,
-                    hudEntry(icon(type, "left"), cdRemain(p, "daggers"), false),
-                    hudEntry(ability, cdRemain(p, "drift"), unboundedHost.containsKey(id)),
-                    hudEntry(icon(type, "right"), cdRemain(p, "projection"), projectionBody.containsKey(id))));
+                    hudEntry(icon(type, "left"), cdRemain(p, "daggers"), volleys.containsKey(id)),
+                    hudEntry(ability, cdRemain(p, "drift"), plugin.astral() != null && plugin.astral().unbounded(p)),
+                    hudEntry(icon(type, "right"), cdRemain(p, "projection"), isProjecting(p))));
             case LIFE -> bar.addAll(HudStatus.gemBar(t2,
                     hudEntry(icon(type, "left"), cdRemain(p, "heartdrainer"), false),
                     hudEntry(ability, cdRemain(p, "vortex"), false),
@@ -984,11 +980,6 @@ public class GemListener implements Listener {
         int energy = gems.getEnergy(inHand);
         if (type == null) return;
 
-        // Projecting ghosts return on any right-click with the gem
-        if (right && isProjecting(p)) {
-            returnToBody(p);
-            return;
-        }
         if (isGemDisabled(p)) {
             p.sendMessage(ChatColor.DARK_PURPLE + "Your gem is disabled.");
             return;
@@ -1121,8 +1112,8 @@ public class GemListener implements Listener {
             return;
         }
 
-        // Astra routing: Daggers [Left-click] + Projection [Right-click] (T2 powers).
-        // Drift (ability) is offhand-only; Void is right-click on entity.
+        // Astra routing (T2 powers, AstraMath.route): Daggers [Left-click]; Unbounded [Right-click a player];
+        // Astral Void [Right-click anywhere else]; Astral Projection [Sneak + right-click]. Drift is off-hand only.
         if (type == GemType.ASTRA) {
             if (tier < 2) {
                 // Silenced — no chat spam
@@ -1131,14 +1122,10 @@ public class GemListener implements Listener {
             if (left) {
                 long rem = cdRemain(p, "daggers");
                 if (rem > 0) { /* Silenced */ return; }
-                handleAstraDaggers(p, energy); // the cooldown starts when the last of the 5 is fired
+                handleAstraDaggers(p, energy); // the cooldown starts after the fifth, or when the rest fade
                 return;
             }
-            if (targetedEntity(p, 5) != null) return;
-            long rem = cdRemain(p, "projection");
-            if (rem > 0) { /* Silenced */ return; }
-            cdStart(p, "projection", cooldownMs("projection", energy));
-            useProjection(p, energy);
+            astraRight(p, targetedEntity(p, 5), energy);
             return;
         }
 
@@ -1734,46 +1721,113 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Tick Astra Daggers: update hovering positions and handle firing. */
+    // ---------- Astra Daggers (T2): no daggers until you use them ----------
+
+    /** One volley: the daggers still waiting behind you (left to right; null once thrown) and when you last threw. */
+    private static final class Volley {
+        final ItemDisplay[] waiting = new ItemDisplay[AstraMath.DAGGERS];
+        int thrown;
+        long lastAt;
+        float yaw;
+    }
+
+    private static final float FAN_SCALE = 0.5f;
+
+    /**
+     * Every tick: a gem swap, a projection or daggers.linger-seconds without a throw ends the volley (the cooldown
+     * starts as if all 5 were thrown). Every 2 ticks the waiting daggers glide after you (each move smoothed by the
+     * client over 2 ticks) and turn with you (an interpolated pose), instead of snapping every tick.
+     */
     private void tickAstraDaggers() {
+        if (volleys.isEmpty()) return;
         long now = System.currentTimeMillis();
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            ItemStack gem = heldGem(p);
-            if (gem == null || gems.getType(gem) != GemType.ASTRA || gems.getTier(gem) < 2) {
-                clearAstraDaggers(p.getUniqueId());
-                continue;
-            }
-            List<ItemDisplay> daggers = astraDaggers.computeIfAbsent(p.getUniqueId(), k -> new ArrayList<>());
-            // The daggers left in this volley hover; a spent volley comes back once the cooldown is over.
-            if (daggers.isEmpty()) {
-                if (astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) <= 0 && cdRemain(p, "daggers") <= 0)
-                    astraDaggersLeft.put(p.getUniqueId(), ASTRA_DAGGERS);
-                spawnAstraDaggers(p);
-            }
-            // Update positions in semi-circle
-            updateAstraDaggerPositions(p);
-            // Handle firing cooldown
-            Long fireCd = astraDaggerFireCooldown.get(p.getUniqueId());
-            if (fireCd != null && fireCd > now) continue;
-            // Check for left-click (handled in onInteract, we just track the action)
+        long linger = (long) (plugin.getConfig().getDouble("astra.daggers.linger-seconds", 8.0) * 1000);
+        boolean move = Bukkit.getCurrentTick() % 2 == 0;
+        for (UUID id : new ArrayList<>(volleys.keySet())) {
+            Player p = Bukkit.getPlayer(id);
+            Volley v = volleys.get(id);
+            if (p == null || v == null) { endVolley(id, false); continue; }
+            ItemStack gem = p.getInventory().getItemInMainHand();
+            boolean holding = gems.isGem(gem) && gems.getType(gem) == GemType.ASTRA && gems.getTier(gem) >= 2;
+            if (!holding || p.isDead() || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) { endVolley(id, true); continue; }
+            if (AstraMath.lingered(v.lastAt, now, linger)) { endVolley(id, true); continue; }
+            if (move) follow(p, v, false);
         }
     }
 
-    private void spawnAstraDaggers(Player p) {
-        List<ItemDisplay> daggers = astraDaggers.get(p.getUniqueId());
-        if (daggers == null) return;
-        World w = p.getWorld();
-        if (w == null) return;
-        int count = Math.max(0, Math.min(ASTRA_DAGGERS, astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS)));
-        for (int i = 0; i < count; i++) {
-            ItemDisplay dagger = w.spawn(unturned(p.getLocation()), ItemDisplay.class, d -> {
+    /** The fan of 5 appears behind your shoulders, tips forward, growing in over a few ticks. */
+    private Volley summonVolley(Player p) {
+        Volley v = new Volley();
+        v.lastAt = System.currentTimeMillis();
+        v.yaw = p.getLocation().getYaw();
+        Location anchor = unturned(p.getLocation());
+        for (int i = 0; i < AstraMath.DAGGERS; i++) {
+            final int slot = i;
+            v.waiting[i] = p.getWorld().spawn(anchor, ItemDisplay.class, d -> {
                 d.setItemStack(createAstraDaggerItem());
                 d.setPersistent(false);
                 d.setBrightness(new Display.Brightness(15, 15));
+                d.setTeleportDuration(2);
+                d.setTransformation(fanPose(slot, v.yaw, 0f)); // nothing yet: it grows in (the fade-in)
             });
-            daggers.add(dagger);
         }
-        astraDaggerIndex.put(p.getUniqueId(), 0);
+        volleys.put(p.getUniqueId(), v);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> follow(p, v, true), 1L);
+        GemSounds.play(plugin, "astra.daggers-summon", p.getLocation());
+        return v;
+    }
+
+    /** Dagger {@code i} of the fan at this yaw: its spot behind you (AstraMath.fanSlot), tip pointing the way you face. */
+    static Transformation fanPose(int i, float yaw, float scale) {
+        Vector off = AstraMath.turned(AstraMath.fanSlot(i), yaw);
+        double r = Math.toRadians(yaw);
+        Transformation pose = daggerPose(new Vector(-Math.sin(r), 0, Math.cos(r)), scale);
+        Vector3f t = new Vector3f((float) off.getX(), (float) off.getY(), (float) off.getZ()).add(pose.getTranslation());
+        return new Transformation(t, pose.getLeftRotation(), pose.getScale(), pose.getRightRotation());
+    }
+
+    /** The waiting daggers move with you (a 2-tick client-side glide) and turn with you (an interpolated pose). */
+    private void follow(Player p, Volley v, boolean grow) {
+        if (volleys.get(p.getUniqueId()) != v || !p.isOnline()) return;
+        Location anchor = unturned(p.getLocation());
+        float yaw = p.getLocation().getYaw();
+        float turn = (yaw - v.yaw) % 360f;
+        if (turn > 180) turn -= 360;
+        if (turn < -180) turn += 360;
+        boolean pose = grow || Math.abs(turn) > 1.5f;
+        for (int i = 0; i < v.waiting.length; i++) {
+            ItemDisplay d = v.waiting[i];
+            if (d == null || !d.isValid()) continue;
+            if (!d.getWorld().equals(p.getWorld())) { d.remove(); v.waiting[i] = null; continue; }
+            d.teleport(anchor);
+            if (pose) {
+                d.setInterpolationDelay(0);
+                d.setInterpolationDuration(grow ? 4 : 3);
+                d.setTransformation(fanPose(i, yaw, FAN_SCALE));
+            }
+        }
+        if (pose) v.yaw = yaw;
+    }
+
+    /** The volley is over: the daggers still waiting fade out (or just go), and the cooldown starts as if all 5 were thrown. */
+    private void endVolley(UUID id, boolean fade) {
+        Volley v = volleys.remove(id);
+        if (v == null) return;
+        for (ItemDisplay d : v.waiting) {
+            if (d == null || !d.isValid()) continue;
+            if (!fade) { d.remove(); continue; }
+            Transformation t = d.getTransformation();
+            d.setInterpolationDelay(0);
+            d.setInterpolationDuration(5);
+            d.setTransformation(new Transformation(t.getTranslation(), t.getLeftRotation(), new Vector3f(), t.getRightRotation()));
+            flyingDaggers.add(d);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (d.isValid()) d.remove(); flyingDaggers.remove(d); }, 6L);
+        }
+        Player p = Bukkit.getPlayer(id);
+        if (p != null && cdRemain(p, "daggers") <= 0) {
+            ItemStack gem = findGem(p);
+            cdStart(p, "daggers", cooldownMs("daggers", gem != null ? gems.getEnergy(gem) : 10));
+        }
     }
 
     private ItemStack createAstraDaggerItem() {
@@ -1784,66 +1838,34 @@ public class GemListener implements Listener {
         return item;
     }
 
-    private void updateAstraDaggerPositions(Player p) {
-        List<ItemDisplay> daggers = astraDaggers.get(p.getUniqueId());
-        if (daggers == null || daggers.isEmpty()) return;
-        Location center = p.getLocation().add(0, 1.5, 0);
-        Vector forward = p.getLocation().getDirection().setY(0).normalize();
-        if (forward.lengthSquared() < 0.01) forward = new Vector(1, 0, 0);
-        Vector right = new Vector(-forward.getZ(), 0, forward.getX());
-        double radius = 1.5;
-        long time = System.currentTimeMillis();
-        double orbitSpeed = 0.002;
-        for (int i = 0; i < daggers.size(); i++) {
-            ItemDisplay dagger = daggers.get(i);
-            if (!dagger.isValid()) continue;
-            // Semi-circle in front of player (spread across 180 degrees)
-            double angle = Math.PI * (i / 4.0) - Math.PI / 2; // -90 to +90 degrees
-            double orbitAngle = time * orbitSpeed;
-            double x = Math.cos(angle + orbitAngle);
-            double z = Math.sin(angle + orbitAngle);
-            Vector offset = right.clone().multiply(x * radius).add(forward.clone().multiply(z * radius * 0.5));
-            Location targetLoc = center.clone().add(offset);
-            targetLoc.setY(center.getY() + Math.sin(time * 0.005 + i) * 0.2); // gentle bob
-            dagger.teleport(unturned(targetLoc)); // no facing of its own: the transformation alone turns the model
-            // Rotate dagger to face outward
-            Vector faceDir = targetLoc.toVector().subtract(center.toVector()).setY(0);
-            if (faceDir.lengthSquared() > 0.01) {
-                faceDir.normalize();
-                Quaternionf rot = new Quaternionf().rotationTo(new Vector3f(0, 0, -1),
-                        new Vector3f((float) faceDir.getX(), 0, (float) faceDir.getZ()));
-                Transformation t = new Transformation(new Vector3f(), rot,
-                        new Vector3f(0.5f, 0.5f, 0.5f), new Quaternionf());
-                dagger.setTransformation(t);
-            }
-        }
-    }
-
     private void clearAstraDaggers(UUID id) {
-        List<ItemDisplay> daggers = astraDaggers.remove(id);
-        if (daggers != null) {
-            for (ItemDisplay d : daggers) if (d.isValid()) d.remove();
-        }
-        astraDaggerIndex.remove(id);
+        endVolley(id, false);
         astraDaggerFireCooldown.remove(id);
     }
 
-    /** Fire one astra dagger in the direction the player is looking. False if none was fired. */
+    /** Throws the next waiting dagger from behind you, tip first, at where you're looking. False if none was thrown. */
     public boolean fireAstraDagger(Player p) {
-        List<ItemDisplay> daggers = astraDaggers.get(p.getUniqueId());
-        if (daggers == null || daggers.isEmpty()) return false;
+        Volley v = volleys.get(p.getUniqueId());
+        if (v == null) return false;
         Long spacing = astraDaggerFireCooldown.get(p.getUniqueId());
         if (spacing != null && spacing > System.currentTimeMillis()) return false; // one click can arrive as two events
-        int index = astraDaggerIndex.getOrDefault(p.getUniqueId(), 0);
-        if (index >= daggers.size()) return false;
-        ItemDisplay dagger = daggers.get(index);
-        if (!dagger.isValid()) return false;
-        // Remove from hovering list
-        daggers.remove(index);
-        // Launch as projectile
+        int index = -1;
+        for (int i = 0; i < v.waiting.length; i++) if (v.waiting[i] != null && v.waiting[i].isValid()) { index = i; break; }
+        if (index < 0) return false;
+        ItemDisplay dagger = v.waiting[index];
+        v.waiting[index] = null;
         World w = p.getWorld();
-        Location launchLoc = dagger.getLocation().clone();
+        Location launchLoc = unturned(p.getLocation()).add(AstraMath.turned(AstraMath.fanSlot(index), p.getLocation().getYaw()));
         dagger.remove();
+        // Aim at what's under the crosshair (it starts behind you, so a throw parallel to your look would miss it)
+        Location eye = p.getEyeLocation();
+        Vector look = eye.getDirection().normalize();
+        var hit = w.rayTrace(eye, look, 64, org.bukkit.FluidCollisionMode.NEVER, true, 0.2,
+                en -> en instanceof LivingEntity && !en.getUniqueId().equals(p.getUniqueId()));
+        Vector aim = hit != null ? hit.getHitPosition() : eye.toVector().add(look.clone().multiply(64));
+        Vector dir = aim.subtract(launchLoc.toVector());
+        if (dir.lengthSquared() < 1e-6) dir = look.clone();
+        dir.normalize();
         // A spectral arrow does the flying and the hit, hidden from everyone; the pack's dagger model flies in its place.
         org.bukkit.entity.SpectralArrow arrow = w.spawn(launchLoc, org.bukkit.entity.SpectralArrow.class, a -> {
             a.setVisibleByDefault(false);
@@ -1852,16 +1874,14 @@ public class GemListener implements Listener {
             a.setDamage(1.0); // the hit itself is replaced by astra.dagger-hit-damage (onHit)
             a.setCritical(true);
         });
-        Vector dir = p.getLocation().getDirection().normalize();
         double speed = plugin.getConfig().getDouble("astra.dagger-speed", 3.0);
         arrow.setVelocity(dir.multiply(speed));
         daggerShots.add(arrow.getUniqueId());
         flyDaggerModel(arrow);
-        astraDaggersLeft.put(p.getUniqueId(), Math.max(0, astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) - 1));
-        // Sound & particles
+        v.thrown++;
+        v.lastAt = System.currentTimeMillis();
         GemSounds.play(plugin, "astra.daggers", launchLoc);
         w.spawnParticle(Particle.PORTAL, launchLoc, 10, 0.2, 0.2, 0.2, 0.1);
-        // Cooldown between shots
         astraDaggerFireCooldown.put(p.getUniqueId(), System.currentTimeMillis() + 300L);
         return true;
     }
@@ -1920,9 +1940,9 @@ public class GemListener implements Listener {
         return l;
     }
 
-    /** Plugin disable: the hovering and flying dagger models go (they're never saved, but a reload would leave them). */
+    /** Plugin disable: the waiting, fading and flying dagger models go (they're never saved, but a reload would leave them). */
     void shutdown() {
-        for (UUID id : new ArrayList<>(astraDaggers.keySet())) clearAstraDaggers(id);
+        for (UUID id : new ArrayList<>(volleys.keySet())) clearAstraDaggers(id);
         for (ItemDisplay d : flyingDaggers) if (d.isValid()) d.remove();
         flyingDaggers.clear();
     }
@@ -2425,16 +2445,9 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Dimensional Drift [offhand right-click]: T1 ghost horse 5s, T2 speed surge 5s. */
+    /** Dimensional Drift [offhand right-click]: the ghost horse ride for 5s, at both tiers. */
     private void useDimensionalDrift(Player p, int tier, int energy) {
-        if (tier >= 2) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 100, 4, true, false, false));
-            p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, 100, 2, true, false, false));
-            GemSounds.play(plugin, "astra.dimensional-drift", p.getLocation());
-            p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 50, 0.5, 1, 0.5, 0.3);
-            used(p, "Dimensional Drift");
-            return;
-        }
+        GemSounds.play(plugin, "astra.dimensional-drift", p.getLocation());
         org.bukkit.entity.Horse horse = p.getWorld().spawn(p.getLocation(), org.bukkit.entity.Horse.class);
         horse.setAdult();
         horse.setTamed(true);
@@ -2451,84 +2464,110 @@ public class GemListener implements Listener {
         }, 5 * 20L);
     }
 
-    /** Daggers [Left Click]: Fire one hovering dagger straight ahead. Deals 2.5 hearts, moves at configurable speed. */
-    /** One left-click fires one dagger. After the fifth the cooldown starts; the volley comes back when it ends. */
+    /** Daggers [Left-click]: the first click summons the fan of 5 behind you and throws one; each click after throws the next. */
     private void handleAstraDaggers(Player p, int energy) {
+        Volley v = volleys.get(p.getUniqueId());
+        if (v == null) v = summonVolley(p);
         if (!fireAstraDagger(p)) return;
         used(p, "Daggers");
-        if (astraDaggersLeft.getOrDefault(p.getUniqueId(), ASTRA_DAGGERS) <= 0) cdStart(p, "daggers", cooldownMs("daggers", energy));
+        if (v.thrown >= AstraMath.DAGGERS) endVolley(p.getUniqueId(), false); // the fifth: the cooldown starts
     }
 
-    /** Unbounded [Hit]: enter the victim's body; exiting disables your own gem. */
-    private void enterUnbounded(Player rider, LivingEntity host) {
+    /**
+     * Astra's Tier 2 right-click (AstraMath.route), from either click event: a right-click on a player can arrive as
+     * an entity click and an air click in the same tick, so only the first counts.
+     */
+    private void astraRight(Player p, Player onPlayer, int energy) {
+        int tick = Bukkit.getCurrentTick();
+        Integer last = astraRightTick.put(p.getUniqueId(), tick);
+        if (last != null && last == tick) return;
+        switch (AstraMath.route(false, true, p.isSneaking(), onPlayer != null)) {
+            case PROJECTION -> useProjection(p, energy);
+            case UNBOUNDED -> useUnbounded(p, onPlayer);
+            case VOID -> tryAstralVoid(p, energy);
+            default -> { }
+        }
+    }
+
+    /** Unbounded [Right-click a player] T2: your camera goes inside them for unbounded.seconds (AstralSpectate). 30 s between uses. */
+    private void useUnbounded(Player p, Player host) {
         long now = System.currentTimeMillis();
-        Long last = unboundedLast.get(rider.getUniqueId());
+        Long last = unboundedLast.get(p.getUniqueId());
         if (last != null && now - last < 30_000) return;
-        unboundedLast.put(rider.getUniqueId(), now);
-        try {
-            host.addPassenger(rider);
-        } catch (Exception ex) { return; }
-        unboundedHost.put(rider.getUniqueId(), host.getUniqueId());
-        rider.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 400, 0, false, false, false));
-        usedOn(rider, "Unbounded", host.getName());
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (unboundedHost.containsKey(rider.getUniqueId())) {
-                try { host.removePassenger(rider); } catch (Exception ignored) { }
-            }
-        }, 15 * 20L);
+        if (plugin.astral() == null || !plugin.astral().startUnbounded(p, host)) return;
+        unboundedLast.put(p.getUniqueId(), now);
+        usedOn(p, "Unbounded", host.getName());
     }
 
-    private void exitUnbounded(Player rider) {
-        if (!unboundedHost.containsKey(rider.getUniqueId())) return;
-        unboundedHost.remove(rider.getUniqueId());
-        rider.removePotionEffect(PotionEffectType.INVISIBILITY);
+    /** Coming out of Unbounded darkens your own gem for 30 s (as before). */
+    void unboundedExit(Player rider) {
         disableGem(rider, 30_000L, "Unbounded exit");
         rider.sendMessage(ChatColor.GRAY + "You slip out. Your gem goes dark for 30s.");
     }
 
     public boolean isProjecting(Player p) {
-        return projectionBody.containsKey(p.getUniqueId());
+        return plugin.astral() != null && plugin.astral().projecting(p);
     }
 
-    /** Astral Projection [Right Click]: leave a zombie body behind, roam as a ghost. */
+    /** Astral Projection [Sneak + right-click] T2: out of your body as a spectator, your body left behind (AstralSpectate). */
     private void useProjection(Player p, int energy) {
-        if (isProjecting(p)) {
-            returnToBody(p);
-            return;
-        }
-        org.bukkit.entity.Zombie body = p.getWorld().spawn(p.getLocation(), org.bukkit.entity.Zombie.class);
-        body.setAI(false);
-        body.setCanPickupItems(false);
-        body.setCustomName(p.getName() + "'s Body");
-        body.setCustomNameVisible(true);
-        projectionBody.put(p.getUniqueId(), body);
-        GemSounds.play(plugin, "astra.projection", p.getLocation());
-        p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 20 * 130, 0, false, false, false));
-        p.setAllowFlight(true);
-        p.setFlying(true);
+        if (cdRemain(p, "projection") > 0) return; // Silenced
+        if (plugin.astral() == null || !plugin.astral().startProjection(p)) return;
+        endVolley(p.getUniqueId(), false);
+        cdStart(p, "projection", cooldownMs("projection", energy));
         used(p, "Astral Projection");
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (isProjecting(p)) {
-                p.sendMessage(ChatColor.GRAY + "The projection snaps back...");
-                returnToBody(p);
-            }
-        }, 60 * 20L);
     }
 
-    private void returnToBody(Player p) {
-        org.bukkit.entity.Zombie body = projectionBody.remove(p.getUniqueId());
-        Location back = (body != null && body.isValid()) ? body.getLocation() : p.getWorld().getSpawnLocation();
-        if (body != null && body.isValid()) body.remove();
-        p.teleport(back);
-        p.removePotionEffect(PotionEffectType.INVISIBILITY);
-        p.setFlying(false);
-        if (p.getGameMode() == org.bukkit.GameMode.SURVIVAL || p.getGameMode() == org.bukkit.GameMode.ADVENTURE) {
-            p.setAllowFlight(false);
+    /** Astral Void [Right-click anywhere that isn't a player] T2: the same mass gem disable as before, around you. */
+    private void tryAstralVoid(Player p, int energy) {
+        if (remain(voidCooldown, p.getUniqueId()) > 0) return; // Silenced: right-clicking the air is common
+        voidCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("void", energy));
+        useAstralVoid(p, p.getLocation(), energy);
+    }
+
+    private static final EquipmentSlot[] PHASE_SLOTS = {EquipmentSlot.HAND, EquipmentSlot.OFF_HAND, EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+
+    /**
+     * Phasing: a ring flashes at your waist and you're gone for astra.phasing.vanish-ticks, armour and held items too.
+     * The items are hidden only on other players' screens (client-side equipment changes), then the real ones are
+     * sent back; your own items are never touched.
+     */
+    private void phase(Player p) {
+        Location c = p.getLocation().add(0, 1.0, 0);
+        Particle.DustOptions purple = new Particle.DustOptions(Color.fromRGB(0x9B, 0x5C, 0xE6), 1.0f);
+        Particle.DustOptions white = new Particle.DustOptions(Color.WHITE, 0.8f);
+        for (int i = 0; i < 24; i++) {
+            double a = i * Math.PI * 2 / 24;
+            Location at = c.clone().add(Math.cos(a) * 0.85, 0, Math.sin(a) * 0.85);
+            p.getWorld().spawnParticle(Particle.DUST, at, 1, 0, 0, 0, 0, i % 3 == 0 ? white : purple);
+            if (i % 2 == 0) p.getWorld().spawnParticle(Particle.PORTAL, at, 1, 0, 0, 0, 0.05);
         }
-        p.sendMessage(ChatColor.DARK_PURPLE + "You return to your body.");
+        GemSounds.play(plugin, "astra.phasing", c);
+        int ticks = plugin.getConfig().getInt("astra.phasing.vanish-ticks", 8);
+        if (ticks <= 0) return;
+        if (!p.hasPotionEffect(PotionEffectType.INVISIBILITY))
+            p.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, ticks, 0, true, false, false));
+        Map<EquipmentSlot, ItemStack> none = new java.util.EnumMap<>(EquipmentSlot.class);
+        for (EquipmentSlot s : PHASE_SLOTS) none.put(s, new ItemStack(Material.AIR));
+        List<Player> viewers = new ArrayList<>();
+        for (Player o : p.getWorld().getPlayers()) {
+            if (o.equals(p) || o.getLocation().distanceSquared(p.getLocation()) > 128 * 128) continue;
+            o.sendEquipmentChange(p, none);
+            viewers.add(o);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline()) return;
+            Map<EquipmentSlot, ItemStack> real = new java.util.EnumMap<>(EquipmentSlot.class);
+            for (EquipmentSlot s : PHASE_SLOTS) {
+                ItemStack it = p.getInventory().getItem(s);
+                real.put(s, it == null ? new ItemStack(Material.AIR) : it);
+            }
+            for (Player o : viewers) if (o.isOnline() && o.getWorld().equals(p.getWorld())) o.sendEquipmentChange(p, real);
+        }, ticks);
     }
 
-    /** Astral Void [Right-click on entity]: disable untrusted gems in a radius. */
+    /** Astral Void: disable untrusted gems in a radius. */
     private void useAstralVoid(Player p, Location around, int energy) {
         int radius = 10;
         int hit = 0;
@@ -3067,8 +3106,7 @@ public class GemListener implements Listener {
                 double dodge = (gems.getTier(vGem) >= 2) ? 0.15 : 0.10;
                 if (Math.random() < dodge) {
                     e.setCancelled(true);
-                    phaseVictim.getWorld().spawnParticle(Particle.PORTAL, phaseVictim.getLocation().add(0, 1, 0),
-                            25, 0.4, 0.6, 0.4, 0.2);
+                    phase(phaseVictim);
                     return;
                 }
             }
@@ -3111,14 +3149,6 @@ public class GemListener implements Listener {
         ItemStack gem = heldGem(p);
         if (gem == null) return;
         if (isGemDisabled(p)) return;
-        // Ghost hits disable gems instead of normal powers
-        if (isProjecting(p)) {
-            if (e.getEntity() instanceof Player hit && !hit.getUniqueId().equals(p.getUniqueId())) {
-                disableGem(hit, 10_000L, "Astral touch");
-            }
-            e.setDamage(e.getDamage() * 0.5);
-            return;
-        }
         GemType gtype = gems.getType(gem);
         if (gtype == GemType.FIRE) {
             // Meteor Shower [Hit] T2: fireballs rain around the hit player for 30s
@@ -3188,14 +3218,7 @@ public class GemListener implements Listener {
             }
             return;
         }
-        if (gtype == GemType.ASTRA) {
-            // Unbounded [Hit] T2: slip inside the victim's body
-            if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
-                    && e.getEntity() instanceof LivingEntity host && !host.getUniqueId().equals(p.getUniqueId())) {
-                enterUnbounded(p, host);
-            }
-            return;
-        }
+        if (gtype == GemType.ASTRA) return; // Unbounded is a right-click on a player now
         if (gtype == GemType.LIFE) {
             // Heartlock [Hit] T2: freeze the victim at their current hearts for 15s
             if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
@@ -3300,48 +3323,19 @@ public class GemListener implements Listener {
             useAmplification(p, p, gems.getEnergy(inHand));
             return;
         }
-        // Astral Void [Right-click on entity]: T2 Astra main-hand disables nearby untrusted gems
+        // Astra T2 right-click on someone (AstraMath.route): a player is Unbounded, anything else Astral Void; sneaking, Projection
         if (gems.getType(inHand) == GemType.ASTRA && gems.getTier(inHand) >= 2
                 && EnergyStage.allowsPowers(gems.getEnergy(inHand)) && !isGemDisabled(p)) {
-            long rem = remain(voidCooldown, p.getUniqueId());
-            if (rem > 0) { p.sendMessage(ChatColor.RED + "Astral Void on cooldown: " + (rem / 1000) + "s"); return; }
-            voidCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("void", gems.getEnergy(inHand)));
-            useAstralVoid(p, e.getRightClicked().getLocation(), gems.getEnergy(inHand));
+            astraRight(p, e.getRightClicked() instanceof Player o ? o : null, gems.getEnergy(inHand));
         }
     }
 
-    /** Unbounded exit: slipping out (sneak/dismount) darkens your own gem for 30s. */
+    /** The waiting daggers go on death and on a world change (and the cooldown starts, as if they were thrown). */
     @EventHandler
-    public void onUnboundedDismount(org.bukkit.event.entity.EntityDismountEvent e) {
-        if (e.getEntity() instanceof Player rider) exitUnbounded(rider);
-    }
+    public void onAstraVolleyDeath(PlayerDeathEvent e) { endVolley(e.getEntity().getUniqueId(), false); }
 
-    /** Projecting ghosts return on crouch. */
     @EventHandler
-    public void onGhostSneak(org.bukkit.event.player.PlayerToggleSneakEvent e) {
-        if (!e.isSneaking()) return;
-        Player p = e.getPlayer();
-        if (isProjecting(p)) returnToBody(p);
-    }
-
-    /** If a projection body is slain, yank the ghost home. */
-    @EventHandler
-    public void onBodySlain(org.bukkit.event.entity.EntityDeathEvent e) {
-        UUID ownerId = null;
-        for (var entry : projectionBody.entrySet()) {
-            if (entry.getValue().getUniqueId().equals(e.getEntity().getUniqueId())) { ownerId = entry.getKey(); break; }
-        }
-        if (ownerId == null) return;
-        Player owner = Bukkit.getPlayer(ownerId);
-        if (owner != null && owner.isOnline()) {
-            returnToBody(owner);
-            owner.damage(4.0);
-            owner.sendMessage(ChatColor.RED + "Your body was slain!");
-        } else {
-            org.bukkit.entity.Zombie z = projectionBody.remove(ownerId);
-            if (z != null && z.isValid()) z.remove();
-        }
-    }
+    public void onAstraVolleyWorld(org.bukkit.event.player.PlayerChangedWorldEvent e) { endVolley(e.getPlayer().getUniqueId(), false); }
 
     /** Wealth ores: T2 every 3rd ore doubled, Rich Rush doubles, Bonus Ores + Extra EXP. */
     @EventHandler

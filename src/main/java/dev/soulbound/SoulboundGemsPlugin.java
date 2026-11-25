@@ -48,6 +48,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     CameraOverlay overlay() { return overlay; }
     private LooseMythics loose;
     private Prophet prophet;
+    private AstralSpectate astral;
+    AstralSpectate astral() { return astral; }
 
     @Override
     public void onEnable() {
@@ -98,6 +100,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         loose.start();
         prophet = new Prophet(this);
         Bukkit.getPluginManager().registerEvents(prophet, this);
+        astral = new AstralSpectate(this);
+        Bukkit.getPluginManager().registerEvents(astral, this);
+        astral.start();
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -159,6 +164,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (astral != null) astral.shutdown(); // first: anyone projected or Unbounded is back in their body and game mode
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar
         if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back

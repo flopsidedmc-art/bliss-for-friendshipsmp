@@ -16,7 +16,7 @@ cooldowns-seconds:
   #   burst 10, drift 15 (flat), bounty 35.
   # Powers: cozy 180, chad 120, nullify 120, fireball 180, itemlock 120,
   #   richrush 300, amp 240, storm 120, dash 40, bash 60, daggers 90,
-  #   projection 120, heartdrainer 120, circle 120, beam 120, overdrive 180, void 120.
+  #   projection 20 (it uses the power fallback below), heartdrainer 120, circle 120, beam 120, overdrive 180, void 120.
   power: 20
   tier2-ability: 35
   # energy 3-4 makes cooldowns 1.5x longer (Cracked/Scratched)
@@ -92,6 +92,13 @@ sounds:
     projection: {event: BLOCK_RESPAWN_ANCHOR_CHARGE, volume: 1.0, pitch: 1.4, enabled: true}
     dimensional-drift: {event: BLOCK_END_PORTAL_FRAME_FILL, volume: 1.0, pitch: 1.2, enabled: true, layer: {event: ENTITY_ENDERMAN_TELEPORT, volume: 0.7, pitch: 1.5}}
     astral-void: {event: BLOCK_AMETHYST_BLOCK_HIT, volume: 1.0, pitch: 0.6, enabled: true}  # the cast; disabled players hear general.gem-disabled
+    daggers-summon: {event: BLOCK_AMETHYST_BLOCK_RESONATE, volume: 0.6, pitch: 1.2, enabled: true}  # the fan of 5 appears behind you
+    projection-end: {event: ENTITY_ILLUSIONER_MIRROR_MOVE, volume: 0.9, pitch: 1.4, enabled: true}  # the snap back into your body
+    unbounded-enter: {event: BLOCK_AMETHYST_CLUSTER_PLACE, volume: 0.8, pitch: 0.7, enabled: true}
+    unbounded-exit: {event: BLOCK_AMETHYST_CLUSTER_BREAK, volume: 0.8, pitch: 1.3, enabled: true}
+    unbounded-whisper: {event: PARTICLE_SOUL_ESCAPE, volume: 0.5, pitch: 0.6, enabled: true}  # the player you enter only: a faint whisper
+    tag-spook: {event: ENTITY_VEX_CHARGE, volume: 0.8, pitch: 0.5, enabled: true, layer: {event: AMBIENT_CAVE, volume: 0.3, pitch: 1.0}}  # the tagged player only
+    phasing: {event: ENTITY_ENDERMAN_TELEPORT, volume: 0.4, pitch: 1.8, enabled: true}  # a dodge
   flux: # Flux: lasers, power
     energy-beam: {event: ENTITY_GUARDIAN_ATTACK, volume: 0.9, pitch: 1.4, enabled: true}
     kinetic-burst: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.5, pitch: 1.6, enabled: true}
@@ -525,9 +532,24 @@ abilities:
 
 # Astra Daggers (T2): 5 hover round you; each left-click fires one (the pack's dagger model, flying tip first).
 # The cooldown (cooldowns.daggers, 90 s) starts after the fifth; then all 5 come back.
+# Astra (Tier 2, gem in the main hand): left-click Daggers; right-click a player Unbounded; right-click anywhere else
+# Astral Void; sneak + right-click Astral Projection. Off-hand right-click: Dimensional Drift (the ghost horse, both tiers).
 astra:
   dagger-speed: 3.0 # blocks per tick
   dagger-hit-damage: 2.5 # each dagger that hits, x ability-damage.multiplier (7.5), pierces armour; also disables their gem 8 s
+  daggers: # the first left-click summons 5 behind your shoulders and throws one; each click after throws the next
+    linger-seconds: 8 # no throw for this long: the rest fade out and the cooldown starts, as if all 5 were thrown
+  projection: # spectator for a while, your body (your skin and armour) left where you stood; sneak to end it early
+    seconds: 10
+    max-distance: 48 # how far from your body you can go; you're pulled back at the edge
+    tag-range: 4 # left-click a player this close to tag them (instead of the spectator possess)
+    tag-lock-seconds: 6 # a tagged player's gem is disabled this long; they're spooked, and never told who did it
+    max-tags: 3 # per projection, each player once
+    body-takes-hits: true # hits on your body come to you; one that would kill you ends the projection first. false: the body can't be hurt
+  unbounded: # right-click a player: you see through their eyes (spectator), then come out just behind them
+    seconds: 4 # sneak to leave early; leaving disables your own gem for 30 s, as before
+  phasing:
+    vanish-ticks: 8 # a dodge makes you fully invisible this long (armour and held items too), with a purple ring
 
 # Crafting recipes. min-progression gates by era (1-4).
 # Edit shapes/ingredients freely, then /progression <1-4> to reload.
