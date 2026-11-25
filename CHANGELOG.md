@@ -1,3 +1,104 @@
+# Life revamp
+
+## What I found first
+- **Circle of Life:**
+  - The steal took 5 hearts from **every** player within 12 blocks, trusted friends included, not just the one you clicked.
+  - With nobody around it only mended your armour, which every cast also did (20 durability per piece).
+- **The heart locks** (Heart Drainer, the steal) had two bugs:
+  - **Bonuses could become permanent:** they saved your current max health (including any bonus) and later wrote it back as your *base*. A blessed player who got Heart Drained would have kept the +4 hearts for good.
+  - **Logging out lost hearts:** if you logged out during a lock, your hearts never came back.
+- **Vitality Vortex:**
+  - It turned logs into gray concrete and leaves and flowers into light gray concrete within 8 blocks, **permanently**.
+  - With fewer than 5 of those blocks it failed and refunded the cooldown.
+  - Its buffs lasted 20–60 s and its Resistance level (0 to 2) grew with the count.
+- **Unchanged:** the passive (Regeneration, Absorption II, Saturation, Wither removed), Heart Drainer, and every cooldown (Circle 120 s, Vortex 60 s).
+- **The sound rules** said Life has "no amethyst". The blessing uses the amethyst chime as you asked; the comment is updated, and the sound test allows the chime to be shared with the Relay.
+
+## What changed
+- **Circle of Life has two versions, with one shared cooldown:**
+  - **The steal:** an untrusted player in front of you (within 12 blocks) means the steal, as before. It now never takes from your trusted players.
+  - **The blessing:** anything else (the air, a block, nobody, a friend).
+    - **The ring:** about 5 s of pink rings flat on the ground (radius `life.circle-of-life.blessing.radius`, 6), slowly turning, with hearts, a few green sparkles and a soft white shimmer rising at the edge. The sound is `sounds.life.blessing`.
+    - **Who's blessed:** you and every trusted player in the ring when it's cast. Untrusted players get nothing.
+    - **What they get:**
+      - +4 hearts (max health +8) for `seconds` (30);
+      - full hunger and saturation;
+      - Regeneration II for `regeneration-seconds` (10).
+    - **The hearts can't stick:** they're one keyed max-health modifier that's never saved, so they can't stack. They come off when the time's up, and on death, respawn, logout, rejoin, plugin reload and server stop. A restart can't keep them.
+  - **Armour mending** still happens on both versions.
+- **Heart locks:** they now read and restore your own base max health, so a bonus is never baked in. A logout or server stop mid-lock gives the hearts back at once. Heart Drainer works exactly as before.
+- **Vitality Vortex works anywhere:** it always gives its buffs, with the same formula as before, counted on the blocks it drains. A bare spot still gives 20 s with Resistance I.
+- **Vitality Vortex drains the land** (`life.vitality-vortex`):
+  - **The patches:** in `drain-radius` (5), a patchy `drain-chance` (0.45) share of eligible blocks turns into weighted dead blocks (`dead-blocks`): the five dead coral blocks, andesite, tuff, gravel, coarse dirt and cobblestone.
+  - **Plants and leaves:** plants on them wither (a dead bush, or gone; both halves of a tall plant). Crops on farmland wither on their own. Drained leaves vanish.
+  - **The spread:** outward over a second, with green-to-grey motes flowing from the drained blocks into you.
+  - **Underground** (no sky, a ceiling within 6 blocks): a sphere, so the floor, walls and ceiling turn grey.
+  - **The same filter as Crisp:** only natural blocks; never block entities, anything built, bedrock, capture points, Rift blocked areas or the finale's arena.
+  - **Liquids:** it never touches a block next to water or lava, so it never opens a way for a liquid. Gravel is only placed on solid ground, so nothing it places can fall.
+  - **Regrowing:** after `restore-after-seconds` (30) it grows back outward over about 1.5 s, exactly as it was, with green sparkles and `sounds.life.regrow`. A spot a player broke or changed is left as it is.
+  - **Drops:** breaking a drained block drops its dead version.
+  - **Saved:** pending restores are saved, so a restart or crash puts the land back on start.
+  - **`drain: false`** turns the land effect off.
+- **The shared land engine:** Crisp and the Vortex now share one land engine (no second copy), and Crisp works exactly as before. `LandWorks` holds:
+  - the ledger (`LandLedger`, renamed from `CrispLedger`);
+  - saving, to `land-restore.yml` (it also reads the last version's `crisp-restore.yml`);
+  - the natural-blocks filter and the places it keeps out of;
+  - the guards (pistons, explosions, endermen, buckets, liquid flow, fire spread, leaf decay).
+- **Lore and guide:** they explain both Circles of Life and the Vortex (lore version 9).
+
+## Files
+- **New:**
+  - `LandWorks.java`: the shared engine;
+  - `LandMath.java`: the shared filter, plants, patches, underground check;
+  - `VortexDrain.java`;
+  - `LifeBlessing.java`;
+  - `LifeMath.java`: the Circle choice, who's blessed, the hearts timer;
+  - `LifeTest.java`.
+- **Renamed:** `CrispLedger.java` → `LandLedger.java`.
+- **Changed:**
+  - `CrispLand.java`: now built on LandWorks, same behaviour;
+  - `CrispMath.java`: pits only, the rest moved to LandMath;
+  - `GemListener.java`: the Circle of Life routing, the steal skipping trusted players, the blessing, the Vortex, and heart locks on the base value restored on logout and stop;
+  - `SoulboundGemsPlugin.java`: wiring;
+  - `GemType.java` and `GemManager.java`: lore and guide text;
+  - `config.yml`: the `life:` section, two sounds, the life sound comment;
+  - `FireTest.java`: the shared names;
+  - `GemSoundsTest.java`: the amethyst chime.
+
+## Tested
+- Compiles against paper-api 1.21.11, and 162 unit tests pass. They cover:
+  - **The blessing target choice:** an untrusted player in front gives the steal; a friend in front, or nobody, gives the blessing.
+  - **Trusted-only buffs:** you and your trusted players once each; strangers get nothing; it's your own trust list that counts.
+  - **The extra hearts:** a second blessing refreshes the timer, never +8; they come off when the time's up and on death, logout and rejoin; never taken twice. The modifier is unsaved and replaced, every cleanup path calls it, and the plugin start and stop clear it.
+  - **Heart locks:** on the base value, given back on logout and stop, and the steal skips friends.
+  - **The eligible-block filter:** naturals and leaves yes; placed leaves, chests, beds, doors, redstone, signs, banners, heads, bedrock, planks, farmland, ores and block entities no; flowers, grass, ferns, crops and tall plants wither.
+  - **The Vortex:** it always works, with its buffs; the drain skips blocks holding back liquids and never places gravel that can fall.
+  - **The config.**
+  - All the Fire and Crisp tests still pass on the shared engine.
+
+## Not tested
+- Nothing was run in game. Unverified:
+  - the ring and motes;
+  - the hearts on a real player;
+  - the drain and regrow in a real forest, desert and cave;
+  - the restart restore.
+
+## In-game test plan
+1. **Steal:** right-click a player: steal 5 hearts as before (a trusted friend standing nearby keeps theirs).
+2. **Blessing:**
+   - right-click the air with a trusted friend and an untrusted one nearby;
+   - a pink ring appears; you and your friend get +4 hearts, full hunger and Regen II; the untrusted player gets nothing;
+   - after 30 s the hearts go away;
+   - die during it: no leftover hearts. Log out and back in during it: none either.
+3. **Vortex in a forest, a desert and a stone cave:** it works everywhere; the ground around you turns patchy dead coral, andesite and gravel, with particles flowing into you.
+4. **Vortex in a cave:** the floor, walls and ceiling around you all turn patchy grey (a sphere), and it all grows back after 30 s.
+5. **Vortex next to a chest, a door and a bed:** they're untouched.
+6. **Regrowth:**
+   - wait 30 s after a Vortex: the ground regrows outward with green particles, exactly as it was;
+   - break one dead block before then: that spot stays broken;
+   - restart the server mid-drain: the land is restored on start.
+7. **Heart Drainer on a blessed player:** after both wear off, their max health is exactly what it was.
+
 # Fire revamp
 
 ## What I found first

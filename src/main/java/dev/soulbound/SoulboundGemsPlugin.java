@@ -50,8 +50,13 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private Prophet prophet;
     private AstralSpectate astral;
     AstralSpectate astral() { return astral; }
+    private LandWorks land;
     private CrispLand crisp;
     CrispLand crisp() { return crisp; }
+    private VortexDrain vortex;
+    VortexDrain vortex() { return vortex; }
+    private LifeBlessing blessing;
+    LifeBlessing blessing() { return blessing; }
 
     @Override
     public void onEnable() {
@@ -105,9 +110,14 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         astral = new AstralSpectate(this);
         Bukkit.getPluginManager().registerEvents(astral, this);
         astral.start();
-        crisp = new CrispLand(this);
-        Bukkit.getPluginManager().registerEvents(crisp, this);
-        crisp.start(); // land a restart left changed goes back now
+        land = new LandWorks(this); // shared by Crisp and Vitality Vortex
+        Bukkit.getPluginManager().registerEvents(land, this);
+        land.start(); // land a restart left changed goes back now
+        crisp = new CrispLand(this, land);
+        vortex = new VortexDrain(this, land);
+        blessing = new LifeBlessing(this);
+        Bukkit.getPluginManager().registerEvents(blessing, this);
+        blessing.start(); // a reload: nobody keeps blessed hearts from before
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -170,7 +180,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (astral != null) astral.shutdown(); // first: anyone projected or Unbounded is back in their body and game mode
-        if (crisp != null) crisp.shutdown(); // every Crisp cast cools at once
+        if (land != null) land.shutdown(); // every Crisp and Vitality Vortex change goes back at once
+        if (blessing != null) blessing.shutdown(); // no blessed hearts outlive the plugin
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar
         if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back

@@ -23,7 +23,8 @@ class GemSoundsTest {
             "ENTITY_WARDEN_SONIC_BOOM", Set.of("flux", "auratus"),
             "ENTITY_ENDERMAN_TELEPORT", Set.of("astra", "relay"),
             "BLOCK_BEACON_DEACTIVATE", Set.of("general", "relay"),
-            "BLOCK_AMETHYST_BLOCK_RESONATE", Set.of("astra", "auratus")); // Astra's daggers-summon, as asked
+            "BLOCK_AMETHYST_BLOCK_RESONATE", Set.of("astra", "auratus"), // Astra's daggers-summon, as asked
+            "BLOCK_AMETHYST_BLOCK_CHIME", Set.of("relay", "life")); // Life's blessing, as asked
     private static final List<String> BANNED = List.of("ENTITY_ELDER_GUARDIAN_CURSE", "ENTITY_WITHER_SPAWN",
             "ENTITY_LIGHTNING_BOLT_THUNDER", "BLOCK_PORTAL_TRAVEL", "ENTITY_EXPERIENCE_ORB_PICKUP");
 

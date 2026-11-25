@@ -25,8 +25,8 @@ public class GemManager {
     private final Plugin plugin;
     /** Which lore lettering and lore version a gem was last written in, so styleLore only rebuilds on a change. */
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
-    /** Bump when gem lore text changes, so existing gems rebuild their lore once (8: Astra's new controls). */
-    private static final int LORE_VERSION = 8;
+    /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
+    private static final int LORE_VERSION = 9;
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -367,14 +367,14 @@ public class GemManager {
             lore.add("§7— Bonus Absorption");
             lore.add("§7— Wither Immune");
             lore.add("§c● §bABILITY");
-            lore.add("§7— §dVitality Vortex");
+            lore.add("§7— §dVitality Vortex §8[Offhand: right-click, anywhere]");
             lore.add("§c● §bPOWERS");
             if (tier >= 2) {
                 lore.add("§7— §c♥ HEART DRAINER §c🔥");
                 lore.add("§7— §c♥ HEARTLOCK §c🔥");
                 lore.add("");
-                lore.add("§7— §d☯ CIRCLE OF LIFE §a〰");
-                lore.add("§7— §d☯ CIRCLE OF LIFE §a〰");
+                lore.add("§7— §d☯ CIRCLE OF LIFE §a〰 §8[Right-click an enemy: steal 5 hearts]");
+                lore.add("§7— §d☯ CIRCLE OF LIFE §a〰 §8[Right-click: bless your side]");
             } else {
                 lore.add("§8Unknown");
             }

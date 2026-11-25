@@ -62,33 +62,33 @@ class FireTest {
 
     @Test void onlyNaturalBlocksChange() {
         for (String m : new String[] {"GRASS_BLOCK", "DIRT", "PODZOL", "MOSS_BLOCK", "SAND", "GRAVEL", "STONE", "DEEPSLATE", "GRANITE",
-                "TUFF", "OAK_LOG", "SPRUCE_LOG"}) assertTrue(CrispMath.eligible(m, false, false), m);
-        assertTrue(CrispMath.eligible("OAK_LEAVES", false, false), "leaves that grew there");
-        assertFalse(CrispMath.eligible("OAK_LEAVES", false, true), "leaves someone placed");
+                "TUFF", "OAK_LOG", "SPRUCE_LOG"}) assertTrue(LandMath.eligible(m, false, false), m);
+        assertTrue(LandMath.eligible("OAK_LEAVES", false, false), "leaves that grew there");
+        assertFalse(LandMath.eligible("OAK_LEAVES", false, true), "leaves someone placed");
         for (String m : new String[] {"CHEST", "WHITE_BED", "OAK_DOOR", "REDSTONE_WIRE", "OAK_SIGN", "WHITE_BANNER", "PLAYER_HEAD",
                 "BEDROCK", "OAK_PLANKS", "COBBLESTONE", "STONE_BRICKS", "DIAMOND_ORE", "STRIPPED_OAK_LOG", "GLASS", "NETHERRACK", "LAVA", "WATER"})
-            assertFalse(CrispMath.eligible(m, false, false), m);
-        assertFalse(CrispMath.eligible("GRASS_BLOCK", true, false), "anything with a block entity, whatever it is");
-        assertTrue(CrispMath.plant("SHORT_GRASS") && CrispMath.plant("POPPY"));
-        assertFalse(CrispMath.plant("TALL_GRASS"), "a double plant: the block under it is left alone");
-        assertTrue(CrispMath.waterPlant("SEAGRASS") && CrispMath.waterPlant("KELP_PLANT"));
+            assertFalse(LandMath.eligible(m, false, false), m);
+        assertFalse(LandMath.eligible("GRASS_BLOCK", true, false), "anything with a block entity, whatever it is");
+        assertTrue(LandMath.plant("SHORT_GRASS") && LandMath.plant("POPPY"));
+        assertFalse(LandMath.plant("TALL_GRASS"), "a double plant: the block under it is left alone");
+        assertTrue(LandMath.waterPlant("SEAGRASS") && LandMath.waterPlant("KELP_PLANT"));
     }
 
     @Test void undergroundMeansASphere() {
-        assertTrue(CrispMath.underground(false, 3), "a cave: no sky, a ceiling 3 up");
-        assertTrue(CrispMath.underground(false, 6));
-        assertFalse(CrispMath.underground(false, 7), "a ceiling further than 6 up: the floor");
-        assertFalse(CrispMath.underground(false, 0), "no ceiling found");
-        assertFalse(CrispMath.underground(true, 2), "you can see the sky");
-        assertTrue(CrispMath.inSphere(3, 3, 2, 5) && !CrispMath.inSphere(3, 3, 3, 5));
+        assertTrue(LandMath.underground(false, 3), "a cave: no sky, a ceiling 3 up");
+        assertTrue(LandMath.underground(false, 6));
+        assertFalse(LandMath.underground(false, 7), "a ceiling further than 6 up: the floor");
+        assertFalse(LandMath.underground(false, 0), "no ceiling found");
+        assertFalse(LandMath.underground(true, 2), "you can see the sky");
+        assertTrue(LandMath.inSphere(3, 3, 2, 5) && !LandMath.inSphere(3, 3, 3, 5));
     }
 
     @Test void patchesTakeTheShareAndDifferEveryCast() {
         List<double[]> cells = new ArrayList<>();
-        for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) if (CrispMath.inDisc(dx, dz, 5)) cells.add(new double[] {dx, 0, dz});
+        for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) if (LandMath.inDisc(dx, dz, 5)) cells.add(new double[] {dx, 0, dz});
         double[] weights = {40, 12, 12, 10, 8, 8, 5, 5};
-        int[] a = CrispMath.patches(cells, 0.45, 5, false, weights, new Random(1));
-        int[] b = CrispMath.patches(cells, 0.45, 5, false, weights, new Random(2));
+        int[] a = LandMath.patches(cells, 0.45, 5, false, weights, new Random(1));
+        int[] b = LandMath.patches(cells, 0.45, 5, false, weights, new Random(2));
         int na = 0, diff = 0;
         for (int i = 0; i < cells.size(); i++) {
             if (a[i] >= 0) na++;
@@ -160,13 +160,13 @@ class FireTest {
         world.put("2:64:0", "minecraft:stone");
         world.put("1:65:0", "minecraft:air");
         world.put("3:64:0", "minecraft:water[level=0]");
-        CrispLedger l = new CrispLedger();
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.LAND, 0, 64, 0, "NETHERRACK", world.get("0:64:0")));
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.LAND, 1, 64, 0, "MAGMA_BLOCK", world.get("1:64:0")));
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.LAND, 2, 64, 0, "BASALT", world.get("2:64:0")));
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.PIT, 2, 64, 0, "LAVA", "minecraft:basalt[axis=y]")); // a pit on a turned block
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.FIRE, 1, 65, 0, "FIRE", world.get("1:65:0")));
-        l.add(new CrispLedger.Entry(CrispLedger.Phase.WATER, 3, 64, 0, "AIR", world.get("3:64:0")));
+        LandLedger l = new LandLedger();
+        l.add(new LandLedger.Entry(LandLedger.Phase.LAND, 0, 64, 0, "NETHERRACK", world.get("0:64:0")));
+        l.add(new LandLedger.Entry(LandLedger.Phase.LAND, 1, 64, 0, "MAGMA_BLOCK", world.get("1:64:0")));
+        l.add(new LandLedger.Entry(LandLedger.Phase.LAND, 2, 64, 0, "BASALT", world.get("2:64:0")));
+        l.add(new LandLedger.Entry(LandLedger.Phase.PIT, 2, 64, 0, "LAVA", "minecraft:basalt[axis=y]")); // a pit on a turned block
+        l.add(new LandLedger.Entry(LandLedger.Phase.FIRE, 1, 65, 0, "FIRE", world.get("1:65:0")));
+        l.add(new LandLedger.Entry(LandLedger.Phase.WATER, 3, 64, 0, "AIR", world.get("3:64:0")));
         world.put("0:64:0", "minecraft:netherrack");
         world.put("1:64:0", "minecraft:air"); // a player broke this one
         world.put("2:64:0", "minecraft:lava[level=0]");
@@ -189,17 +189,18 @@ class FireTest {
     }
 
     @Test void pendingRestoresSurviveARestart() {
-        CrispLedger l = new CrispLedger();
-        CrispLedger.Entry e = new CrispLedger.Entry(CrispLedger.Phase.WATER, -3, 12, 40, "OAK_STAIRS",
+        LandLedger l = new LandLedger();
+        LandLedger.Entry e = new LandLedger.Entry(LandLedger.Phase.WATER, -3, 12, 40, "OAK_STAIRS",
                 "minecraft:oak_stairs[facing=north,half=bottom,shape=straight,waterlogged=true]");
         l.add(e);
-        CrispLedger.Entry back = CrispLedger.load(l.saveAll().get(0));
+        LandLedger.Entry back = LandLedger.load(l.saveAll().get(0));
         assertEquals(e, back, "saved and read back the same");
-        assertNull(CrispLedger.load("nonsense"));
-        String land = Files.exists(Path.of("src/main/java/dev/soulbound/CrispLand.java")) ? read("src/main/java/dev/soulbound/CrispLand.java") : "";
+        assertNull(LandLedger.load("nonsense"));
+        String land = read("src/main/java/dev/soulbound/LandWorks.java");
         assertTrue(land.contains("void start()") && land.contains("restoreNow("), "on start, land a restart left changed goes back");
+        assertTrue(land.contains("crisp-restore.yml"), "including what the last version saved");
         String plugin = read("src/main/java/dev/soulbound/SoulboundGemsPlugin.java");
-        assertTrue(plugin.contains("crisp.start()") && plugin.contains("crisp.shutdown()"));
+        assertTrue(plugin.contains("land.start()") && plugin.contains("land.shutdown()"));
     }
 
     @Test void theCrispConfig() {

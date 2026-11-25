@@ -902,6 +902,7 @@ public class GemListener implements Listener {
     @EventHandler
     public void onBountyQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
+        restoreHearts(p); // a heart lock running out while they're away would never put them back
         bountyOffer.remove(p.getUniqueId());
         boardSlots.remove(p.getUniqueId());
         trackAlertUntil.remove(p.getUniqueId());
@@ -1147,8 +1148,8 @@ public class GemListener implements Listener {
             }
             long rem = cdRemain(p, "circle");
             if (rem > 0) { /* Silenced */ return; }
-            cdStart(p, "circle", cooldownMs("circle", energy));
-            useCircleOfLife(p, energy);
+            cdStart(p, "circle", cooldownMs("circle", energy)); // one cooldown for both versions
+            useCircleOfLife(p, energy, targetedEntity(p, 12));
             return;
         }
 
@@ -1930,7 +1931,15 @@ public class GemListener implements Listener {
     }
 
     /** Plugin disable: the waiting, fading and flying dagger models go (they're never saved, but a reload would leave them). */
+    /** A heart lock ends now (logout, plugin disable): their own max health back. */
+    private void restoreHearts(Player p) {
+        Double orig = heartOrig.remove(p.getUniqueId());
+        heartUntil.remove(p.getUniqueId());
+        if (orig != null) setMaxHealth(p, orig);
+    }
+
     void shutdown() {
+        for (Player p : Bukkit.getOnlinePlayers()) restoreHearts(p);
         for (UUID id : new ArrayList<>(volleys.keySet())) clearAstraDaggers(id);
         for (ItemDisplay d : flyingDaggers) if (d.isValid()) d.remove();
         flyingDaggers.clear();
@@ -2573,22 +2582,26 @@ public class GemListener implements Listener {
 
     // ================= LIFE (user kit, Vortex offhand-only) =================
 
-    private double maxHealthOf(Player p) {
-        var attr = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-        return (attr == null) ? 20.0 : attr.getValue();
-    }
-
     private void setMaxHealth(Player p, double v) {
         var attr = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
         if (attr != null) attr.setBaseValue(v);
         if (p.getHealth() > v) p.setHealth(v);
     }
 
+    /**
+     * The player's own max health, without bonuses (the blessing's +4 hearts, gear): the heart locks set and restore
+     * this, so a bonus is never baked into it for good.
+     */
+    private double baseMaxHealth(Player p) {
+        var attr = p.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        return (attr == null) ? 20.0 : attr.getBaseValue();
+    }
+
     /** Heart lock: cap max HP for a while, then restore the original. */
     private void lockHearts(Player v, double newMax, long durMs) {
         long now = System.currentTimeMillis();
         if (!heartOrig.containsKey(v.getUniqueId())) {
-            heartOrig.put(v.getUniqueId(), maxHealthOf(v));
+            heartOrig.put(v.getUniqueId(), baseMaxHealth(v));
         }
         newMax = Math.max(2.0, Math.min(60.0, newMax));
         setMaxHealth(v, newMax);
@@ -2604,33 +2617,15 @@ public class GemListener implements Listener {
         }, (durMs / 50) + 5);
     }
 
-    /** Vitality Vortex [offhand right-click]: drain nature into buffs, grey the husks. */
+    /**
+     * Vitality Vortex [offhand right-click]: works anywhere. It drains the life out of the land around you (VortexDrain:
+     * patchy dead blocks that grow back) and turns it into Resistance, Regeneration and Absorption, longer and
+     * stronger the more it drained (as before, from 20 s and Resistance I).
+     */
     private void useVitalityVortex(Player p, int tier, int energy) {
-        int radius = 8;
-        int absorbed = 0;
         World w = p.getWorld();
         Location c = p.getLocation();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -3; dy <= 3; dy++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    if (dx * dx + dz * dz > radius * radius) continue;
-                    Block b = c.clone().add(dx, dy, dz).getBlock();
-                    Material m = b.getType();
-                    if (org.bukkit.Tag.LOGS.isTagged(m)) {
-                        b.setType(Material.GRAY_CONCRETE, false);
-                        absorbed++;
-                    } else if (org.bukkit.Tag.LEAVES.isTagged(m) || org.bukkit.Tag.FLOWERS.isTagged(m)) {
-                        b.setType(Material.LIGHT_GRAY_CONCRETE, false);
-                        absorbed++;
-                    }
-                }
-            }
-        }
-        if (absorbed < 5) {
-            p.sendMessage(ChatColor.GRAY + "Vitality Vortex: not enough nature nearby (need logs, leaves, flowers).");
-            cdClear(p, "vortex");
-            return;
-        }
+        int absorbed = plugin.vortex() == null ? 0 : plugin.vortex().drain(p);
         int dur = Math.min(60, 20 + absorbed / 2);
         int resAmp = Math.min(2, absorbed / 25);
         p.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, dur * 20, resAmp));
@@ -2647,7 +2642,7 @@ public class GemListener implements Listener {
         int hit = 0;
         for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
             if (!(e instanceof Player o) || o.getUniqueId().equals(p.getUniqueId()) || isTrusted(p, o)) continue;
-            double base = heartOrig.getOrDefault(o.getUniqueId(), maxHealthOf(o));
+            double base = heartOrig.getOrDefault(o.getUniqueId(), baseMaxHealth(o));
             lockHearts(o, Math.max(2.0, base - 8.0), 20_000L);
             o.sendMessage(ChatColor.RED + "Heart Drainer: -4 hearts for 20s!");
             hit++;
@@ -2656,14 +2651,19 @@ public class GemListener implements Listener {
         usedGroup(p, "Heart Drainer", hit);
     }
 
-    /** Circle of Life [Right Click]: 
-     * No targets in radius -> mends armor only (no penalty).
-     * Targets in radius -> steals 5 hearts from each target, gives 5 to user (30s, max 15 hearts). */
-    private void useCircleOfLife(Player p, int energy) {
+    /**
+     * Circle of Life [Right Click] (LifeMath.circle), both versions mending your armour first:
+     * an untrusted player in front of you -> the steal: 5 hearts from every untrusted player within 12 blocks, 5 to
+     * you for each (30 s, at most 15 hearts);
+     * nobody untrusted in front of you -> the blessing (LifeBlessing): you and your trusted players in the ring get
+     * +4 hearts, full hunger and Regeneration II.
+     */
+    private void useCircleOfLife(Player p, int energy, Player inFront) {
         int radius = 12;
+        boolean steal = LifeMath.circle(inFront != null, inFront != null && isTrusted(p, inFront)) == LifeMath.Circle.STEAL;
         List<Player> targets = new ArrayList<>();
-        for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
-            if (e instanceof Player o && !o.getUniqueId().equals(p.getUniqueId())) targets.add(o);
+        if (steal) for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
+            if (e instanceof Player o && !o.getUniqueId().equals(p.getUniqueId()) && !isTrusted(p, o)) targets.add(o); // never your own side
         }
 
         // Always mend own armor first
@@ -2676,8 +2676,8 @@ public class GemListener implements Listener {
         }
 
         if (targets.isEmpty()) {
-            // No targets: just mended armor, no penalty
-            GemSounds.play(plugin, "life.circle-of-life", p.getLocation());
+            // The blessing: you and your trusted players in the ring
+            if (plugin.blessing() != null) plugin.blessing().cast(p, this::isTrusted);
             p.getWorld().spawnParticle(Particle.HEART, p.getLocation(), 10, 1, 1, 1, 0.05);
             used(p, "Circle of Life");
             return;
@@ -2686,7 +2686,7 @@ public class GemListener implements Listener {
         // Has targets: steal 5 hearts from each, give 5 to user (30s duration)
         int stolenFrom = 0;
         for (Player t : targets) {
-            double targetBase = heartOrig.getOrDefault(t.getUniqueId(), maxHealthOf(t));
+            double targetBase = heartOrig.getOrDefault(t.getUniqueId(), baseMaxHealth(t));
             double targetNewMax = Math.max(2.0, targetBase - 10.0); // lose 5 hearts = 10 HP
             if (!heartOrig.containsKey(t.getUniqueId())) {
                 heartOrig.put(t.getUniqueId(), targetBase);
@@ -2697,7 +2697,7 @@ public class GemListener implements Listener {
         }
 
         // User gains 5 hearts per target (capped at 15 hearts / 30 HP max)
-        double userBase = heartOrig.getOrDefault(p.getUniqueId(), maxHealthOf(p));
+        double userBase = heartOrig.getOrDefault(p.getUniqueId(), baseMaxHealth(p));
         double userGain = stolenFrom * 10.0; // 5 hearts = 10 HP each
         double userNewMax = Math.min(30.0, userBase + userGain); // cap at 15 hearts
         if (!heartOrig.containsKey(p.getUniqueId())) {

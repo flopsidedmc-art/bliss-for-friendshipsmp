@@ -7,11 +7,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Every block one Crisp cast changed, and what it was (CrispTest). Restoring puts each spot back exactly (same block
- * and state) only if it still holds what Crisp put there: a spot a player broke or replaced is left as it is now.
- * Entries are plain strings, so they can be saved and a restart can still put the land back.
+ * Every block one land effect changed (Crisp's fire, Vitality Vortex's drain), and what it was (FireTest, LifeTest).
+ * Restoring puts each spot back exactly (same block and state) only if it still holds what the effect put there: a
+ * spot a player broke or replaced is left as it is now. Entries are plain strings, so they can be saved and a restart
+ * can still put the land back.
  */
-final class CrispLedger {
+final class LandLedger {
     /** The restore order: Crisp's fire goes out first, then the pits, the land, the plants, and the water last. */
     enum Phase { FIRE, PIT, LAND, PLANT, WATER }
 

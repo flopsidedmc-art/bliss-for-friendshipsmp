@@ -111,11 +111,13 @@ sounds:
     item-lock: {event: BLOCK_CHEST_LOCKED, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_IRON_TRAPDOOR_CLOSE, volume: 0.8, pitch: 0.7}}
     rich-rush: {event: BLOCK_VAULT_INSERT_ITEM, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_CHAIN_STEP, volume: 0.6, pitch: 2.0}}
     amplification: {event: BLOCK_ENCHANTMENT_TABLE_USE, volume: 1.0, pitch: 1.2, enabled: true}
-  life: # Life: growth (no Warden, amethyst or anvil)
+  life: # Life: growth (no Warden or anvil; the blessing's amethyst chime as asked)
     heart-drainer: {event: BLOCK_AZALEA_LEAVES_BREAK, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 1.2}}
     circle-of-life: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: BLOCK_SWEET_BERRY_BUSH_PICK_BERRIES, volume: 0.7, pitch: 1.3}}
     vitality-vortex: {event: ENTITY_EVOKER_CAST_SPELL, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_BUBBLE_COLUMN_WHIRLPOOL_INSIDE, volume: 0.7, pitch: 1.0}}
     siphon: {event: ITEM_BONE_MEAL_USE, volume: 0.9, pitch: 0.8, enabled: true}  # the tier 1 power
+    blessing: {event: BLOCK_AMETHYST_BLOCK_CHIME, volume: 0.8, pitch: 1.2, enabled: true, layer: {event: ENTITY_PLAYER_LEVELUP, volume: 0.35, pitch: 1.8}}  # Circle of Life with no enemy in front of you
+    regrow: {event: BLOCK_AZALEA_LEAVES_PLACE, volume: 0.8, pitch: 1.0, enabled: true}  # the land Vitality Vortex drained growing back
   heretic: # Heretic: gore, sculk (the only gem with the Warden heartbeat)
     bloodsaws: {event: BLOCK_GRINDSTONE_USE, volume: 1.0, pitch: 1.4, enabled: true, layer: {event: ENTITY_PLAYER_ATTACK_SWEEP, volume: 0.9, pitch: 0.6}}
     bloodsaw-hit: {event: ENTITY_PLAYER_ATTACK_SWEEP, volume: 0.8, pitch: 0.6, enabled: true}  # was a note-block pling at 2.0
@@ -460,6 +462,26 @@ mythics:
       plunge-glyph: "\uE046"
       rising-glyph: "\uE047"
       undertow-glyph: "\uE048"
+
+# Life (Tier 2 Circle of Life and the Vitality Vortex ability).
+life:
+  circle-of-life:
+    # Right-click with an untrusted player in front of you: steal 5 hearts (from every untrusted player within 12
+    # blocks), as before. Anything else (the air, a block, nobody, a friend): the blessing. One cooldown for both.
+    blessing:
+      radius: 6 # the pink ring around you; you and every trusted player inside it when it's cast are blessed
+      seconds: 30 # +4 hearts this long; never stacking, and gone on death, logout and restart
+      regeneration-seconds: 10 # Regeneration II (and full hunger and saturation)
+  vitality-vortex:
+    # Works anywhere (no nature needed): Resistance, Regeneration and Absorption, longer and stronger the more it drains.
+    drain: true # false: the land is left alone
+    drain-radius: 5 # the ground around you; underground (no sky, a ceiling within 6 blocks) a sphere: floor, walls and ceiling
+    drain-chance: 0.45 # the share of eligible blocks drained, in patches (never a solid circle)
+    dead-blocks: {DEAD_TUBE_CORAL_BLOCK: 6, DEAD_BRAIN_CORAL_BLOCK: 6, DEAD_BUBBLE_CORAL_BLOCK: 6, DEAD_FIRE_CORAL_BLOCK: 6, DEAD_HORN_CORAL_BLOCK: 6, ANDESITE: 14, TUFF: 14, GRAVEL: 12, COARSE_DIRT: 16, COBBLESTONE: 14} # by weight
+    restore-after-seconds: 30 # then it all grows back exactly as it was (a spot a player changed is left as it is)
+    # Plants on drained ground wither (a dead bush, or gone); drained leaves vanish. Only natural blocks, never anything
+    # built or with a block entity, never a capture point, Rift blocked area or the finale's arena, and never a block
+    # that holds back water or lava. Breaking a drained block drops its dead version.
 
 # The Prophet: Auratus and Heretic don't go in boxes. One tick after a player puts one in any container (a chest, an
 # ender chest, a shulker, a barrel, a hopper, a dropper, a dispenser, a crafter, a furnace, a bundle, an item frame, an
