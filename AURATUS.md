@@ -13,14 +13,16 @@ The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt undern
 | Sneak + right-click | Aegis, even while a hook is in |
 | Sneak + left-click, 4+ blocks up | **Gilded Slam** (sneak + chain in the air) |
 | Swap hands (F), while a hook is in a creature | **Haul them to you** |
-| Q (drop key), while a chain is out | **Let go**: the hook reels back. Before it bites anything the charge comes back; after, it's spent |
+| Swap hands (F), while a chain is out and nothing is hooked | **Let go**: the hook reels back. Before it bites anything the charge comes back; after, it's spent. Flying to the hook: you let go and keep your momentum |
+| Q (drop key) | Drops the gem: Auratus isn't soulbound any more and can be handed to someone. A chain that's out goes with it |
 
 | Gem in **off hand** | What it does |
 |---|---|
 | Right-click | Throw a chain, or, while a hook is in, go to the hook |
 | Sneak + right-click | Aegis on the ground; Gilded Slam when 4+ blocks up |
 | Swap hands (F), while a hook is in a creature | Haul them to you |
-| Q (drop key), while a chain is out | Let go: the hook reels back. Before it bites anything the charge comes back; after, it's spent |
+| Swap hands (F), while a chain is out and nothing is hooked | Let go: the hook reels back. Before it bites anything the charge comes back; after, it's spent |
+| Q (drop key) | Drops the gem. A chain that's out goes with it |
 
 ### The combos (hidden, not in the lore)
 

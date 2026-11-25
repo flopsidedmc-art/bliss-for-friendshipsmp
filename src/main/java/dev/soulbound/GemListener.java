@@ -543,61 +543,43 @@ public class GemListener implements Listener {
 
         // Bliss-style HUD: no gem name. Each entry is one ability's own icon followed by that
         // ability's own status, so nothing on the bar repeats and no two entries share a timer.
+        // Tier 2: left-click power, the ability, right-click power (HudStatus.gemBar). Tier 1: the ability only. Each
+        // entry is built with its own icon and its own timer first, so reordering never moves a timer to another icon.
         boolean t2 = tier >= 2;
+        String ability = abilityIcon(type, tier);
         List<String> bar = new ArrayList<>();
         switch (type) {
-            case STRENGTH -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "nullify"), false));
-                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "chad"), chadUntil.getOrDefault(id, 0L) > now));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "bounty"), false));
-            }
-            case FIRE -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "fireball"), fireballChargeStart.containsKey(id)));
-                    bar.add(hudEntry(icon(type, "right"), remain(cozyCooldown, id), isLiveCampfire(id, now)));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "crisp"), false));
-            }
-            case SPEED -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "blur"), blurRuns.containsKey(id)));
-                    bar.add(ChargePools.hud(plugin, p, "storm", icon(type, "right")));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "thunderstep"), false));
-            }
-            case WEALTH -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "itemlock"), false));
-                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "richrush"), richRushUntil.getOrDefault(id, 0L) > now));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "pockets"), pockets.containsKey(id)
-                        && p.getOpenInventory() != null && p.getOpenInventory().getTopInventory().equals(pockets.get(id))));
-            }
-            case PUFF -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "bash"), false));
-                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "dash"), false));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "doublejump"), false));
-            }
-            case ASTRA -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "daggers"), false));
-                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "projection"), projectionBody.containsKey(id)));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "drift"), unboundedHost.containsKey(id)));
-            }
-            case LIFE -> {
-                if (t2) {
-                    bar.add(hudEntry(icon(type, "left"), cdRemain(p, "heartdrainer"), false));
-                    bar.add(hudEntry(icon(type, "right"), cdRemain(p, "circle"), false));
-                }
-                bar.add(hudEntry(icon(type, "ability"), cdRemain(p, "vortex"), false));
-            }
+            case STRENGTH -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "nullify"), false),
+                    hudEntry(ability, cdRemain(p, "bounty"), false),
+                    hudEntry(icon(type, "right"), cdRemain(p, "chad"), chadUntil.getOrDefault(id, 0L) > now)));
+            case FIRE -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "fireball"), fireballChargeStart.containsKey(id)),
+                    hudEntry(ability, cdRemain(p, "crisp"), false),
+                    hudEntry(icon(type, "right"), remain(cozyCooldown, id), isLiveCampfire(id, now))));
+            case SPEED -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "blur"), blurRuns.containsKey(id)),
+                    hudEntry(ability, cdRemain(p, "thunderstep"), false),
+                    ChargePools.hud(plugin, p, "storm", icon(type, "right"))));
+            case WEALTH -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "itemlock"), false),
+                    hudEntry(ability, cdRemain(p, "pockets"), pockets.containsKey(id)
+                            && p.getOpenInventory() != null && p.getOpenInventory().getTopInventory().equals(pockets.get(id))),
+                    hudEntry(icon(type, "right"), cdRemain(p, "richrush"), richRushUntil.getOrDefault(id, 0L) > now)));
+            case PUFF -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "bash"), false),
+                    hudEntry(ability, cdRemain(p, "doublejump"), false),
+                    hudEntry(icon(type, "right"), cdRemain(p, "dash"), false)));
+            case ASTRA -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "daggers"), false),
+                    hudEntry(ability, cdRemain(p, "drift"), unboundedHost.containsKey(id)),
+                    hudEntry(icon(type, "right"), cdRemain(p, "projection"), projectionBody.containsKey(id))));
+            case LIFE -> bar.addAll(HudStatus.gemBar(t2,
+                    hudEntry(icon(type, "left"), cdRemain(p, "heartdrainer"), false),
+                    hudEntry(ability, cdRemain(p, "vortex"), false),
+                    hudEntry(icon(type, "right"), cdRemain(p, "circle"), false)));
             case FLUX -> {
-                sendFluxActionbar(p, now);
+                sendFluxActionbar(p, now, tier);
                 return;
             }
             default -> {
@@ -615,19 +597,20 @@ public class GemListener implements Listener {
         return HudStatus.entry(icon, remainMs, active);
     }
 
-    private void sendFluxActionbar(Player p, long now) {
+    /** Flux: beam, Kinetic Burst (the ability), watts, overdrive at Tier 2; the burst only at Tier 1. */
+    private void sendFluxActionbar(Player p, long now, int tier) {
         UUID id = p.getUniqueId();
         String beam = hudEntry(icon(GemType.FLUX, "left"), remain(fluxBeamCooldown, id), false);
         int charge = fluxOf(fluxCharge, id);
         long burstCooldown = remain(fluxBurstCooldown, id);
-        String burstIcon = icon(GemType.FLUX, "ability");
+        String burstIcon = abilityIcon(GemType.FLUX, tier);
         // Kinetic Burst: a timer while it cools down, then its charge in % (dimmed) until it is full.
         String burst = burstCooldown > 0 ? hudEntry(burstIcon, burstCooldown, false)
                 : (charge >= 100 ? hudEntry(burstIcon, 0, false) : "§7" + burstIcon + " §b" + charge + "%");
         String watts = "§f" + tier2Glyph() + " §3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
         String overdrive = hudEntry(icon(GemType.FLUX, "right"), remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
 
-        String msg = beam + "  " + burst + "  " + watts + "  " + overdrive + captureHud(p);
+        String msg = (tier >= 2 ? beam + "  " + burst + "  " + watts + "  " + overdrive : burst) + captureHud(p);
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
     }
 
@@ -668,6 +651,12 @@ public class GemListener implements Listener {
             default -> new String[]{type.powerIcon, type.abilityIcon, type.abilityIcon};
         };
         return icons[index];
+    }
+
+    /** The ability's crystal for this tier: actionbar.icons.<GEM>.ability (Tier 1) or ability-tier2 (HudStatus.abilityIcon). */
+    private String abilityIcon(GemType type, int tier) {
+        return HudStatus.abilityIcon(type, tier, icon(type, "ability"),
+                plugin.getConfig().getString("actionbar.icons." + type.name() + ".ability-tier2", ""));
     }
 
     /** Chad dots: 3 black dots ahead of the player; each crit turns one red. */
@@ -1402,9 +1391,44 @@ public class GemListener implements Listener {
             double max = Math.max(min, Math.min(8.0, plugin.getConfig().getDouble("fire.fireball.explosion-power-max", 3.0)));
             fireballPower.put(fb.getUniqueId(), (float) (min + (max - min) * level));
         }
+        if (plugin.getConfig().getBoolean("fire.fireball.model.enabled", true)) fireballModel(fb, level);
         GemSounds.play(plugin, "fire.fireball-launch", p.getLocation());
         used(p, "Fireball");
         cdStart(p, "fireball", cooldownMs("fireball", energy));
+    }
+
+    /**
+     * The fireball's look (fire.fireball.model): a fire charge sized by the charge it was fired with, the same size
+     * for its whole flight. The vanilla small fireball is hidden under it so there aren't two, and a little smoke
+     * follows it (the vanilla trail is drawn by the client only for a fireball it can see). Visual only: the fireball
+     * itself, its damage, speed, range, explosion and cooldown are untouched.
+     */
+    private void fireballModel(org.bukkit.entity.SmallFireball fb, double level) {
+        double min = plugin.getConfig().getDouble("fire.fireball.model.scale-min", 0.75);
+        double max = Math.max(min, plugin.getConfig().getDouble("fire.fireball.model.scale-max", 1.5));
+        float scale = (float) FireballLook.scale(level, min, max);
+        fb.setVisibleByDefault(false);
+        ItemDisplay model = fb.getWorld().spawn(fb.getLocation(), ItemDisplay.class, d -> {
+            d.setItemStack(new ItemStack(Material.FIRE_CHARGE));
+            d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
+            d.setBillboard(Display.Billboard.CENTER);
+            d.setBrightness(new Display.Brightness(15, 15));
+            d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(scale, scale, scale), new Quaternionf()));
+            d.setTeleportDuration(1);
+            d.setPersistent(false);
+        });
+        new org.bukkit.scheduler.BukkitRunnable() {
+            private int age;
+            @Override public void run() {
+                if (!fb.isValid() || !model.isValid() || ++age > 20 * 60) { // hit, gone, or a minute out
+                    if (model.isValid()) model.remove();
+                    cancel();
+                    return;
+                }
+                model.teleport(fb.getLocation());
+                fb.getWorld().spawnParticle(Particle.SMOKE, fb.getLocation(), 1, 0.05, 0.05, 0.05, 0.0);
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
     }
 
     /** Charge level 0..1 after holding for {@code elapsed} ms. Shared by the bossbar and the release. */
@@ -3613,6 +3637,7 @@ public class GemListener implements Listener {
         if (!plugin.getConfig().getBoolean("protection.prevent-drop", true)) return;
         ItemStack dropped = e.getItemDrop().getItemStack();
         if (!gems.isGem(dropped)) return;
+        if (LooseMythics.droppable(gems, dropped)) return; // Auratus and Heretic can be dropped and handed over now
         if (plugin.finale() != null && plugin.finale().claimsDrop(e.getPlayer(), dropped)) return; // a pedestal drop: the finale's alone
         // Flux T2: dropping the gem converts banked ore energy into wattage (gem stays soulbound)
         if (gems.getType(dropped) == GemType.FLUX && gems.getTier(dropped) >= 2) {
@@ -3640,7 +3665,10 @@ public class GemListener implements Listener {
                 || t == InventoryType.HOPPER || t == InventoryType.DISPENSER || t == InventoryType.DROPPER;
         if (!isContainer) return;
         ItemStack moving = e.getCurrentItem();
-        if (gems.isGem(moving) || gems.isGem(e.getCursor())) {
+        // Auratus and Heretic are the Prophet's: they go in and he pulls them back out (Prophet)
+        boolean normal = gems.isGem(moving) && !LooseMythics.droppable(gems, moving)
+                || gems.isGem(e.getCursor()) && !LooseMythics.droppable(gems, e.getCursor());
+        if (normal) {
             e.setCancelled(true);
             if (e.getWhoClicked() instanceof Player p) p.sendMessage(ChatColor.RED + "Gems cannot be stored in containers.");
         }

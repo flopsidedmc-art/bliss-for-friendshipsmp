@@ -56,17 +56,15 @@ class FinaleDropTest {
 
         // the plugin's listeners, as they decide
         final Consumer<Event> anotherPlugin = e -> e.cancelled = true; // cancels every drop, ours included
-        final Consumer<Event> auratusRelease = e -> { // AuratusGem.onRelease, LOWEST
-            if (e.item.gem != GemType.AURATUS || !chainOut) return;
+        final Consumer<Event> soulbound = e -> { // GemListener.onDrop, NORMAL: Auratus and Heretic aren't soulbound any more
+            if (e.item.gem == null || e.item.gem == GemType.AURATUS || e.item.gem == GemType.HERETIC) return;
             if (dropPhase && PedestalDrop.owns(facts(e.item))) return;
             e.cancelled = true;
+        };
+        final Consumer<Event> auratusDropped = e -> { // AuratusGem.onDropped, MONITOR, ignoreCancelled: the chain goes with the gem
+            if (e.cancelled || e.item.gem != GemType.AURATUS || !chainOut) return;
             chainOut = false;
             releases++;
-        };
-        final Consumer<Event> soulbound = e -> { // GemListener.onDrop, NORMAL
-            if (e.item.gem == null) return;
-            if (dropPhase && PedestalDrop.owns(facts(e.item))) return;
-            e.cancelled = true;
         };
         final Consumer<Event> finale = e -> { // Finale.onDrop, HIGHEST
             boolean couldNotReturn = firstFreeStorage() < 0;
@@ -74,12 +72,12 @@ class FinaleDropTest {
             PedestalDrop.Verdict v = drops.onDrop(type, facts(e.item), () -> e.cancelled = true,
                     () -> e.item.token = UUID.randomUUID().toString(), couldNotReturn);
             if (v == PedestalDrop.Verdict.CLAIMED) nextTick.add(() -> {
-                if (drops.settle(type, dropPhase, placed(type), this::take)) pedestal.merge(type, 1, Integer::sum);
+                if (drops.settle(type, dropPhase, placed(type), this::take, this::strip)) pedestal.merge(type, 1, Integer::sum);
             });
         };
         final Consumer<Event> uncancels = e -> e.cancelled = false; // a badly behaved plugin after everyone
 
-        List<Consumer<Event>> listeners = new ArrayList<>(List.of(anotherPlugin, auratusRelease, soulbound, finale));
+        List<Consumer<Event>> listeners = new ArrayList<>(List.of(anotherPlugin, soulbound, finale, auratusDropped));
 
         int firstFreeStorage() {
             for (int i = 0; i < 36; i++) if (slots[i] == null) return i;
@@ -129,6 +127,22 @@ class FinaleDropTest {
             return ground.removeIf(s -> token.equals(s.token));
         }
 
+        /** Finale.find without taking: the stack stays where it is and only the id comes off. */
+        void strip(String token) {
+            for (Stack s : slots) if (s != null && token.equals(s.token)) s.token = null;
+            if (cursor != null && token.equals(cursor.token)) cursor.token = null;
+            for (Stack s : ground) if (token.equals(s.token)) s.token = null;
+        }
+
+        /** Every gem of this type that still carries a pedestal id, wherever it is. */
+        int stamped(GemType t) {
+            int n = 0;
+            for (Stack s : slots) if (s != null && s.gem == t && s.token != null) n++;
+            if (cursor != null && cursor.gem == t && cursor.token != null) n++;
+            for (Stack s : ground) if (s.gem == t && s.token != null) n++;
+            return n;
+        }
+
         int inInventory(GemType t) {
             int n = 0;
             for (Stack s : slots) if (s != null && s.gem == t) n++;
@@ -152,9 +166,10 @@ class FinaleDropTest {
     @Test void theOldHandlerDuplicated() {
         Sim s = new Sim();
         s.slots[0] = new Stack(GemType.AURATUS);
-        // the old Finale.onDrop: no priority, didn't look at cancelled, removed the drop entity and placed
-        s.listeners = new ArrayList<>(List.of(s.soulbound, e -> { if (s.facts(e.item).mergeGem()) s.pedestal.merge(e.item.gem, 1, Integer::sum); }));
-        s.dropPhase = false; // so the soulbound rule acts the old way, as if Finale didn't claim anything
+        // the old rules: every gem soulbound, and the old Finale.onDrop (no priority, didn't look at cancelled, removed the
+        // drop entity and placed)
+        Consumer<Event> oldSoulbound = e -> { if (e.item.gem != null) e.cancelled = true; };
+        s.listeners = new ArrayList<>(List.of(oldSoulbound, e -> { if (s.facts(e.item).mergeGem()) s.pedestal.merge(e.item.gem, 1, Integer::sum); }));
         s.pressQ();
         assertEquals(1, s.onPedestal(GemType.AURATUS));
         assertEquals(1, s.inInventory(GemType.AURATUS), "the bug: given back as well");
@@ -168,19 +183,21 @@ class FinaleDropTest {
             assertEquals(0, s.onPedestal(t), "not before the next tick");
             s.tick();
             exactlyOnPedestal(s, t, t + ", another plugin cancelled it first");
-            assertEquals(0, s.releases, "the Q release stayed out of it");
+            assertEquals(0, s.releases, "Q at the pedestal doesn't release a chain (Finale puts it away once the gem is placed)");
         }
     }
 
     @Test void inAnyListenerOrder() {
-        // Bukkit runs Finale (HIGHEST) last, but the result mustn't depend on that: all 24 orders of the four listeners,
-        // with and without another plugin cancelling, and with and without a plugin un-cancelling afterwards
-        for (List<Integer> order : permutations(List.of(0, 1, 2, 3))) for (boolean rogue : new boolean[] {false, true}) for (boolean other : new boolean[] {false, true}) {
+        // Bukkit runs Finale (HIGHEST) after the others, but the result mustn't depend on that: every order of the
+        // listeners that decide, with and without another plugin cancelling, and with and without a plugin un-cancelling
+        // afterwards; Auratus' MONITOR listener always runs last
+        for (List<Integer> order : permutations(List.of(0, 1, 2))) for (boolean rogue : new boolean[] {false, true}) for (boolean other : new boolean[] {false, true}) {
             Sim s = new Sim();
-            List<Consumer<Event>> all = List.of(s.anotherPlugin, s.auratusRelease, s.soulbound, s.finale);
+            List<Consumer<Event>> all = List.of(s.anotherPlugin, s.soulbound, s.finale);
             s.listeners = new ArrayList<>();
             for (int k : order) if (other || k != 0) s.listeners.add(all.get(k));
             if (rogue) s.listeners.add(s.uncancels);
+            s.listeners.add(s.auratusDropped);
             s.slots[0] = new Stack(GemType.AURATUS);
             s.pressQ();
             s.tick();
@@ -240,19 +257,21 @@ class FinaleDropTest {
         s.pressQ();
         s.tick();
         assertEquals(0, s.onPedestal(GemType.AURATUS));
-        assertEquals(1, s.inInventory(GemType.AURATUS));
-        assertEquals(1, s.releases, "away from the pedestal, Q still lets go of the chain");
+        assertEquals(1, s.inInventory(GemType.AURATUS), "during the finale, the merge gems only go on their pedestals");
+        assertEquals(0, s.releases, "a refused drop: the gem is still in hand, and so is its chain");
     }
 
-    @Test void outsideTheFinale() {
+    @Test void outsideTheFinaleQDropsIt() {
         Sim s = new Sim();
+        s.listeners.remove(s.anotherPlugin); // just this plugin's own rules
         s.dropPhase = false;
         s.slots[0] = new Stack(GemType.AURATUS);
         s.pressQ();
         s.tick();
-        assertEquals(1, s.inInventory(GemType.AURATUS), "gems can't be dropped");
-        assertEquals(0, s.onGround(GemType.AURATUS));
-        assertEquals(1, s.releases, "Q releases the chain");
+        assertEquals(0, s.inInventory(GemType.AURATUS));
+        assertEquals(1, s.onGround(GemType.AURATUS), "Auratus isn't soulbound any more: one copy, on the ground");
+        assertEquals(1, s.releases, "and the chain that was out goes with it");
+        assertEquals(0, s.stamped(GemType.AURATUS));
     }
 
     @Test void theFinaleEndingBeforeTheNextTickLeavesItWithThePlayer() {
@@ -263,6 +282,44 @@ class FinaleDropTest {
         s.tick();
         assertEquals(0, s.onPedestal(GemType.HERETIC));
         assertEquals(1, s.inInventory(GemType.HERETIC));
+    }
+
+    @Test void aGemThatGoesBackHasNoIdLeft() {
+        Sim ended = new Sim(); // the finale ended (or was stopped) before the next tick
+        ended.slots[0] = new Stack(GemType.AURATUS);
+        ended.pressQ();
+        assertEquals(1, ended.stamped(GemType.AURATUS), "stamped while it waits");
+        ended.dropPhase = false;
+        ended.tick();
+        assertEquals(1, ended.inInventory(GemType.AURATUS));
+        assertEquals(0, ended.stamped(GemType.AURATUS), "finale over: back with the player, id gone");
+
+        Sim far = new Sim(); // walked away from the pedestal: never stamped
+        far.near = false;
+        far.slots[0] = new Stack(GemType.HERETIC);
+        far.pressQ();
+        far.tick();
+        assertEquals(1, far.inInventory(GemType.HERETIC));
+        assertEquals(0, far.stamped(GemType.HERETIC));
+
+        Sim lost = new Sim(); // couldn't take it back: it went somewhere take() doesn't look (another player picked it up, say)
+        lost.slots[0] = new Stack(GemType.AURATUS);
+        lost.pressQ();
+        Stack elsewhere = lost.slots[0];
+        lost.slots[0] = null;
+        lost.tick();
+        assertEquals(0, lost.onPedestal(GemType.AURATUS), "not placed: it isn't here to take");
+        assertNotNull(elsewhere.token, "that copy was out of reach this tick");
+        lost.slots[5] = elsewhere; // and when it is found later, nothing places it twice
+        assertEquals(0, lost.onPedestal(GemType.AURATUS));
+
+        Sim spam = new Sim(); // Q spammed, then the finale ended before the tick
+        spam.slots[0] = new Stack(GemType.HERETIC);
+        for (int i = 0; i < 5; i++) spam.pressQ();
+        spam.dropPhase = false;
+        spam.tick();
+        assertEquals(1, spam.inInventory(GemType.HERETIC));
+        assertEquals(0, spam.stamped(GemType.HERETIC), "one id, and it came off");
     }
 
     @Test void aWaitingDropIsLeftToItself() {
@@ -282,9 +339,12 @@ class FinaleDropTest {
         assertTrue(finale.contains("@EventHandler(priority = EventPriority.HIGHEST)\n    public void onDrop(PlayerDropItemEvent e)"));
         assertTrue(finale.contains("drops.onDrop(") && finale.contains("drops.settle("));
         assertFalse(finale.contains("getItemDrop().remove()"), "the gem is never placed straight from the event");
-        assertTrue(slice(auratus, "public void onRelease(").contains("claimsDrop("));
-        assertTrue(slice(auratus, "public void onRelease(").contains("isAuratus(dropped)"), "Q has already emptied the hand");
-        assertTrue(slice(listener, "public void onDrop(PlayerDropItemEvent e)").contains("claimsDrop("));
+        assertFalse(auratus.contains("public void onRelease("), "the chain release is on F now");
+        assertTrue(auratus.contains("@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)\n    public void onDropped(PlayerDropItemEvent e)"),
+                "a drop the finale claimed (cancelled) never reaches Auratus");
+        assertTrue(slice(auratus, "public void onSwapHands(").contains("letGo(p)"), "F with nothing hooked lets go");
+        String drop = slice(listener, "public void onDrop(PlayerDropItemEvent e)");
+        assertTrue(drop.contains("claimsDrop(") && drop.contains("LooseMythics.droppable("));
         assertTrue(slice(finale, "private void place(GemType type, String who)").contains("return;"), "never placed twice");
     }
 

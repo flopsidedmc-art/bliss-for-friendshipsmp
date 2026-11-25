@@ -585,7 +585,6 @@ public final class Finale implements Listener {
         pedHeretic = null;
         placedAuratus = false;
         placedHeretic = false;
-        drops.clear();
         bothAt = -1;
         dropTicks = 0;
     }
@@ -611,6 +610,13 @@ public final class Finale implements Listener {
 
     private void guideHolders() {
         for (Player p : Bukkit.getOnlinePlayers()) {
+            PlayerInventory inv = p.getInventory();
+            ItemStack[] all = inv.getContents();
+            for (int i = 0; i < all.length; i++) { // a stray pedestal id (the gem changed hands that tick, say) comes off
+                if (!anyStamp(all[i])) continue;
+                String token = all[i].getItemMeta().getPersistentDataContainer().get(dropKey, PersistentDataType.STRING);
+                if (token == null || !drops.waiting(token)) inv.setItem(i, unstamped(all[i]));
+            }
             for (ItemStack it : p.getInventory().getContents()) {
                 if (!isMergeGem(it)) continue;
                 boolean aur = gems.getType(it) == GemType.AURATUS;
@@ -684,7 +690,7 @@ public final class Finale implements Listener {
 
     /**
      * True while the finale alone handles this drop: a merge gem dropped near its pedestal before it's placed. The
-     * Auratus Q release and the "gems can't be dropped" rule check this and stay out of it.
+     * "gems can't be dropped" rule checks this and stays out of it (the Auratus chain release is on F now, not Q).
      */
     public boolean claimsDrop(Player p, ItemStack st) {
         return p != null && phase == Phase.DROP && PedestalDrop.owns(facts(p, st));
@@ -713,7 +719,7 @@ public final class Finale implements Listener {
     /** The tick after a claimed drop: the server has given the gem back by now, so take exactly it out, then place it. */
     private void settleDrop(Player p, GemType type) {
         boolean placed = type == GemType.AURATUS ? placedAuratus : placedHeretic;
-        if (!drops.settle(type, phase == Phase.DROP, placed, token -> take(p, token))) return;
+        if (!drops.settle(type, phase == Phase.DROP, placed, token -> find(p, token, true), token -> find(p, token, false))) return;
         place(type, p.getName());
         if (type == GemType.AURATUS && p.isOnline() && plugin.auratus() != null) plugin.auratus().letGo(p); // a chain that's out goes with it
     }
@@ -735,27 +741,52 @@ public final class Finale implements Listener {
                 && token.equals(it.getItemMeta().getPersistentDataContainer().get(dropKey, PersistentDataType.STRING));
     }
 
+    private boolean anyStamp(ItemStack it) {
+        return it != null && it.hasItemMeta() && it.getItemMeta().getPersistentDataContainer().has(dropKey, PersistentDataType.STRING);
+    }
+
+    /** The same gem without its one-time id. */
+    private ItemStack unstamped(ItemStack it) {
+        ItemMeta m = it.getItemMeta();
+        m.getPersistentDataContainer().remove(dropKey);
+        it.setItemMeta(m);
+        return it;
+    }
+
     /**
-     * Removes the one stack carrying {@code token}: any slot of the player's inventory (hotbar, storage, armour, off
-     * hand), their cursor, the inventory they have open, or the ground of their world. True if it was found.
+     * Finds the one stack carrying {@code token}: any slot of the player's inventory (hotbar, storage, armour, off
+     * hand), their cursor, the inventory they have open, or the ground of their world. {@code take}: it's removed;
+     * otherwise it stays where it is and only the id comes off. True if it was found.
      */
-    private boolean take(Player p, String token) {
+    private boolean find(Player p, String token, boolean take) {
         if (p.isOnline()) {
             PlayerInventory inv = p.getInventory();
             ItemStack[] c = inv.getContents();
             for (int i = 0; i < c.length; i++) {
-                if (stamped(c[i], token)) { inv.setItem(i, null); return true; }
+                if (stamped(c[i], token)) { inv.setItem(i, take ? null : unstamped(c[i])); return true; }
             }
-            if (stamped(p.getItemOnCursor(), token)) { p.setItemOnCursor(null); return true; }
+            ItemStack cursor = p.getItemOnCursor();
+            if (stamped(cursor, token)) { p.setItemOnCursor(take ? null : unstamped(cursor)); return true; }
             org.bukkit.inventory.Inventory top = p.getOpenInventory().getTopInventory();
             for (int i = 0; i < top.getSize(); i++) {
-                if (stamped(top.getItem(i), token)) { top.setItem(i, null); return true; }
+                ItemStack it = top.getItem(i);
+                if (stamped(it, token)) { top.setItem(i, take ? null : unstamped(it)); return true; }
             }
         }
         for (Item item : p.getWorld().getEntitiesByClass(Item.class)) {
-            if (item.isValid() && stamped(item.getItemStack(), token)) { item.remove(); return true; }
+            if (!item.isValid() || !stamped(item.getItemStack(), token)) continue;
+            if (take) item.remove();
+            else item.setItemStack(unstamped(item.getItemStack()));
+            return true;
         }
         return false;
+    }
+
+    /** Someone who logged off while a drop of theirs was waiting: the one-time id comes off when they're back. */
+    private void unstampAll(Player p) {
+        PlayerInventory inv = p.getInventory();
+        ItemStack[] c = inv.getContents();
+        for (int i = 0; i < c.length; i++) if (anyStamp(c[i])) inv.setItem(i, unstamped(c[i]));
     }
 
     private void dropTick() {
@@ -1494,6 +1525,7 @@ public final class Finale implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
+        unstampAll(p);
         if (skyOn) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (p.isOnline() && skyOn) applySky(p);

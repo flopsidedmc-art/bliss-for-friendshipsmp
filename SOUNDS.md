@@ -77,6 +77,7 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 | Heretic | spore (+ layer) | `BLOCK_SCULK_SPREAD` | 1.0 | 1.0 | everyone near |
 | Heretic | bloodlinking | `ENTITY_WARDEN_HEARTBEAT` | 1.2 | 1.0 | everyone near |
 | Heretic | bloodlink-slam | `ITEM_MACE_SMASH_GROUND_HEAVY` | 1.0 | 0.9 | everyone near |
+| Heretic | spore-pulse (each pulse of the Spore's blood fountain) | `ENTITY_WARDEN_HEARTBEAT` | 0.6 | 0.8 | everyone near |
 | Auratus | chain-throw | `BLOCK_CHAIN_PLACE` | 0.8 | 1.2 | everyone near |
 | Auratus | chain-hook-enemy | `BLOCK_CHAIN_PLACE` | 1.3 | 0.7 | everyone near |
 | Auratus | fly-to-hook | `BLOCK_CHAIN_HIT` | 0.8 | 1.4 | everyone near |
@@ -122,6 +123,7 @@ Every sound a gem plays, from `config.yml` (`sounds.<gem>.<ability>`). Each abil
 | Capture point | step-on | `BLOCK_BEACON_POWER_SELECT` | 0.5 | 1.4 | you only |
 | Capture point | contested (every 2 s at most) | `BLOCK_NOTE_BLOCK_BASS` | 0.35 | 0.6 | players on the point |
 | Capture point | win | `UI_TOAST_CHALLENGE_COMPLETE` | 1.0 | 1.0 | the winner |
+| The Prophet | refuse (with each of his lines, when Auratus or Heretic goes in a container) | `BLOCK_BELL_RESONATE` | 1.0 | 0.5 | you only |
 
 ## Not in this table
 

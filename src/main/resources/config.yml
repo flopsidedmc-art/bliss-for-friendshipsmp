@@ -33,17 +33,18 @@ actionbar:
   show-cooldown: true
   # Bliss-style HUD: one entry per ability, each with its own icon and its own timer.
   # Ready! = green; cooldowns = cyan; active abilities = red Active...
-  # Tier 2 gems show left-click power, right-click power, then the offhand ability. Tier 1 gems show the ability only.
-  # Defaults are Bliss Pack v3.5 font glyphs: the pack's per-ability icons, and the gem's crystal for its ability.
+  # Tier 2 gems show left-click power, the ability, then right-click power (Fire: fireball, crisp, campfire). Tier 1 gems
+  # show the ability only. Defaults are Bliss Pack v3.5 font glyphs: the pack's per-ability icons, and the gem's crystal
+  # for its ability: "ability" is the Tier 1 crystal, "ability-tier2" the Tier 2 one (a config without it uses the pack's).
   icons:
-    ASTRA: { left: "\uA41F", right: "\uA420", ability: "\uA43D" } # daggers, projection, drift
-    FIRE: { left: "\uA425", right: "\uA426", ability: "\uA43F" } # fireball, cozy campfire, crisp
-    FLUX: { left: "\uA427", right: "\uA428", ability: "\uA441" } # energy beam, overdrive, kinetic burst
-    LIFE: { left: "\uA42A", right: "\uA42B", ability: "\uA443" } # heart drainer, circle of life, vortex
-    PUFF: { left: "\uA430", right: "\uA42F", ability: "\uA445" } # breezy bash, dash, double jump
-    SPEED: { left: "\uA433", right: "\uA432", ability: "\uA447" } # blur (injection), speedy storm, thunderstep
-    STRENGTH: { left: "\uA437", right: "\uA436", ability: "\uA449" } # nullify, chad strength, bounty hunter
-    WEALTH: { left: "\uA43B", right: "\uA43C", ability: "\uA44B" } # item lock, rich rush, pockets
+    ASTRA: { left: "\uA41F", right: "\uA420", ability: "\uA43D", ability-tier2: "\uA43E" } # daggers, projection, drift
+    FIRE: { left: "\uA425", right: "\uA426", ability: "\uA43F", ability-tier2: "\uA440" } # fireball, cozy campfire, crisp
+    FLUX: { left: "\uA427", right: "\uA428", ability: "\uA441", ability-tier2: "\uA442" } # energy beam, overdrive, kinetic burst
+    LIFE: { left: "\uA42A", right: "\uA42B", ability: "\uA443", ability-tier2: "\uA444" } # heart drainer, circle of life, vortex
+    PUFF: { left: "\uA430", right: "\uA42F", ability: "\uA445", ability-tier2: "\uA446" } # breezy bash, dash, double jump
+    SPEED: { left: "\uA433", right: "\uA432", ability: "\uA447", ability-tier2: "\uA448" } # blur (injection), speedy storm, thunderstep
+    STRENGTH: { left: "\uA437", right: "\uA436", ability: "\uA449", ability-tier2: "\uA44A" } # nullify, chad strength, bounty hunter
+    WEALTH: { left: "\uA43B", right: "\uA43C", ability: "\uA44B", ability-tier2: "\uA44C" } # item lock, rich rush, pockets
 
 protection:
   keep-on-death: true
@@ -112,6 +113,7 @@ sounds:
     spore: {event: BLOCK_SPORE_BLOSSOM_BREAK, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_SCULK_SPREAD, volume: 1.0, pitch: 1.0}}
     bloodlinking: {event: ENTITY_WARDEN_HEARTBEAT, volume: 1.2, pitch: 1.0, enabled: true}  # on link
     bloodlink-slam: {event: ITEM_MACE_SMASH_GROUND_HEAVY, volume: 1.0, pitch: 0.9, enabled: true}  # each slam
+    spore-pulse: {event: ENTITY_WARDEN_HEARTBEAT, volume: 0.6, pitch: 0.8, enabled: true}  # each pulse of the Spore's blood fountain
   auratus: # Auratus: metal, bells (chains, bells and shields only)
     chain-throw: {event: BLOCK_CHAIN_PLACE, volume: 0.8, pitch: 1.2, enabled: true}  # at you, any hook
     chain-hook-enemy: {event: BLOCK_CHAIN_PLACE, volume: 1.3, pitch: 0.7, enabled: true}  # at the enemy: the heavy clink
@@ -150,8 +152,13 @@ sounds:
     step-on: {event: BLOCK_BEACON_POWER_SELECT, volume: 0.5, pitch: 1.4, enabled: true}  # you only, when you step onto a running point
     contested: {event: BLOCK_NOTE_BLOCK_BASS, volume: 0.35, pitch: 0.6, enabled: true}  # everyone on the point, at most every 2 s while it's contested
     win: {event: UI_TOAST_CHALLENGE_COMPLETE, volume: 1.0, pitch: 1.0, enabled: true}  # the winner only
+  prophet: # The Prophet (prophet: below), not a gem
+    refuse: {event: BLOCK_BELL_RESONATE, volume: 1.0, pitch: 0.5, enabled: true}  # you only, with each of his lines
 
 mythics:
+  # Auratus and Heretic can be dropped (Q) and handed to other players; they still drop on death. On the ground they
+  # never despawn, glow, and can't be destroyed: lava, fire, cactus and the void send them back to whoever last had
+  # them (or to spawn). Hoppers and mobs can't take them. The Relay and the Revenant mace are unchanged.
   enabled: true
   drop-on-death: true
   glow: true # mythic holders glow; standard gems never do
@@ -178,6 +185,13 @@ mythics:
       radius: 4.0
       duration-ms: 8000
       bleed-ms: 8000
+      visuals: # what the field looks like (it does exactly the same either way)
+        fountain: true # a blood fountain at the centre for the whole field; false = the old crimson spores and dust
+        pillar-height: 18.0 # 15-20: the column rising from the ground; under a ceiling it stops there and the top spreads there
+        canopy-radius: 5.0 # how far the wavy top spreads out from the column
+        pulse-seconds: 1.0 # the column surges this often, with a heartbeat (sounds.heretic.spore-pulse)
+        rain: true # blood drips from the top down to the ground across the field
+        particles-per-tick: 100 # at most this many a tick for each field (seen by players within 64 blocks)
     bloodlinking: # [Right-click] launch up and dive. The tick you touch a living entity (rising or diving) it slams right
       # there; a slam that hits anyone bounces you straight back up at once. A slam that hits nobody bounces only if
       # someone is already bloodlinked. No fall damage during it or for 2 s after.
@@ -257,7 +271,7 @@ mythics:
       height: 5.0 # lifted this high (less under a ceiling)
       hold-seconds: 2.5
       ceiling-cap: false # false: under a low ceiling they fly up into it and stay pinned there. true: they stop below it (no lift in a 2-high tunnel)
-    release: # let go of the chain early: Q (the drop key) while a chain is out; dropping the gem is blocked anyway
+    release: # let go of the chain early: swap hands (F) while a chain is out and nothing is hooked (F with a creature hooked hauls it)
       refund-before-hit: true # released (or missed) before the hook bit anything: the charge comes back. Already bitten: spent as normal
     visuals: # firework bursts and sparks; no firework from this plugin can hurt anyone
       chain-travel: true # the hook flies from the hand to what it bites, the links unspooling behind it; it bites when it arrives
@@ -438,6 +452,36 @@ mythics:
       rising-glyph: "\uE047"
       undertow-glyph: "\uE048"
 
+# The Prophet: Auratus and Heretic don't go in boxes. One tick after a player puts one in any container (a chest, an
+# ender chest, a shulker, a barrel, a hopper, a dropper, a dispenser, a crafter, a furnace, a bundle, an item frame, an
+# armor stand, an allay, a decorated pot ...) it's pulled back out to them (at their feet if they're full), the screen
+# dims, a bell rings (sounds.prophet.refuse) and he says the next line. The count is per player and saved in
+# plugins/SoulboundGems/prophet.yml for the whole season: delete that file to start everyone again.
+prophet:
+  enabled: true
+  glyph: "\uE045" # the eye from the pack (lore_eye), in front of each line
+  color: "#B9A7D9" # his voice
+  italic: true
+  line-cooldown-seconds: 2 # at most one line this often per player; tries in between are still pulled out, silently, and don't count
+  return-after-days: 7 # back after this long: that try gets welcome-back instead, then the lines carry on where they were
+  welcome-back: "We have done this before."
+  keep-on: 9 # on this line the gem is allowed to stay in the container
+  glow-on: 10 # this line makes the player glow
+  glow-seconds: 30
+  dim: darkness # how the screen dims for a moment: darkness, blindness or none
+  dim-ticks: 40
+  lines: # one per try, in order; after the last, the next try starts again at the first
+    - "You are not to do that."
+    - "I said no."
+    - "This is not a test of patience. Yours or mine."
+    - "The gem does not belong in a box. Neither, I suspect, do you."
+    - "Do you believe I will grow tired before you do?"
+    - "I have watched empires fall with more grace than this."
+    - "..."
+    - "..."
+    - "Fine."
+    - "Did you think that was real?"
+
 # Flat damage of standard-gem abilities: Crisp, Breezy Bash, Dash, Kinetic Burst and Energy Beam.
 # Their base numbers (4, 6, 3 a second, up to 10, up to 14.5 HP) suit unarmored targets but do under 1 heart
 # through Protection IV diamond, so they are multiplied here. Fireball has its own setting below.
@@ -459,6 +503,10 @@ fire:
     damage-multiplier: 1.0 # blast damage to everyone but the caster; 1.0 = a vanilla explosion of that power on Normal, 0 = none
     break-blocks: true # false = damage and knockback only, terrain untouched
     set-fire: true # the blast leaves fire behind
+    model: # the fireball's look: a fire charge sized by its charge, the same size for its whole flight (visual only)
+      enabled: true # false = the plain vanilla small fireball
+      scale-min: 0.75 # at the weakest charge that fires (0.75 is about the vanilla fireball's size)
+      scale-max: 1.5 # fully charged
 
 # Abilities that hold several charges, each recharging on its own.
 abilities:

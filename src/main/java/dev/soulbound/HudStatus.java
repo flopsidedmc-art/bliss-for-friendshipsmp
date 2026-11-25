@@ -9,6 +9,41 @@ package dev.soulbound;
 final class HudStatus {
     private HudStatus() {}
 
+    /**
+     * A normal gem's bar, from entries that already carry their own icon and status: Tier 2 shows the left-click
+     * power, the ability, then the right-click power (Fire: fireball, crisp, campfire). Tier 1 shows the ability only.
+     */
+    static java.util.List<String> gemBar(boolean tier2, String left, String ability, String right) {
+        return tier2 ? java.util.List.of(left, ability, right) : java.util.List.of(ability);
+    }
+
+    /** The pack's crystals (Bliss Pack v3.5): Tier 1, then Tier 2, for each gem; null for a gem without them. */
+    static String crystal(GemType type, int tier) {
+        String[] c = switch (type) {
+            case ASTRA -> new String[] {"\uA43D", "\uA43E"};
+            case FIRE -> new String[] {"\uA43F", "\uA440"};
+            case FLUX -> new String[] {"\uA441", "\uA442"};
+            case LIFE -> new String[] {"\uA443", "\uA444"};
+            case PUFF -> new String[] {"\uA445", "\uA446"};
+            case SPEED -> new String[] {"\uA447", "\uA448"};
+            case STRENGTH -> new String[] {"\uA449", "\uA44A"};
+            case WEALTH -> new String[] {"\uA44B", "\uA44C"};
+            default -> null;
+        };
+        return c == null ? null : c[tier >= 2 ? 1 : 0];
+    }
+
+    /**
+     * The ability's icon: Tier 2 gems use their Tier 2 crystal (actionbar.icons.&lt;GEM&gt;.ability-tier2, or the pack's
+     * if that isn't set); Tier 1 gems keep {@code tier1Icon} (the "ability" icon, as before).
+     */
+    static String abilityIcon(GemType type, int tier, String tier1Icon, String configuredTier2) {
+        if (tier < 2) return tier1Icon;
+        if (configuredTier2 != null && !configuredTier2.isEmpty()) return configuredTier2;
+        String t2 = crystal(type, 2);
+        return t2 != null ? t2 : tier1Icon;
+    }
+
     static String entry(String icon, long remainMs, boolean active) {
         if (active) return "§f" + icon + " §e\u2026";
         if (remainMs > 0) return "§7" + icon + " §b" + time(remainMs);

@@ -540,24 +540,21 @@ final class AuratusGem implements Listener {
     }
 
     /**
-     * Release [Q, the drop key, while a chain is out]: dropping the gem is blocked anyway (protection.prevent-drop), so
-     * the key is free. Still flying out: the charge comes back (release.refund-before-hit). Already bitten: spent as normal.
-     * Flying to the hook: you let go and keep your momentum.
+     * Q drops the Auratus now (it isn't soulbound any more; LooseMythics): a chain that's out goes with it. A drop the
+     * finale claims at its pedestal is cancelled, so this doesn't run then (Finale puts the chain away once it's placed).
      */
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onRelease(PlayerDropItemEvent e) {
-        Player p = e.getPlayer();
-        ItemStack dropped = e.getItemDrop().getItemStack();
-        // Q takes the item out of the hand before this event fires, so the Auratus being dropped counts as held
-        if (!enabled() || !(holds(p) || isAuratus(dropped)) || !chainOut(p.getUniqueId())) return;
-        if (plugin.finale() != null && plugin.finale().claimsDrop(p, dropped)) return; // dropped on its pedestal: the finale's alone
-        e.setCancelled(true);
-        letGo(p);
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDropped(PlayerDropItemEvent e) {
+        if (isAuratus(e.getItemDrop().getItemStack())) letGo(e.getPlayer());
     }
 
     private boolean chainOut(UUID id) { return flights.containsKey(id) || tethers.containsKey(id) || reels.containsKey(id); }
 
-    /** Lets go of a chain that's out (flying out, bitten or reeling), as Q does. Also used when the gem goes on a finale pedestal. */
+    /**
+     * Release: lets go of a chain that's out, as swap hands (F) does when nothing is hooked. Still flying out: the
+     * charge comes back (release.refund-before-hit). Already bitten: spent as normal. Flying to the hook: you let go and
+     * keep your momentum. Also used when the gem is dropped or goes on a finale pedestal.
+     */
     void letGo(Player p) {
         UUID id = p.getUniqueId();
         if (!chainOut(id)) return;
@@ -709,17 +706,25 @@ final class AuratusGem implements Listener {
         GemSounds.play(plugin, "auratus.fly-to-hook", p.getLocation());
     }
 
-    /** Swap hands (F) while a hook is in a creature: haul them to you. Never swaps your items while it's in. */
+    /**
+     * Swap hands (F) while a chain is out. A hook in a creature (or flying at one): haul them to you. Nothing hooked
+     * (a block, nothing yet, or flying to the hook): let go of the chain. Never swaps your items while a chain is out.
+     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSwapHands(PlayerSwapHandItemsEvent e) {
         Player p = e.getPlayer();
-        Flight f = flights.get(p.getUniqueId());
-        if (f != null && f.target.entity() != null && holds(p) && enabled()) { e.setCancelled(true); f.haul = true; return; } // haul once it lands
-        Tether t = tethers.get(p.getUniqueId());
-        if (t == null || t.victim == null || !holds(p) || !enabled()) return;
+        UUID id = p.getUniqueId();
+        if (!holds(p) || !enabled() || !chainOut(id)) return;
         e.setCancelled(true);
-        if (t.hauling || dives.containsKey(p.getUniqueId())) return;
-        startHaul(t);
+        Flight f = flights.get(id);
+        if (f != null && f.target.entity() != null) { f.haul = true; return; } // haul once it lands
+        Tether t = tethers.get(id);
+        if (t != null && t.victim != null) {
+            if (t.hauling || dives.containsKey(id)) return;
+            startHaul(t);
+            return;
+        }
+        letGo(p);
     }
 
     private void startHaul(Tether t) {

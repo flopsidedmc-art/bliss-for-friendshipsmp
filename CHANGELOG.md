@@ -1,3 +1,129 @@
+# Next batch: pedestal follow-ups, the Spore fountain, the Tier 2 bar, the fireball, droppable mythics and the Prophet
+
+## What I found first
+- **Pedestal:**
+  - The Q release and the "gems can't be dropped" rule already checked `PedestalDrop.owns` (through `Finale.claimsDrop`).
+  - The one-time id did stay on a gem that wasn't placed, but only in these cases: the finale ended (or was stopped) before the next tick, it couldn't be taken back, or the player logged off that tick. Too far and spammed Q never stamp it. Ending the finale cleared the waiting drops before their tick, so that case always left the id.
+- **Heretic 1–3 were already done** in the last batch: no `SWEEP_ATTACK` anywhere, contact slams with an instant bounce, and 1.9 / 11 / 4 plus `bounce-launch-y`. BloodlinkBounceTest covers them. Nothing changed there.
+- **Spore today:** a burst of crimson spores and dust when it spawns, then a thin dust layer every 4 ticks.
+- **Action bar:**
+  - The config key is `actionbar.icons` (not `hud.icons`).
+  - Tier 2 showed left, right, then the ability, and the ability always used the Tier 1 crystal.
+  - Flux showed all four entries at every tier.
+  - The bar is redrawn every 2 ticks from the gem's tier, so an upgrade switches it at once.
+- **Fireball: not done before.** Nothing in the plugin resized it. It's a vanilla small fireball the whole flight (it only looks smaller as it flies away), and the charge only changed its explosion, so it had no charged size to keep.
+- **Mythics:**
+  - `GemListener.onDrop` refused every gem drop, and `onChestStore` kept gems out of 7 container types.
+  - Nothing protected a mythic on the ground (despawn, lava, cactus, void, hoppers, mobs).
+  - Nothing stops a player picking one up.
+  - F hauled a hooked creature and otherwise was the normal swap, so there's no clash.
+
+## What changed
+### Part 1: pedestal drop
+- **A gem that goes back keeps no id.** Whenever a stamped gem isn't placed (the finale ended or was stopped, it couldn't be taken back), the id comes off wherever it is: any slot, the cursor, an open inventory or the ground.
+- **A player who logged off that tick** has it removed when they join. During the drop phase, any stray id (the gem changed hands that tick, say) is swept off every second.
+- **Ending the finale no longer forgets the waiting drops,** so each one still settles.
+
+### Part 2: the Spore blood fountain (visual only; the field, bleed and timings are unchanged)
+- **The column:** dark blood red dust (#7A0010, #B0101C, sizes 1.4–2.0) rises from the ground at the centre to `pillar-height` (18, kept within 15–20). Dust doesn't move by itself, so it's drawn a little higher each tick; that makes it flow upward and read as one solid column.
+- **A heartbeat every `pulse-seconds`:** for 4 ticks the column surges brighter (#D01A28), thicker and with more particles. `sounds.heretic.spore-pulse` plays (Warden heartbeat, 0.6, 0.8).
+- **The canopy:** rings out to `canopy-radius` (5) that arc up from the column and fall away, with a sine ripple rolling outward.
+- **Blood rain** across the field: falling redstone-block dust and a few small dark drops. Half start at the canopy, and the rest are already on the way down, so the whole height rains.
+- **Under a ceiling,** the column stops just under it and the canopy spreads there, rippling downward.
+- **Limits:** at most `particles-per-tick` (100) per field, sent to players within 64 blocks. Nothing is drawn after the tick the field ends.
+- **Config:** `fountain: false` brings back the old particles.
+
+### Part 3: the normal gem bar
+- **Tier 2 order:** left-click power, the ability, then right-click power (Fire: fireball, crisp, campfire). Every entry is built with its own icon and timer before it's placed, so timers, Ready! and … stay on their icon.
+- **Tier 1** shows the ability only. That now includes Flux, which used to show everything at Tier 1. Tier 2 Flux keeps beam, burst, watts, overdrive.
+- **Tier 2 crystals:** new `actionbar.icons.<GEM>.ability-tier2` with the pack's Tier 2 crystals. A config without it uses those glyphs.
+
+### Part 4: the fireball
+- **The model:** a fire charge sized by the charge it's fired with (`fire.fireball.model`, 0.75 at the weakest to 1.5 full). It's set once at launch and is the same size for the whole flight.
+- **The vanilla fireball** is hidden under it so there aren't two, and a little smoke follows it.
+- **Unchanged:** damage, speed, range, explosion and cooldown.
+- **Config:** `model.enabled: false` brings back the plain fireball.
+
+### Part 5: Auratus and Heretic aren't soulbound (Relay and the Revenant mace unchanged)
+- **Dropping:** Q drops them and anyone can pick them up. They still drop on death.
+- **On the ground** they never despawn, glow, and can't be destroyed. Lava, fire, cactus and the void send them back to whoever last had them (into their inventory), or to the main world's spawn if that player is offline, dead or full. Explosions just miss.
+- **Hoppers and mobs** can't take them.
+- **The finale pedestal drop works as before.** During the finale the two gems only go onto their pedestals.
+- **The Auratus chain release moved to F:** F while a chain is out and nothing is hooked (a block, nothing yet, or flying to the hook) lets go. F with a creature hooked still hauls. Q drops the gem, and a chain that's out goes with it.
+- **The Prophet:**
+  - **When he acts:** one tick after a player puts Auratus or Heretic into any container, it's pulled back out to them (at their feet if they're full) with a short particle trail. This covers chests, ender chests, shulkers, barrels, hoppers, droppers, dispensers, crafters, furnaces, bundles (in a container or in your own inventory), item frames, armor stands, allays, decorated pots, and chest carts, boats and animals.
+  - **Each time:** the screen dims (`dim`), the bell rings (`sounds.prophet.refuse`, only for you), and he says the next line in chat after the pack's eye glyph.
+  - **The 9th line ("Fine.")** lets it stay. The 10th pulls it out anyway and makes you glow for 30 s. Then the count starts again at 1.
+  - **The count is saved per player** in `prophet.yml`. If your last line was more than 7 days ago, the next try gets "We have done this before." and then the lines carry on.
+  - **At most one line every 2 s.** Tries in between are still pulled out but don't count, so the lines always come in order.
+  - **Only gems that are newly inside something count,** so a gem he let stay isn't pulled out by an unrelated click.
+  - **Not counted:** a hopper or mob taking a gem off the ground (it isn't a player putting it in); that's just blocked.
+- **Lore** updated to match the controls: Auratus "swap hands ... (or lets go)", and the Heretic's saws and Bloodlinking were the wrong way round.
+
+### Files
+- **Changed:**
+  - `Finale.java`: id removal, the stray-id sweep, the join cleanup.
+  - `PedestalDrop.java`: settle removes the id; waiting drops survive the finale ending.
+  - `HudStatus.java`: bar order and crystal choice.
+  - `GemListener.java`:
+    - the bar order, the Tier 2 crystal and Flux Tier 1;
+    - Auratus and Heretic out of the drop and chest rules;
+    - the fireball model.
+  - `MythicListener.java`: starts the Spore fountain.
+  - `AuratusGem.java`: the Q release removed, F lets go, a drop puts the chain away.
+  - `GemType.java`: lore.
+  - `SoulboundGemsPlugin.java`: wires the new listeners.
+  - `config.yml`:
+    - `actionbar.icons.*.ability-tier2`;
+    - `mythics.heretic.spore.visuals`;
+    - `fire.fireball.model`;
+    - `prophet:`;
+    - `sounds.heretic.spore-pulse` and `sounds.prophet.refuse`;
+    - comments.
+  - Docs: AURATUS.md, SOUNDS.md.
+- **New:** `LooseMythics.java` (the ground rules), `Prophet.java`, `ProphetMath.java`, `SporeFountain.java`, `FireballLook.java`.
+- **Tests:**
+  - new: TierTwoBarTest, ProphetTest, SporeFountainTest, FireballLookTest;
+  - updated: FinaleDropTest (the id removal, droppable mythics) and GemSoundsTest (the Prophet isn't a gem family).
+
+### Tested
+- Compiles against paper-api 1.21.11, and 136 unit tests pass. They cover:
+  - **Pedestal ids:** removed when the finale ends, when spammed, and when the gem is out of reach; never stamped when too far.
+  - **Drops:** every listener order, with the new rules.
+  - **Bloodlinking** (from before): a hit bounces at once, a miss keeps the old rule, max-slams respected.
+  - **The bar:** the Tier 2 order, timers staying on their icon, and the crystal choice for all 8 gems, including a config without ability-tier2.
+  - **The Prophet:** 10 lines in order, keep on 9, glow on 10, round again, the 2-second limit, the 7-day welcome-back, and the dialogue in the config.
+  - **The fountain:** height kept in 15–20, the ceiling cap, about 1 pulse a second, never over the particle budget, and the ripple rolling outward.
+  - **The fireball:** size from the charge, set once.
+
+### Not tested
+- Nothing was run in game. These depend on the real server and client: the particles and how the fountain looks, the Darkness dim, the hidden fireball and its model, the item frame, armor stand, allay and pot paths, and the lava, cactus and void rescues.
+- **Known limit:** a gem the Prophet let stay in a container is invisible to `/capture start`'s "the reward already exists" check (it looks at players and the ground).
+
+### In-game test plan
+1. **Finale:**
+   - drop Auratus and Heretic at their pedestals: each ends up only on the pedestal;
+   - Q at the pedestal doesn't release a chain (a chain that was out is put away once the gem is on the pedestal, since you no longer hold it);
+   - walk away and drop: you're told to bring it to its pedestal, and the gem stays with you with no id (`/data get entity @s Inventory` shows no `finale_drop`).
+2. **Saws:** throw Heretic saws: no sweep particles.
+3. **Bloodlinking into a group of zombies:** you bounce straight back up the moment you hit them, up to 3 slams, and take no fall damage at the end.
+4. **Bloodlinking into a zombie in mid-air:** it slams on contact.
+5. **Spore:**
+   - an 18-block pillar pulsing with a heartbeat, a rippling top, and blood rain over the field;
+   - in a cave it stops at the ceiling;
+   - everything stops when the field ends.
+6. **The bar:** a Tier 2 Fire gem shows fireball, the Tier 2 crystal, campfire. Upgrade a Tier 1 gem: the bar switches.
+7. **Fireball:** fire a full-charge fireball: same size the whole flight, bigger than a weak one.
+8. **Dropping:**
+   - drop Auratus and hand it to another player;
+   - leave one on the ground for 10 minutes: it's still there and glowing;
+   - throw one in lava or the void: it comes back;
+   - with a chain out and nothing hooked, F releases it; with a creature hooked, F hauls.
+9. **The Prophet:**
+   - put Auratus in a chest 10 times, 2 s or more apart: each line appears in order, the 9th lets it stay, the 10th pulls it out and makes you glow;
+   - try a shulker, a hopper and an item frame too;
+   - spam-click it in: it's pulled out but the lines don't skip.
+
 # Finale: dropping a mythic on its pedestal no longer duplicates it
 
 ## What I found

@@ -46,6 +46,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     public AuratusGem auratus() { return auratus; }
     public CaptureManager captures() { return captures; }
     CameraOverlay overlay() { return overlay; }
+    private LooseMythics loose;
+    private Prophet prophet;
 
     @Override
     public void onEnable() {
@@ -91,6 +93,11 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(revenant, this);
         Bukkit.getPluginManager().registerEvents(captures, this);
         Bukkit.getPluginManager().registerEvents(overlay, this);
+        loose = new LooseMythics(this);
+        Bukkit.getPluginManager().registerEvents(loose, this);
+        loose.start();
+        prophet = new Prophet(this);
+        Bukkit.getPluginManager().registerEvents(prophet, this);
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -162,6 +169,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (stalker != null) stalker.shutdown();
         if (energy != null) energy.save();
         if (overlay != null) overlay.clearAll(); // everyone's real helmet back
+        if (loose != null) loose.shutdown();
+        if (prophet != null) prophet.save();
     }
 
     /**

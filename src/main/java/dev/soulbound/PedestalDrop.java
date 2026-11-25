@@ -2,6 +2,7 @@ package dev.soulbound;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -32,7 +33,8 @@ final class PedestalDrop {
 
     /**
      * Whether the finale alone handles this drop: a merge gem dropped near its pedestal before it's placed (including
-     * while a drop of it is waiting). The Auratus Q release and the soulbound rule stay out of it.
+     * while a drop of it is waiting). The soulbound rule stays out of it, and Auratus' drop listener only runs on a drop
+     * that wasn't cancelled, so it never sees one.
      */
     static boolean owns(Facts f) { return f.dropPhase() && f.mergeGem() && !f.placed() && f.near(); }
 
@@ -56,15 +58,24 @@ final class PedestalDrop {
      * The tick after a claim: true if the gem goes on the pedestal now. {@code take} removes the stack carrying the
      * id from wherever it went (any inventory slot, the cursor, the ground) and says whether it found it. Not found:
      * it's placed only if the server had nowhere to give it back (then it no longer exists anywhere else).
+     * Whenever it isn't placed, it stays where the server put it back and {@code unstamp} takes the one-time id off.
      */
-    boolean settle(GemType type, boolean stillDropPhase, boolean placed, Predicate<String> take) {
+    boolean settle(GemType type, boolean stillDropPhase, boolean placed, Predicate<String> take, Consumer<String> unstamp) {
         Pending p = pending.remove(type);
-        if (p == null || !stillDropPhase || placed) return false; // it stays where the server put it back
-        if (take.test(p.token())) return true;
-        return p.couldNotReturn();
+        if (p == null) return false;
+        if (stillDropPhase && !placed && (take.test(p.token()) || p.couldNotReturn())) return true;
+        unstamp.accept(p.token());
+        return false;
     }
 
     boolean isPending(GemType type) { return pending.containsKey(type); }
 
+    /** Whether a drop stamped with this id is still waiting for its tick (a stray id is any other). */
+    boolean waiting(String token) {
+        for (Pending p : pending.values()) if (p.token().equals(token)) return true;
+        return false;
+    }
+
+    /** A new finale: forget anything left over. (Ending one doesn't clear it: each waiting drop still settles next tick and takes its id off.) */
     void clear() { pending.clear(); }
 }

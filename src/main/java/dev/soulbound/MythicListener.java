@@ -380,20 +380,25 @@ public final class MythicListener implements Listener {
         if (w == null) return;
         double radius = plugin.getConfig().getDouble("mythics.heretic.spore.radius", 4.0);
         long duration = plugin.getConfig().getLong("mythics.heretic.spore.duration-ms", 8000L);
-        w.spawnParticle(Particle.CRIMSON_SPORE, loc.clone().add(0, 0.2, 0), 90,
-                radius * 0.45, 0.5, radius * 0.45, 0.01);
-        w.spawnParticle(Particle.DUST, loc.clone().add(0, 0.25, 0), 60,
-                radius * 0.45, 0.3, radius * 0.45,
-                new Particle.DustOptions(Color.fromRGB(180, 0, 20), 1.8f));
+        // visuals.fountain: the blood fountain (SporeFountain) instead of the old spores and dust. Visual only.
+        boolean fountain = plugin.getConfig().getBoolean("mythics.heretic.spore.visuals.fountain", true);
+        if (!fountain) {
+            w.spawnParticle(Particle.CRIMSON_SPORE, loc.clone().add(0, 0.2, 0), 90,
+                    radius * 0.45, 0.5, radius * 0.45, 0.01);
+            w.spawnParticle(Particle.DUST, loc.clone().add(0, 0.25, 0), 60,
+                    radius * 0.45, 0.3, radius * 0.45,
+                    new Particle.DustOptions(Color.fromRGB(180, 0, 20), 1.8f));
+        }
         GemSounds.play(plugin, "heretic.spore", loc);
         final BukkitTask[] task = new BukkitTask[1];
         final long endAt = now() + duration;
+        if (fountain) SporeFountain.start(plugin, loc, radius, endAt);
         task[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (now() >= endAt || !w.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) {
                 task[0].cancel();
                 return;
             }
-            w.spawnParticle(Particle.DUST, loc.clone().add(0, 0.35, 0), 12,
+            if (!fountain) w.spawnParticle(Particle.DUST, loc.clone().add(0, 0.35, 0), 12,
                     radius, 0.25, radius,
                     new Particle.DustOptions(Color.fromRGB(190, 0, 20), 1.1f));
             for (Player p : w.getPlayers()) {
