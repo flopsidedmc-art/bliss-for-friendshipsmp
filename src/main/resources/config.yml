@@ -14,7 +14,7 @@ cooldowns-seconds:
   # Fallbacks only — real values are per-ability in GemListener#cooldownMs.
   # Abilities: crisp 15, pockets 10, thunderstep 15, doublejump 5, vortex 60,
   #   burst 10, drift 15 (flat), bounty 35.
-  # Powers: cozy 180, chad 120, nullify 120, fireball 180, itemlock 120,
+  # Powers: cozy 180, chad 120, nullify 120, fireball 120, itemlock 120,
   #   richrush 300, amp 240, storm 120, dash 40, bash 60, daggers 90,
   #   projection 20 (it uses the power fallback below), heartdrainer 120, circle 120, beam 120, overdrive 180, void 120.
   power: 20
@@ -77,6 +77,8 @@ sounds:
     fireball-hit: {event: ENTITY_GENERIC_EXPLODE, volume: 0.6, pitch: 1.2, enabled: false}  # off: the explosion already makes its own boom
     cozy-campfire: {event: BLOCK_CAMPFIRE_CRACKLE, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: ITEM_FIRECHARGE_USE, volume: 0.8, pitch: 0.8}}
     crisp: {event: ITEM_FIRECHARGE_USE, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_FIRE_EXTINGUISH, volume: 0.8, pitch: 1.0}}
+    crisp-evaporate: {event: BLOCK_FIRE_EXTINGUISH, volume: 1.0, pitch: 0.8, enabled: true}  # water in Crisp's area steaming away
+    crisp-cool: {event: BLOCK_LAVA_EXTINGUISH, volume: 0.6, pitch: 1.0, enabled: true}  # the land cooling back
   speed: # Speed: high, electric
     blur: {event: ITEM_TRIDENT_RIPTIDE_1, volume: 1.0, pitch: 1.6, enabled: true}
     speedy-storm: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_BEACON_POWER_SELECT, volume: 0.5, pitch: 1.8}}  # no thunder
@@ -504,6 +506,9 @@ ability-damage:
 fire:
   fireball:
     charge-bossbar: true # show the charge as a bossbar while charging
+    charge-seconds: 20 # a full charge, normally (the charge sets the explosion power and the model size)
+    charge-seconds-on-fire: 10 # standing on or in a fire block below: twice as fast (the bar says x2); step off and it slows again, never resetting
+    fire-blocks: [NETHERRACK, MAGMA_BLOCK, "*BLACKSTONE*", BASALT, POLISHED_BASALT, SMOOTH_BASALT, SOUL_SAND, SOUL_SOIL, CRIMSON_NYLIUM, WARPED_NYLIUM, CAMPFIRE, SOUL_CAMPFIRE, FIRE, SOUL_FIRE, LAVA] # * matches any part of a name
     explode: true # false = old behaviour (direct hit and fire only, no explosion)
     explosion-power-min: 1.0 # at the weakest charge that still fires; a ghast fireball is 1.0
     explosion-power-max: 3.0 # at full charge; TNT is 4.0, hard limit 8.0
@@ -514,6 +519,19 @@ fire:
       enabled: true # false = the plain vanilla small fireball
       scale-min: 0.75 # at the weakest charge that fires (0.75 is about the vanilla fireball's size)
       scale-max: 1.5 # fully charged
+  crisp: # Crisp's land effect (its damage to untrusted players and its smelting of drops are unchanged)
+    land: true # false: Crisp leaves the land alone
+    radius: 5
+    chance: 0.45 # the share of eligible blocks that turn, in random patches (never a solid disc, different every cast)
+    blocks: {NETHERRACK: 40, MAGMA_BLOCK: 12, BLACKSTONE: 12, BASALT: 10, SOUL_SAND: 8, SOUL_SOIL: 8, CRIMSON_NYLIUM: 5, WARPED_NYLIUM: 5} # what they turn into, by weight
+    fire-chance: 0.15 # fire on top of new netherrack, only where fire can sit; it never spreads
+    lava-pits-max: 2
+    lava-pit-chance: 0.5 # for each of those: a 1-deep lava pit 1-3 across, on the floor only, enclosed so it can't flow, never under anyone
+    evaporate: true # water in the area steams away and stays away while it lasts, then comes back exactly as it was
+    restore-after-seconds: 30 # then every changed block cools back to exactly what it was (a spot a player changed is left as it is)
+    # Only natural ground changes (grass, dirt, podzol, moss, sand, gravel, stone and its natural variants, logs, leaves
+    # that grew there); never anything built or with a block entity, a running capture point, a Rift blocked area or
+    # the finale's arena. Underground (no sky, a ceiling within 6 blocks) it's a sphere: floor, walls and ceiling.
 
 # Abilities that hold several charges, each recharging on its own.
 abilities:
@@ -610,7 +628,7 @@ cooldowns:
   circle: 120
   beam: 120
   void: 120
-  fireball: 180
+  fireball: 120
   overdrive: 180
   cozy: 180
   amp: 240

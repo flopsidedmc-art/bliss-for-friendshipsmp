@@ -13,7 +13,7 @@ public enum GemType {
             "Powers T2: Frailer [Hit] armor-cut, Nullify [Left-click] clear+block potions 30s, Chad Strength [Right-click] team crit-doubler."),
     FIRE("Fire", "§6", Material.BLAZE_POWDER, "✹", "♨",
             "Fire Resistance while held. Tools auto-Flame/Fire Aspect. Attackers may ignite (Flamestrike). Smelt flavor (Autosmel/Fireshot).",
-            "Crisp [offhand right-click]: Nether-ify area, hurt untrusted, smelt drops.",
+            "Crisp [offhand right-click]: the land catches fire for 30s (Nether patches, fire, lava pits, water steamed away), then cools back; hurts untrusted, smelts drops.",
             "Powers T2: Fireball [Left-click x2 charge+release, no self damage], Meteor Shower [Hit 30s], Cozy Campfire [Right-click block]."),
     SPEED("Speed", "§b", Material.FEATHER, "➶", "☁",
             "Speed 1 + Dolphin's Grace while held. Tools auto-Efficiency, boots Soul Speed.",

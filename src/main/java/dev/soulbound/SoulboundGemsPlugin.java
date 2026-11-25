@@ -50,6 +50,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private Prophet prophet;
     private AstralSpectate astral;
     AstralSpectate astral() { return astral; }
+    private CrispLand crisp;
+    CrispLand crisp() { return crisp; }
 
     @Override
     public void onEnable() {
@@ -103,6 +105,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         astral = new AstralSpectate(this);
         Bukkit.getPluginManager().registerEvents(astral, this);
         astral.start();
+        crisp = new CrispLand(this);
+        Bukkit.getPluginManager().registerEvents(crisp, this);
+        crisp.start(); // land a restart left changed goes back now
 
         BlissCommand cmd = new BlissCommand(this);
         if (getCommand("bliss") != null) {
@@ -165,6 +170,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (astral != null) astral.shutdown(); // first: anyone projected or Unbounded is back in their body and game mode
+        if (crisp != null) crisp.shutdown(); // every Crisp cast cools at once
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar
         if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
@@ -186,7 +192,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 4) return;
+        if (version >= 5) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -198,10 +204,13 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             if (c.getDouble(link + "damage", 9.0) == 9.0) { c.set(link + "damage", 11.0); changed.add("Bloodlinking damage -> 11"); }
             if (c.getInt(link + "max-victims", 2) == 2) { c.set(link + "max-victims", 4); changed.add("Bloodlinking max victims 2 -> 4"); }
         }
-        // Balance 4: the Bloodlinking dive is one strong push the way you look (no steering).
-        if (c.getDouble(link + "dive-speed", 1.3) == 1.3) { c.set(link + "dive-speed", 2.0); changed.add("Bloodlinking dive push 1.3 -> 2.0"); }
-        c.set(link + "dive-follows-look", null); // steering was taken out again
-        c.set("balance-version", 4);
+        if (version < 4) { // Balance 4: the Bloodlinking dive is one strong push the way you look (no steering).
+            if (c.getDouble(link + "dive-speed", 1.3) == 1.3) { c.set(link + "dive-speed", 2.0); changed.add("Bloodlinking dive push 1.3 -> 2.0"); }
+            c.set(link + "dive-follows-look", null); // steering was taken out again
+        }
+        // Balance 5: the fireball cools down in 120 s (was 180).
+        if (c.getInt("cooldowns.fireball", 180) == 180) { c.set("cooldowns.fireball", 120); changed.add("Fireball cooldown 180 -> 120 s"); }
+        c.set("balance-version", 5);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 

@@ -1,3 +1,118 @@
+# Fire revamp
+
+## What I found first
+- **Fireball cooldown:** 180 s in the code fallback, `cooldowns.fireball` and the config comment. No lore mentions the time.
+- **Fireball charge:** a fixed time worked out from how long you'd held it: a full charge in 3 s, or 1.5 s on fire blocks (obsidian and crying obsidian were on that list too). It then decayed after 8 s off fire blocks.
+- **Crisp's land change was permanent, with no restore and no safety checks:**
+  - It used a radius of 6 at Tier 1 and 8 at Tier 2.
+  - It converted the block *under* the top block (the dirt under the grass), so you mostly couldn't see it.
+  - Its fire and lava never appeared: their check for an empty spot could never pass.
+  - Nothing stopped it converting chests or anything built.
+- **Kept unchanged:** the damage (4 plus 5 s of fire to untrusted players and mobs), the smelting of drops, Cozy Campfire, Meteor Shower and the passives.
+- **No Life revamp code exists,** so the land change, restore and safety code is new (CrispLedger can be reused for Life later).
+
+## What changed
+- **Fireball cooldown 180 → 120 s**, in the config and the code fallback. A server still on 180 is moved to 120 once (balance version 5).
+- **Fireball charge:**
+  - **Full charge:** `fire.fireball.charge-seconds` (20). Standing on or in a block from `fire.fireball.fire-blocks` it charges twice as fast, a full charge in `charge-seconds-on-fire` (10).
+  - **The fire-block list:** netherrack, magma, every blackstone (`*BLACKSTONE*`), basalt and its variants, soul sand and soil, both nyliums, both campfires, fire and lava. Crisp's blocks all count. Obsidian is no longer on it.
+  - **How it charges:** the charge grows every 2 ticks, so stepping off slows it again from where it is and never resets it.
+  - **While boosted:** the bar text turns a brighter orange with " x2", and a few flames rise from your feet. Boss bars have no orange colour, so the bar itself stays yellow.
+  - **The 8 s decay is gone:** with a 20 s charge it would drain before it ever filled.
+  - **Unchanged:** the charge still sets the explosion power and the model size.
+- **Crisp: the land catches fire** (`fire.crisp`, with comments):
+  - **Patches:** in `radius` (5), a `chance` (0.45) share of eligible blocks turns into Nether blocks from `blocks` (weighted). They form random clumps, each its own block type, never a solid disc, and different every cast.
+  - **The spread:** outward from you over a second, with flames and lava bursting up.
+  - **Fire:** on some new netherrack (`fire-chance` 0.15), only where fire can sit. It never spreads or lights anything.
+  - **Lava pits:** up to `lava-pits-max` (2), each with `lava-pit-chance` (0.5).
+    - **Shape:** 1-deep, 1 to 3 across (one block, a 2×2 or a plus).
+    - **Where:** on the floor only, solid on every side and below so it can't flow, and never next to or under water.
+    - **Never under anyone:** not within a block of the caster's feet, and never under anyone standing, checked as the pit forms.
+    - **Distance from the edge:** at least 2 blocks inside it, away from water flowing in.
+  - **Underground** (no sky, and a solid ceiling within 6 blocks; leaves don't count, so standing under a tree isn't a cave):
+    - **The area is a sphere** of the same radius: the exposed floor, walls and ceiling turn.
+    - **Pits stay on the floor,** and lava drips from the ceiling for the whole duration.
+  - **Evaporation (`evaporate`):**
+    - **At the cast:** all water in the area goes at once, with steam and a hiss (`sounds.fire.crisp-evaporate`): sources, flowing water, waterlogged blocks, seagrass and kelp.
+    - **While it lasts:** water flowing in from outside steams away every 4 ticks.
+    - **On cooling,** it all comes back exactly as it was.
+    - **Exceptions:** water touching lava is never removed (no lava can flow into it), and a waterlogged chest or sign keeps its water.
+  - **Cooling:** after `restore-after-seconds` (30), every changed block goes back to exactly what it was, over about 1.5 s with steam and a soft hiss (`sounds.fire.crisp-cool`).
+    - **The order:** fire out first, then the pits, then the land, the plants, and the water last.
+    - **A spot a player broke or replaced** is left as it is now.
+  - **Plants:** a single plant on a block that turns (grass, flowers) is cleared and comes back with it. A block under a double plant, a torch, a slab and so on is left alone.
+  - **Only natural ground changes:** grass, dirt, coarse and rooted dirt, podzol, mycelium, moss, mud, sand, red sand, gravel, clay, stone, granite, diorite, andesite, deepslate, tuff, calcite, dripstone, snow blocks, logs (not stripped) and leaves that grew there.
+  - **Never:** anything with a block entity, anything built, bedrock, ores, a running capture point, a Rift blocked world or area (or the Temporal domain), or the running finale's arena.
+  - **While it lasts:**
+    - breaking a Crisp block drops nothing;
+    - its lava can't be picked up with a bucket and never flows;
+    - pistons, explosions and endermen leave its blocks alone;
+    - leaves near it don't decay (a log turned to netherrack would otherwise make them fall for good).
+  - **Saved:** pending restores go in `crisp-restore.yml`, so a restart (or a crash) puts the land back on start. A normal stop cools everything at once.
+  - **`land: false`** turns the land effect off. Crisp still hurts and smelts as before.
+- **Guide text:** Crisp's line says it cools back.
+
+## Files
+- **New:**
+  - `CrispMath.java`: the block filter, patches, pits, the underground check;
+  - `CrispLedger.java`: what changed and the exact restore, saved as text;
+  - `CrispLand.java`: the cast, spread, evaporation, dripping, cooling, saving and guards;
+  - `FireballCharge.java`: the charge and the fire-block list;
+  - `FireTest.java`.
+- **Changed:**
+  - `GemListener.java`: the new fireball charge and boss bar, the cooldown fallback, and Crisp calling the land effect (its old permanent land code removed);
+  - `SoulboundGemsPlugin.java`: wiring, and balance version 5 (the fireball cooldown);
+  - `RelayRift.java`: `configuredBlock`, the blocked worlds and areas without the finale's seal;
+  - `RelayGem.java`: a `rift()` accessor;
+  - `Finale.java`: `inArea`;
+  - `GemType.java`: Crisp's guide text;
+  - `config.yml`: `fire.fireball` charge keys, `fire.crisp`, two sounds, the fireball cooldown and comment.
+
+## Tested
+- Compiles against paper-api 1.21.11, and 154 unit tests pass. They cover:
+  - **The fireball cooldown:** 120 in the config, the fallback and the migration.
+  - **The charge:** exactly 20 s, or 10 s on fire; stepping off at half carries on from half; never over full.
+  - **The fire-block list:** every listed block, including blackstone variants; grass, stone and obsidian are not on it; every Crisp block is.
+  - **The eligible-block filter:** naturals yes; chests, beds, doors, redstone, signs, banners, heads, bedrock, planks, cobble, ores and stripped logs no; placed leaves no; any block entity no.
+  - **The underground check:** no sky plus a ceiling within 6 blocks.
+  - **The patches:** the exact share, never all of them, different per cast, and clumped.
+  - **Lava pits:** on the floor only, enclosed, solid below, never at or beside the caster's feet, never under someone standing, never next to water or under water flowing in.
+  - **The restore:** the exact block data back; a player-changed spot left; the order fire → pit → land → water; nothing twice; saved entries read back the same.
+
+## Not tested
+- Nothing was run in game. Everything that needs a world is unverified:
+  - how the patches, spread, fire, pits, dripping lava, steam and cooling look;
+  - the underground sphere in a real cave;
+  - evaporation and keeping a real lake dry;
+  - the restart restore;
+  - the boss bar x2 and the flames.
+
+## In-game test plan
+1. **Fireball:**
+   - the cooldown is 120 s;
+   - charging on grass takes 20 s to full;
+   - on netherrack or magma it takes 10 s and the bar shows x2;
+   - stepping off halfway slows it again without resetting.
+2. **Fireball on Crisp's blocks:** cast Crisp, then charge a fireball standing on the Nether blocks: 10 s.
+3. **Crisp in a plains biome, three times:**
+   - random Nether patches, some fire, sometimes one or two small lava pits, never under you;
+   - after 30 s it cools back with steam, exactly as before.
+4. **Crisp in a cave:**
+   - the floor, walls and ceiling turn to Nether blocks;
+   - lava drips from the ceiling;
+   - pits only on the floor;
+   - it all cools back.
+5. **Crisp next to a chest and a bed:** they're untouched.
+6. **Crisp at the edge of a lake:**
+   - the water in the area steams away;
+   - it stays dry while it lasts, and water from outside doesn't refill it;
+   - when it cools, the lake is back exactly as it was.
+7. **Restart the server during Crisp:** the land is restored on start.
+8. **Also check:**
+   - break a Crisp block: nothing drops;
+   - try to bucket a pit: you can't;
+   - Crisp's fire doesn't spread to grass or trees.
+
 # Astra revamp
 
 ## What I found first

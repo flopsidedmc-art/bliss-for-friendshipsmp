@@ -87,6 +87,7 @@ public class GemListener implements Listener {
     private final Map<UUID, Set<UUID>> trusted = new HashMap<>();
     // Fire systems (user-supplied kit)
     private final Map<UUID, Long> fireballChargeStart = new HashMap<>();
+    private final Map<UUID, Double> fireballCharge = new HashMap<>(); // 0..1, grown every 2 ticks while charging (FireballCharge)
     private final Map<UUID, Long> meteorUntil = new HashMap<>();
     private final Map<UUID, Long> meteorLastShot = new HashMap<>();
     private final Map<UUID, Long> cozyCooldown = new HashMap<>();
@@ -196,7 +197,8 @@ public class GemListener implements Listener {
             case "dash" -> 40;
             case "daggers" -> 90;
             case "chad", "nullify", "itemlock", "storm", "heartdrainer", "circle", "beam", "void" -> 120;
-            case "fireball", "overdrive", "cozy" -> 180;
+            case "fireball" -> 120;
+            case "overdrive", "cozy" -> 180;
             case "amp" -> 240;
             case "richrush" -> 300;
             case "ability", "bounty" -> plugin.getConfig().getInt("cooldowns-seconds.tier2-ability", 35);
@@ -1358,13 +1360,13 @@ public class GemListener implements Listener {
             fireballChargeStart.put(id, System.currentTimeMillis());
             p.sendMessage(ChatColor.GOLD + "Fireball charging... left-click again to unleash.");
             GemSounds.play(plugin, "fire.fireball-charge", p.getLocation());
-            showFireballBar(p);
+            startFireballCharge(p);
             return;
         }
-        long elapsed = System.currentTimeMillis() - started;
         fireballChargeStart.remove(id);
         hideFireballBar(p);
-        double level = fireballLevel(p, elapsed);
+        double level = fireballCharge.getOrDefault(id, 0.0);
+        fireballCharge.remove(id);
         if (level < 0.15) {
             p.sendMessage(ChatColor.GRAY + "Fireball fizzled (too quick). Hold the charge a little longer.");
             return;
@@ -1418,58 +1420,63 @@ public class GemListener implements Listener {
         }.runTaskTimer(plugin, 1L, 1L);
     }
 
-    /** Charge level 0..1 after holding for {@code elapsed} ms. Shared by the bossbar and the release. */
-    private double fireballLevel(Player p, long elapsed) {
-        boolean onFireBlock = isOnFireThemedBlock(p);
-        double fullMs = onFireBlock ? 1500.0 : 3000.0;
-        double level = Math.min(1.0, elapsed / fullMs);
-        if (!onFireBlock && elapsed > 8000) {
-            // overcharge decay when not on fire blocks
-            level = Math.max(0.3, 1.0 - ((elapsed - 8000) / 5000.0));
-        }
-        return level;
-    }
-
-    /** Bossbar that tracks the Fireball charge until it is released, or the player quits or dies. */
-    private void showFireballBar(Player p) {
-        if (!plugin.getConfig().getBoolean("fire.fireball.charge-bossbar", true)) return;
+    /**
+     * Charging: every 2 ticks the charge grows (FireballCharge): a full charge in fire.fireball.charge-seconds, twice
+     * as fast while you stand on or in a fire block. Stepping off slows it again from where it is. While boosted, the
+     * boss bar (if on) says " x2" in a brighter orange and a few flames rise from your feet.
+     */
+    private void startFireballCharge(Player p) {
         UUID id = p.getUniqueId();
+        Long token = fireballChargeStart.get(id);
         hideFireballBar(p);
-        var bar = net.kyori.adventure.bossbar.BossBar.bossBar(Component.empty(), 0f,
-                net.kyori.adventure.bossbar.BossBar.Color.YELLOW, net.kyori.adventure.bossbar.BossBar.Overlay.PROGRESS);
-        fireballBars.put(id, bar);
-        p.showBossBar(bar);
+        fireballCharge.put(id, 0.0);
+        net.kyori.adventure.bossbar.BossBar bar = null;
+        if (plugin.getConfig().getBoolean("fire.fireball.charge-bossbar", true)) {
+            bar = net.kyori.adventure.bossbar.BossBar.bossBar(Component.empty(), 0f,
+                    net.kyori.adventure.bossbar.BossBar.Color.YELLOW, net.kyori.adventure.bossbar.BossBar.Overlay.PROGRESS);
+            fireballBars.put(id, bar);
+            p.showBossBar(bar);
+        }
+        final net.kyori.adventure.bossbar.BossBar shown = bar;
         new org.bukkit.scheduler.BukkitRunnable() {
             private int runs;
             @Override public void run() {
-                Long started = fireballChargeStart.get(id);
-                if (started == null || !p.isOnline() || fireballBars.get(id) != bar) {
-                    p.hideBossBar(bar);
-                    fireballBars.remove(id, bar);
+                if (token == null || !token.equals(fireballChargeStart.get(id)) || !p.isOnline()) { // released, or a new charge
+                    if (shown != null) { p.hideBossBar(shown); fireballBars.remove(id, shown); }
                     cancel();
                     return;
                 }
-                long elapsed = System.currentTimeMillis() - started;
+                boolean fire = isOnFireThemedBlock(p);
+                double level = FireballCharge.step(fireballCharge.getOrDefault(id, 0.0), 0.1, fire,
+                        plugin.getConfig().getDouble("fire.fireball.charge-seconds", 20.0),
+                        plugin.getConfig().getDouble("fire.fireball.charge-seconds-on-fire", 10.0));
+                fireballCharge.put(id, level);
                 if (++runs % 15 == 0) GemSounds.play(plugin, "fire.fireball-charge", p.getLocation()); // the burn keeps going while charging
-                double level = fireballLevel(p, elapsed);
-                int percent = (int) Math.round(level * 100);
-                boolean fading = level < 1.0 && elapsed > 8000;
-                bar.progress((float) Math.max(0.0, Math.min(1.0, level)));
-                if (level < 0.15) {
-                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.WHITE);
-                    bar.name(Component.text("Fireball charging " + percent + "% (too weak to fire)",
-                            net.kyori.adventure.text.format.NamedTextColor.GRAY));
-                } else if (level >= 1.0) {
-                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.RED);
-                    bar.name(Component.text("Fireball FULLY CHARGED - left-click to unleash",
-                            net.kyori.adventure.text.format.NamedTextColor.RED));
-                } else {
-                    bar.color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW);
-                    bar.name(Component.text((fading ? "Fireball fading " : "Fireball charging ") + percent + "%",
-                            net.kyori.adventure.text.format.NamedTextColor.GOLD));
-                }
+                if (fire && level < 1.0) p.getWorld().spawnParticle(Particle.FLAME, p.getLocation().add(0, 0.1, 0), 3, 0.25, 0.05, 0.25, 0.02);
+                if (shown != null) fireballBarShow(shown, level, fire);
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, 2L, 2L);
+    }
+
+    private static final net.kyori.adventure.text.format.TextColor BOOSTED = net.kyori.adventure.text.format.TextColor.color(0xFFA62B);
+
+    private void fireballBarShow(net.kyori.adventure.bossbar.BossBar bar, double level, boolean boosted) {
+        int percent = (int) Math.round(level * 100);
+        String x2 = boosted ? " x2" : "";
+        bar.progress((float) Math.max(0.0, Math.min(1.0, level)));
+        if (level < 0.15) {
+            bar.color(net.kyori.adventure.bossbar.BossBar.Color.WHITE);
+            bar.name(Component.text("Fireball charging " + percent + "% (too weak to fire)" + x2,
+                    boosted ? BOOSTED : net.kyori.adventure.text.format.NamedTextColor.GRAY));
+        } else if (level >= 1.0) {
+            bar.color(net.kyori.adventure.bossbar.BossBar.Color.RED);
+            bar.name(Component.text("Fireball FULLY CHARGED - left-click to unleash",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+        } else {
+            bar.color(net.kyori.adventure.bossbar.BossBar.Color.YELLOW); // boss bars have no orange: the text is
+            bar.name(Component.text("Fireball charging " + percent + "%" + x2,
+                    boosted ? BOOSTED : net.kyori.adventure.text.format.NamedTextColor.GOLD));
+        }
     }
 
     private void hideFireballBar(Player p) {
@@ -1549,21 +1556,20 @@ public class GemListener implements Listener {
     @EventHandler
     public void onFireballChargeQuit(PlayerQuitEvent e) {
         fireballChargeStart.remove(e.getPlayer().getUniqueId());
+        fireballCharge.remove(e.getPlayer().getUniqueId());
         hideFireballBar(e.getPlayer());
     }
 
     @EventHandler
     public void onFireballChargeDeath(PlayerDeathEvent e) {
         fireballChargeStart.remove(e.getEntity().getUniqueId());
+        fireballCharge.remove(e.getEntity().getUniqueId());
         hideFireballBar(e.getEntity());
     }
 
+    /** fire.fireball.fire-blocks: what you stand on or in to charge twice as fast (Crisp's blocks count). */
     private boolean isOnFireThemedBlock(Material m) {
-        return m == Material.OBSIDIAN || m == Material.MAGMA_BLOCK || m == Material.NETHERRACK
-                || m == Material.SOUL_SAND || m == Material.SOUL_SOIL || m == Material.CRYING_OBSIDIAN
-                || m == Material.BLACKSTONE || m == Material.BASALT || m == Material.FIRE
-                || m == Material.SOUL_FIRE || m == Material.CAMPFIRE || m == Material.SOUL_CAMPFIRE
-                || m == Material.LAVA;
+        return FireballCharge.fireBlock(m.name(), plugin.getConfig().getStringList("fire.fireball.fire-blocks"));
     }
 
     private boolean isOnFireThemedBlock(Player p) {
@@ -1572,33 +1578,16 @@ public class GemListener implements Listener {
         return isOnFireThemedBlock(under.getType()) || isOnFireThemedBlock(at.getType());
     }
 
-    /** Crisp [offhand right-click]: Nether-ify area, hurt untrusted, smelt drops. */
+    /**
+     * Crisp [offhand right-click]: the land catches fire for a while (CrispLand: Nether patches, fire, rare lava pits,
+     * water steamed away, all cooling back exactly as it was), untrusted players and mobs are hurt and set alight, and
+     * drops are smelted (both as before, in the old 6 / 8 block radius).
+     */
     private void useCrisp(Player p, int tier, int energy) {
         int radius = (tier >= 2) ? 8 : 6;
         Location c = p.getLocation();
         World w = p.getWorld();
-        int converted = 0;
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                if (dx * dx + dz * dz > radius * radius) continue;
-                Block top = w.getHighestBlockAt(c.getBlockX() + dx, c.getBlockZ() + dz);
-                Block ground = top.getRelative(0, -1, 0);
-                Material gm = ground.getType();
-                if (gm == Material.AIR || gm == Material.LAVA || gm == Material.BEDROCK) continue;
-                if (gm.name().contains("NETHER") || gm == Material.MAGMA_BLOCK || gm == Material.SOUL_SAND) continue;
-                double r = Math.random();
-                Material to = (r < 0.7) ? Material.NETHERRACK : (r < 0.85 ? Material.SOUL_SAND : Material.MAGMA_BLOCK);
-                ground.setType(to, false);
-                converted++;
-                if (Math.random() < 0.04 && top.getType() == Material.AIR) top.setType(Material.FIRE, false);
-            }
-        }
-        // lava pockets
-        for (int i = 0; i < 3; i++) {
-            Block b = c.clone().add((Math.random() - 0.5) * radius, 0, (Math.random() - 0.5) * radius).getBlock();
-            Block top = w.getHighestBlockAt(b.getX(), b.getZ());
-            if (top.getType() == Material.AIR) top.setType(Material.LAVA, false);
-        }
+        if (plugin.crisp() != null) plugin.crisp().cast(p);
         // damage untrusted in area
         for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
             if (e instanceof Player o && !o.getUniqueId().equals(p.getUniqueId()) && !isTrusted(p, o)) {

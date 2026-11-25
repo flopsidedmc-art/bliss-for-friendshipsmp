@@ -301,6 +301,17 @@ final class RelayRift implements Listener {
         if (w.equals(domainWorld())) return "rifts can't anchor inside Temporal Divinity";
         String capture = plugin.captures() == null ? null : plugin.captures().riftBlocked(l);
         if (capture != null) return "rifts can't anchor inside the capture point " + capture + " while it runs";
+        return configuredBlock(l);
+    }
+
+    /**
+     * The configured blocked worlds and areas (mythics.relay.rift.blocked-worlds and blocked-areas), or null. Crisp
+     * keeps out of them too; unlike blockedReason it doesn't count the finale's seal, which covers every spot.
+     */
+    String configuredBlock(Location l) {
+        if (l == null || l.getWorld() == null) return null;
+        String w = l.getWorld().getName();
+        if (w.equals(domainWorld())) return "rifts can't anchor inside Temporal Divinity";
         for (String b : plugin.getConfig().getStringList("mythics.relay.rift.blocked-worlds")) {
             if (b.equalsIgnoreCase(w)) return "rifts can't anchor in this world";
         }

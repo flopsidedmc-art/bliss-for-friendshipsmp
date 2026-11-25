@@ -32,6 +32,7 @@ public final class RelayGem implements Listener {
     private final TemporalFlow flow;
     private final TemporalDomain domain;
     private final RelayRift rift;
+    RelayRift rift() { return rift; }
     private long ticks;
 
     public RelayGem(SoulboundGemsPlugin plugin) {

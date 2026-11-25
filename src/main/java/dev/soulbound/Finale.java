@@ -161,6 +161,15 @@ public final class Finale implements Listener {
         return phase != Phase.IDLE;
     }
 
+    /** Inside the running finale's arena (its starting border around the centre). Crisp leaves the land there alone. */
+    boolean inArea(Location l) {
+        if (phase == Phase.IDLE || l == null || l.getWorld() == null) return false;
+        Location c = center();
+        if (c == null || !l.getWorld().equals(c.getWorld())) return false;
+        double half = cfgD("border.start-size", 400.0) / 2;
+        return Math.abs(l.getX() - c.getX()) <= half && Math.abs(l.getZ() - c.getZ()) <= half;
+    }
+
     private String nameOf(UUID id) {
         String n = Bukkit.getOfflinePlayer(id).getName();
         return n != null ? n : id.toString().substring(0, 8);
