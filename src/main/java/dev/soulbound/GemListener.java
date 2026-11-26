@@ -165,6 +165,40 @@ public class GemListener implements Listener {
     public GemListener(SoulboundGemsPlugin plugin) {
         this.plugin = plugin;
         this.gems = plugin.gems();
+        loadSaved();
+    }
+
+    // ---------- saved to disk: trust lists (trust.yml) and gems held through a death (respawn-gems.yml) ----------
+
+    private java.io.File dataFile(String name) { return new java.io.File(plugin.getDataFolder(), name); }
+
+    private void loadSaved() {
+        var t = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(dataFile("trust.yml"));
+        for (String owner : t.getKeys(false)) {
+            try {
+                Set<UUID> set = new HashSet<>();
+                for (String o : t.getStringList(owner)) set.add(UUID.fromString(o));
+                if (!set.isEmpty()) trusted.put(UUID.fromString(owner), set);
+            } catch (IllegalArgumentException ignored) { }
+        }
+        var r = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(dataFile("respawn-gems.yml"));
+        for (String id : r.getKeys(false)) {
+            try { pendingRespawnGem.put(UUID.fromString(id), GoldGem.decode(r.getString(id))); }
+            catch (RuntimeException e) { plugin.getLogger().warning("respawn-gems.yml: skipping " + id + " (" + e.getMessage() + ")"); }
+        }
+    }
+
+    private void saveTrust() {
+        var y = new org.bukkit.configuration.file.YamlConfiguration();
+        for (var e : trusted.entrySet()) if (!e.getValue().isEmpty()) y.set(e.getKey().toString(), e.getValue().stream().map(UUID::toString).toList());
+        try { y.save(dataFile("trust.yml")); } catch (java.io.IOException e) { plugin.getLogger().warning("Couldn't save trust.yml: " + e.getMessage()); }
+    }
+
+    /** A gem kept through a death waits here until its owner respawns, so a restart (or a logout on the death screen) can't lose it. */
+    private void saveRespawnGems() {
+        var y = new org.bukkit.configuration.file.YamlConfiguration();
+        for (var e : pendingRespawnGem.entrySet()) y.set(e.getKey().toString(), GoldGem.encode(e.getValue()));
+        try { y.save(dataFile("respawn-gems.yml")); } catch (java.io.IOException e) { plugin.getLogger().warning("Couldn't save respawn-gems.yml: " + e.getMessage()); }
     }
 
     // ---------- helpers ----------
@@ -787,12 +821,16 @@ public class GemListener implements Listener {
     }
 
     public boolean addTrust(Player owner, Player other) {
-        return trusted.computeIfAbsent(owner.getUniqueId(), k -> new HashSet<>()).add(other.getUniqueId());
+        boolean added = trusted.computeIfAbsent(owner.getUniqueId(), k -> new HashSet<>()).add(other.getUniqueId());
+        if (added) saveTrust();
+        return added;
     }
 
     public boolean removeTrust(Player owner, Player other) {
         Set<UUID> s = trusted.get(owner.getUniqueId());
-        return s != null && s.remove(other.getUniqueId());
+        boolean removed = s != null && s.remove(other.getUniqueId());
+        if (removed) saveTrust();
+        return removed;
     }
 
     public Set<UUID> getTrusted(Player owner) {
@@ -3379,6 +3417,7 @@ public class GemListener implements Listener {
             }
             if (!toKeep.isEmpty()) {
                 pendingRespawnGem.put(victim.getUniqueId(), toKeep.get(0));
+                saveRespawnGems();
             }
         }
 
@@ -3408,15 +3447,33 @@ public class GemListener implements Listener {
         }
     }
 
+    /** Logged out on the death screen, or in those few ticks after respawning: the saved gem comes on their next join. */
+    @EventHandler
+    public void onSavedGemJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        if (!pendingRespawnGem.containsKey(p.getUniqueId())) return;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline() || p.isDead()) return; // still dead: the respawn gives it
+            ItemStack kept = pendingRespawnGem.remove(p.getUniqueId());
+            if (kept == null) return;
+            saveRespawnGems();
+            if (findGem(p) == null) p.getInventory().addItem(kept);
+            else p.getWorld().dropItemNaturally(p.getLocation(), kept);
+        }, 10L);
+    }
+
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
-        ItemStack kept = pendingRespawnGem.remove(e.getPlayer().getUniqueId());
-        if (kept != null) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (findGem(e.getPlayer()) == null) e.getPlayer().getInventory().addItem(kept);
-                else e.getPlayer().getWorld().dropItemNaturally(e.getPlayer().getLocation(), kept);
-            }, 5L);
-        }
+        Player p = e.getPlayer();
+        if (!pendingRespawnGem.containsKey(p.getUniqueId())) return;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!p.isOnline()) return; // still saved: they get it when they're back
+            ItemStack kept = pendingRespawnGem.remove(p.getUniqueId());
+            if (kept == null) return;
+            saveRespawnGems(); // only now that it's back with them
+            if (findGem(p) == null) p.getInventory().addItem(kept);
+            else p.getWorld().dropItemNaturally(p.getLocation(), kept);
+        }, 5L);
     }
 
     // ---------- protection ----------

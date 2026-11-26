@@ -1,3 +1,25 @@
+# Trust lists and death-kept gems saved to disk
+
+## What changed
+- **Trust lists** (`/bliss trust`) are saved to `trust.yml` whenever one changes, and read back on start. A restart no longer wipes everyone's trusted players.
+- **The gem kept through a death** is saved to `respawn-gems.yml` when you die, and stays saved until it's back in your inventory:
+  - a restart while you're on the death screen no longer loses it;
+  - logging out on the death screen (or in the few ticks after respawning) no longer loses it either: it comes on your respawn, or your next join.
+
+## Files
+- **Changed:** `GemListener.java` (saving, loading, the respawn and join hand-back).
+- **New:** `SavedDataTest.java`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 277 unit tests pass (2 new). They cover: saved on add and remove; read back on start; the gem saved at death and kept until it's given; given on join if you left.
+
+## Not tested
+- **Nothing was run in game:** a real restart with trusted players, or with someone on the death screen.
+
+## In-game test plan
+1. **Trust:** `/bliss trust add <friend>`, restart, `/bliss trust list`: they're still there.
+2. **Death screen:** die, then stop the server before respawning. Start it and respawn: your gem is back.
+
 # The Gold Gem
 
 ## What I found first
