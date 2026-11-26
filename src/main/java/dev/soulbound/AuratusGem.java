@@ -905,6 +905,41 @@ final class AuratusGem implements Listener {
         if (tick % 4 == 0) w.spawnParticle(Particle.WAX_ON, from.clone().add(l.dir().clone().multiply(l.len() * Math.random())), 1, 0.05, 0.05, 0.05, 0);
     }
 
+    /**
+     * A still chain from {@code from} to {@code to}, hook first at {@code to}, made of the same pack models and layout as
+     * the Auratus' chains (the Gold Gem's repurpose holds a gem up with four of these). The caller removes them.
+     */
+    static List<ItemDisplay> stillChain(Location from, Location to, float scale) {
+        List<ItemDisplay> out = new ArrayList<>();
+        Vector delta = to.toVector().subtract(from.toVector());
+        double len = delta.length();
+        if (len < 0.5) return out;
+        Vector dir = delta.multiply(1 / len);
+        double[] at = AuratusMath.chainLayout(len, STRAND * scale, STRAND_STEP * scale, LINK_STEP * scale, 60);
+        for (int i = 0; i < at.length; i++) {
+            Location c = to.clone().subtract(dir.clone().multiply(at[i]));
+            ItemDisplay d = c.getWorld().spawn(unturned(c), ItemDisplay.class, x -> {
+                ItemStack it = new ItemStack(Material.ECHO_SHARD);
+                ItemMeta m = it.getItemMeta();
+                m.setCustomModelData(CMD_LINK);
+                it.setItemMeta(m);
+                x.setItemStack(it);
+                x.setPersistent(false);
+                x.setBrightness(new Display.Brightness(15, 15));
+            });
+            if (i == 0) {
+                ItemStack hook = d.getItemStack();
+                ItemMeta m = hook.getItemMeta();
+                m.setCustomModelData(CMD_HOOK);
+                hook.setItemMeta(m);
+                d.setItemStack(hook);
+                place(d, c, hookPose(dir, scale, at.length == 1 ? (float) (len / (STRAND * scale)) : 1f, new Vector3f()));
+            } else place(d, c, strandPose(dir, scale));
+            out.add(d);
+        }
+        return out;
+    }
+
     /** Moves a chain model without giving it a facing of its own (see {@link #display}). */
     private static void place(ItemDisplay d, Location at, Transformation pose) {
         if (d == null || !d.isValid()) return;

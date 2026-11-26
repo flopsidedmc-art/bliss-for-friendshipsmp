@@ -1,3 +1,140 @@
+# The Gold Gem
+
+## What I found first
+- **How gems work today:**
+  - **The item:** a gem is an item with its type, tier and energy stored on it; every power reads them from the gem in your hand.
+  - **Death:** standard gems are kept through death (held in memory, given back on respawn); mythics drop.
+  - **Memory only:** that held gem is memory only, so a restart while someone is on the death screen loses it. The trust list is memory only too, so it's empty after every restart. Both are unchanged here; worth fixing separately.
+  - **Where gems come from:** only admins (`/bliss give`, `/givegem`, the admin menu), the Trader item (which needs a gem already) and now the first-join starter gem. Non-admins have no command that gives a gem.
+- **What I reused:**
+  - **The Auratus chains:** echo-shard displays, link 12348 and hook 12349, laid out by `AuratusMath.chainLayout`.
+  - **CameraOverlay:** a full-screen texture for one player.
+  - **The finale's title flash:** glyph U+E120.
+  - **The gem disable.**
+  - **The stun:** the one from Flux's Ground.
+  - **The combat rules:** the attacker credit, and the name scramble.
+- **Glow colours:** the only scoreboard team was the Blur clones'. The Relay and Temporal glows are display-colour overrides, so a red "marked" team touches none of them. The capture points use boss bars, not teams. Pantheon is a separate plugin; if it puts players on teams, the two would conflict.
+- **Leftover Gold Gem code:** none. The old overlay only had CMD 12362 → `blissgems:item/gold_gem`. Your new pack has all 256 `gold/gold_gem_<bits>` looks and `gold_gem_awakened`.
+- **The textures I asked for:** your new pack has no per-gem repurpose overlays and no gold flash glyph yet. The plugin uses stand-ins for now (below), each changeable in config.
+
+## What changed
+- **The item:**
+  - **Making one:** `/goldgem give <player>` (`soulbound.gold.admin`, ops) turns their gem into a Gold Gem, with that gem as the core. `gold.max-on-server` is 1. `/goldgem remove <player>` takes it back: they get their core gem, and every socketed gem goes home.
+  - **It's a gem item:** its stored type is its ACTIVE gem, at Tier 2 and full energy. So each socketed gem's passives, powers, controls and action bar work exactly as holding that gem, through the existing code.
+  - **Its look:** `item_model` = `blissgems:gold/gold_gem_<bits>` (astra, fire, flux, life, puff, speed, strength, wealth; the core counts), or `gold_gem_awakened`. It updates every time a gem goes in or out.
+  - **Its lore:** the core, the socketed gems and the active one, in their colours, plus the controls.
+  - **Soulbound** like any gem: it can't be dropped or stored, and it's kept through death.
+  - **Refused on it:** energy bottles, upgrades, trades, repairs, `/bliss withdraw` and nicknames. It runs at full energy, with no gain or loss.
+- **Marks:**
+  - **The commands:** the holder only, `/goldgem mark|unmark <player>` and `/goldgem marks`.
+  - **The rules:** Tier 2 gem users only, 3 slots, and a mark can't come off for 30 minutes.
+  - **What a marked player gets:** a red name tag and red glow (a red team; the team they were on comes back after), a red tab-list name and red in chat. The invisibility scramble still wins in chat.
+  - **Saved to disk.**
+  - **Removed when:** they're repurposed, the holder loses the gem, or the holder unmarks them.
+- **Repurposing:** the killing blow on a marked player by the holder, or any lethal damage within 10 s of the holder's last hit on them.
+  - **Instead of dying:** the damage is cancelled and they're frozen for 5 s. They can't move, jump, attack, use items, eat, heal, teleport or pop a totem, and nothing hurts them.
+  - **The scene:**
+    - their gem is torn out of their inventory and rises about 6 blocks;
+    - after 1 s, 4 gold chains from 4 sides latch onto it (the Auratus chain models);
+    - 4 cosmetic lightning strikes;
+    - gold and gem-coloured particles swirl round the gem;
+    - their screen shows a camera overlay.
+  - **The end:**
+    - the chains snap, and the gem streaks into the holder;
+    - "<victim>'s soul was repurposed." is broadcast (the scrambled name if they're invisible);
+    - they die normally and drop their items, but not the gem.
+  - **The gem is socketed,** or held if that type is already in (or is the core's type), to come back when the holder dies.
+  - **No new gem:** there's no respawn re-gift (the gem is no longer in their inventory) and no second starter gem. On respawn they're told: "Your gem was taken by the Gold Gem holder. Kill them to take it back."
+  - **Logging out mid-scene** finishes it at once.
+  - **If the holder dies mid-scene,** the gem goes home instead.
+- **The holder dies:**
+  - **Every gem goes home:** socketed and held gems go back to their owners: into their inventory, or kept in `gold.yml` until they next join, with their tier and energy as they were.
+  - **The broadcast:** "The Gold Gem shatters. Stolen souls return home.", with a gold burst.
+  - **What's left:** core only, not awakened, and marks gone unless `keep-marks-on-death`.
+- **Switching** (as you chose):
+  - F swaps hands as normal, so the gem can still go in your off hand for off-hand abilities.
+  - **Sneak + F** (gem in your main hand) cycles to the next gem.
+  - **`/goldgem switch`** opens a picker.
+  - **The cooldown:** 2 s, with a chime and the active gem's name shown briefly on the action bar.
+- **Cooldowns:** every cooldown is still per power, so switching never resets one. While you hold the Gold Gem, none is longer than `max-cooldown-seconds` (170), e.g. Amplification's 240 becomes 170.
+- **The ritual:**
+  - **Setting the site:** `/goldgem ritual set` (the block you stand on).
+  - **Starting it:** with all 8 gems, right-click that block with the Gold Gem. Everyone gets the title "The Gold Gem awakens" and a bell.
+  - **The 30 s:** 8 beams in the gem colours rise from around the site and slowly bend into a gold column above you.
+  - **What breaks it:** leaving the 6-block radius, dying or logging out (at no cost).
+  - **The end:** the gold flash for everyone, then AWAKENED (its name, lore and look change).
+- **GOLD mode** (awakened): "GOLD" joins the cycle. While it's active, no other gem's powers or controls work (the item runs at passives-only energy), and the action bar shows Snap and Drill.
+  - **Snap** (sneak + left-click; 175 s, capped to 170 like everything on the Gold Gem):
+    - the gold flash (0.2 s) for every online player, and a deep bell with a crack for everyone;
+    - 3 random online players (never you; `exclude-trusted` off) have their gems disabled for 5 minutes, and are told;
+    - "<holder> snapped. 3 gems fall silent." is broadcast;
+    - Relay holders are immune to the disable, as with every gem disable.
+  - **Golden Drill** (sneak + right-click, 30 s):
+    - **The spin:** the real Riptide spin, launched where you look, with no trident, rain or water needed, as you chose.
+    - **The hit:** 8 × the ability multiplier.
+    - **One target per launch:** vanilla's spin hits the first creature it touches (with knockback) and ends there, like a real Riptide.
+    - **The rings:** in all 8 gem colours, spiralling along the path. The client still draws its white Riptide swirl as well.
+    - **No fall damage** for 2 s after.
+- **Saved to `gold.yml`:**
+  - holders, cores, the socketed and held gems, the active gem and awakened state;
+  - marks (and the team each marked player was on);
+  - gems waiting for offline owners, who to tell, and the ritual site.
+  - **Nothing lingers:** a disable finishes every repurpose and stops every ritual, and quits clean up.
+- **For your pack, when you're ready:**
+  - **Per-gem repurpose tints:** full-screen camera-overlay textures (like `gold_0.png`). Name them anything, e.g. `assets/blissgems/textures/overlay/repurpose_<gem>.png`, and set `gold.repurpose.overlay.<gem>` to `blissgems:overlay/repurpose_<gem>`. Until then each gem uses `blissgems:overlay/gold_0`.
+  - **The gold flash:** a font glyph (e.g. U+E121, in the same font as E120) with a solid gold full-screen texture; set `gold.flash.glyph` to it. Until then it's E120 tinted `#FFC846` (the brown flash, tinted gold).
+
+## Files
+- **New:**
+  - `GoldMath.java`: the state, sockets, cycle, release, marks, credit, cap, ritual and Snap targets;
+  - `GoldGem.java`: everything in game;
+  - `GoldCommand.java`: `/goldgem`;
+  - `GoldTest.java`.
+- **Changed:**
+  - `GemManager.java`: the Gold Gem marker, and its look and energy never rebuilt by normal gem refreshes;
+  - `GemListener.java`:
+    - clicks go to the Gold Gem first (repurpose, ritual, GOLD mode);
+    - its action bar;
+    - the cooldown cap on every cooldown;
+    - the gem disable for Snap;
+    - no special items or energy gain on it;
+  - `AuratusGem.java`: `stillChain`, the Auratus chain models laid still between two points;
+  - `BlissCommand.java` (`/bliss withdraw`) and `NamesCommand.java` (no nickname): Gold Gem guards;
+  - `SoulboundGemsPlugin.java`: wiring and shutdown;
+  - `plugin.yml`: `/goldgem` and `soulbound.gold.admin`;
+  - `config.yml`: `gold:` and `sounds.gold`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 275 unit tests pass (10 new). They cover:
+  - **The looks:** `gold_gem_<bits>` for the core and sockets, and awakened.
+  - **Sockets:** no duplicate types (the core counts), a duplicate is held instead, 8 at most, no mythics.
+  - **The cycle and GOLD mode.**
+  - **Marks:** Tier 2 only, 3 slots, already marked, not yourself, the 30-minute lock.
+  - **The repurpose:** the 10 s credit window; the gem leaves their inventory; they then die normally; nothing reaches them, no totem; logging out finishes it; no new gem.
+  - **The release:** every socketed and held gem back to its owner, offline ones kept until they join; core only, not awakened, marks gone (or kept).
+  - **The cooldown cap,** and every cooldown going through it.
+  - **The ritual:** done at 30 s, broken by leaving, dying or logging out.
+  - **Snap:** 3 different random players, never the holder, everyone picked sometimes, fewer when fewer are online, trusted excluded when set.
+  - **The wiring.**
+
+## Not tested
+- **Nothing was run in game:**
+  - the Gold Gem's look (the pack's 256 models) and lore;
+  - marks' team, glow, tab and chat;
+  - the whole repurpose scene (displays, chains, lightning, overlay, the kill and the drops);
+  - the release in play;
+  - switching (sneak + F, the menu);
+  - the ritual's beams and flash;
+  - Snap and the Riptide spin with rings.
+
+## In-game test plan
+1. **Give it:** `/goldgem give <you>`. Your gem becomes a Gold Gem with it as the core.
+2. **Marks:** `/goldgem mark Messy` (Tier 2): his name and glow turn red, and he's red in tab and chat. Try marking a Tier 1 player: refused. Try unmarking before 30 minutes: refused.
+3. **The repurpose:** kill Messy. He's frozen for 5 s, his gem rises and is held by 4 gold chains with lightning, and his screen is tinted. Then "Messy's soul was repurposed.", he dies and drops his items, and his gem flies into yours. He respawns without a gem.
+4. **Switching:** sneak + F to cycle to Messy's gem and use its powers. `/goldgem switch` to pick from the menu.
+5. **The release:** let Messy kill you. His gem returns to him; yours goes back to core only.
+6. **Awakening:** with all 8 gems (admin testing), `/goldgem ritual set`, then right-click the site with the Gold Gem. You get 30 s of 8 coloured beams, the broadcast and the gold flash. Then cycle to GOLD and try Snap (gold flash for everyone; 3 random players' gems disabled for 5 minutes) and Golden Drill (a Riptide launch with 8-colour rings).
+
 # Starter gems, and the new pack
 
 ## What changed

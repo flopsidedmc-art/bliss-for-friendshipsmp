@@ -257,7 +257,7 @@ public class GemListener implements Listener {
     /** Left-click with Tier 2 Flux: the beam (or Ground), on its short cooldown, which starts only if something fired. */
     private void fluxFire(Player p, int energy) {
         if (remain(fluxBeamCooldown, p.getUniqueId()) > 0 || plugin.flux() == null) return;
-        if (plugin.flux().fire(p)) fluxBeamCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("beam", energy));
+        if (plugin.flux().fire(p)) fluxBeamCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("beam", energy)));
     }
 
     /** The Auratus' chains, Aegis and slam: raw HP (no multiplier), the ability-damage cap, armour counts (AuratusGem drops Protection). */
@@ -294,8 +294,11 @@ public class GemListener implements Listener {
     }
 
     private void cdStart(Player p, String ability, long durationMs) {
-        cooldowns.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>()).put(ability, System.currentTimeMillis() + durationMs);
+        cooldowns.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>()).put(ability, System.currentTimeMillis() + capped(p, durationMs));
     }
+
+    /** Nothing on the Gold Gem cools down longer than gold.max-cooldown-seconds (GoldGem); every other gem as before. */
+    private long capped(Player p, long ms) { return plugin.gold() == null ? ms : plugin.gold().cap(p, ms); }
 
     private void cdClear(Player p, String ability) {
         Map<String, Long> mine = cooldowns.get(p.getUniqueId());
@@ -545,6 +548,7 @@ public class GemListener implements Listener {
     }
 
     private void sendActionbar(Player p, ItemStack gem) {
+        if (plugin.gold() != null && plugin.gold().hud(p, gem)) return; // the Gold Gem's own bar (GOLD mode, or the gem you just switched to)
         // Tracking alerts replace the cooldown bar for 3s.
         Long alert = trackAlertUntil.get(p.getUniqueId());
         if (alert != null) {
@@ -828,6 +832,7 @@ public class GemListener implements Listener {
 
     @EventHandler
     public void onInteract(PlayerInteractEvent e) {
+        if (plugin.gold() != null && plugin.gold().handleInteract(e)) return; // a repurpose, the ritual site, GOLD mode's Snap and Drill
         Action a = e.getAction();
         boolean left = (a == Action.LEFT_CLICK_AIR || a == Action.LEFT_CLICK_BLOCK);
         boolean right = (a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK);
@@ -946,7 +951,7 @@ public class GemListener implements Listener {
                 }
                 long rem = remain(cozyCooldown, p.getUniqueId());
                 if (rem > 0) { /* Silenced */ return; }
-                cozyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("cozy", energy));
+                cozyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("cozy", energy)));
                 useCozyCampfire(p, e.getClickedBlock(), energy);
                 return;
             }
@@ -1157,7 +1162,7 @@ public class GemListener implements Listener {
             }
             long rem = remain(fluxBurstCooldown, p.getUniqueId());
             if (rem > 0) { /* Silenced */ return; }
-            fluxBurstCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("burst", energy));
+            fluxBurstCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("burst", energy)));
             useKineticBurst(p, tier, energy);
         }
     }
@@ -1859,7 +1864,7 @@ public class GemListener implements Listener {
         long rem = remain(amplifyCooldown, p.getUniqueId());
         if (rem > 0) { p.sendMessage(ChatColor.RED + GemNames.tx("Amplification on cooldown: ") + (rem / 1000) + "s"); return; }
         if (plugin.amplification() == null) return;
-        amplifyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("amp", energy));
+        amplifyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("amp", energy)));
         plugin.amplification().cast(p);
         used(p, GemNames.tx("Amplification"));
     }
@@ -2303,6 +2308,9 @@ public class GemListener implements Listener {
         return until != null && until > System.currentTimeMillis();
     }
 
+    /** The gem disable, for others (the Gold Gem's Snap). */
+    void disableGemFor(Player p, long millis, String reason) { disableGem(p, millis, reason); }
+
     private void disableGem(Player p, long millis, String reason) {
         if (plugin.mythics().heldMythicType(p) == GemType.RELAY) return; // Relay: Clean Signal
         gemDisabledUntil.put(p.getUniqueId(), System.currentTimeMillis() + millis);
@@ -2397,7 +2405,7 @@ public class GemListener implements Listener {
     /** Astral Void [Right-click anywhere that isn't a player] T2: the same mass gem disable as before, around you. */
     private void tryAstralVoid(Player p, int energy) {
         if (remain(voidCooldown, p.getUniqueId()) > 0) return; // Silenced: right-clicking the air is common
-        voidCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("void", energy));
+        voidCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("void", energy)));
         useAstralVoid(p, p.getLocation(), energy);
     }
 
@@ -2689,7 +2697,7 @@ public class GemListener implements Listener {
                     if (rem > 0) {
                         p.sendMessage(ChatColor.RED + GemNames.tx("Cozy Campfire on cooldown: ") + (rem / 1000) + "s");
                     } else {
-                        cozyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("cozy", energy));
+                        cozyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + capped(p, cooldownMs("cozy", energy)));
                         useCozyCampfire(p, target, energy);
                     }
                 }
@@ -2740,6 +2748,10 @@ public class GemListener implements Listener {
     // ---------- special items ----------
 
     private void handleSpecial(Player p, ItemStack inHand, String kind) {
+        if (gems.isGold(offOrMainGem(p)) || gems.isGold(findGem(p))) { // the Gold Gem takes no bottles, upgrades, trades or repairs
+            p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
+            return;
+        }
         switch (kind) {
             case "energybottle" -> {
                 ItemStack gem = offOrMainGem(p);
@@ -3378,7 +3390,7 @@ public class GemListener implements Listener {
 
         if (killer != null && !killer.getUniqueId().equals(victim.getUniqueId())) {
             ItemStack kGem = findGem(killer);
-            if (kGem != null && !gems.isMythic(kGem) && !plugin.mythics().hasMythic(killer)) {
+            if (kGem != null && !gems.isMythic(kGem) && !gems.isGold(kGem) && !plugin.mythics().hasMythic(killer)) { // the Gold Gem: no energy gain
                 int en = gems.getEnergy(kGem);
                 if (en >= plugin.getConfig().getInt("energy.max", 10)
                         && plugin.getConfig().getBoolean("energy.drop-bottle-at-max", true)) {

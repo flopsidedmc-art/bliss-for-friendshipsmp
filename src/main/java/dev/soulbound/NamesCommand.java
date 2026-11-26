@@ -146,7 +146,7 @@ final class NamesCommand implements CommandExecutor, TabCompleter {
 
     /** May this gem have a nickname (mythics only with nicknames.mythic-nicknames)? */
     boolean nameable(ItemStack gem) {
-        return plugin.gems().isGem(gem) && (!plugin.gems().isMythic(gem) || plugin.getConfig().getBoolean("nicknames.mythic-nicknames", true));
+        return plugin.gems().isGem(gem) && !plugin.gems().isGold(gem) && (!plugin.gems().isMythic(gem) || plugin.getConfig().getBoolean("nicknames.mythic-nicknames", true));
     }
 
     long cooldownLeft(Player p) {

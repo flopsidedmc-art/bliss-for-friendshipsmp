@@ -145,6 +145,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                 ItemStack gem = plugin.listener().findGem(p);
                 if (gem == null) { p.sendMessage(ChatColor.RED + "No gem."); return true; }
                 if (gems.isMythic(gem)) { p.sendMessage(ChatColor.RED + "Mythic gems do not use Energy Bottles."); return true; }
+                if (gems.isGold(gem)) { p.sendMessage(ChatColor.RED + "The Gold Gem runs at full energy."); return true; }
                 int en = gems.getEnergy(gem);
                 if (en <= 1) { p.sendMessage(ChatColor.RED + "Need at least 2 energy to withdraw (keeps 1+)."); return true; }
                 gems.setEnergy(gem, en - 1);

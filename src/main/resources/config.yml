@@ -111,6 +111,18 @@ sounds:
     overcharge: {event: BLOCK_FIRE_AMBIENT, volume: 0.8, pitch: 1.8, enabled: true, layer: {event: BLOCK_CONDUIT_ATTACK_TARGET, volume: 0.5, pitch: 1.6}}  # the crackle above 100 W
     beam-max: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 1.0, pitch: 0.8, enabled: true, layer: {event: ENTITY_GENERIC_EXPLODE, volume: 0.9, pitch: 0.7}}  # a 200 W beam
     ground: {event: ITEM_TRIDENT_THUNDER, volume: 0.6, pitch: 1.6, enabled: true}  # Ground at 100 W
+  gold: # The Gold Gem: bells, gold, souls
+    switch: {event: BLOCK_NOTE_BLOCK_CHIME, volume: 0.6, pitch: 1.6, enabled: true}  # you only: the active gem changed
+    mark: {event: BLOCK_NOTE_BLOCK_PLING, volume: 0.8, pitch: 0.6, enabled: true}  # you only
+    repurpose: {event: BLOCK_RESPAWN_ANCHOR_AMBIENT, volume: 1.2, pitch: 0.6, enabled: true}  # the victim freezes, their gem rises
+    chains: {event: BLOCK_SMITHING_TABLE_USE, volume: 1.0, pitch: 0.6, enabled: true}  # the gold chains latch on
+    chains-snap: {event: ENTITY_ITEM_BREAK, volume: 1.0, pitch: 0.5, enabled: true}
+    absorb: {event: ENTITY_ZOMBIE_VILLAGER_CURE, volume: 0.5, pitch: 1.6, enabled: true}  # the gem flies into the holder
+    shatter: {event: ITEM_TOTEM_USE, volume: 0.8, pitch: 1.4, enabled: true}  # the holder fell: souls return home
+    ritual: {event: BLOCK_NOTE_BLOCK_BELL, volume: 1.0, pitch: 0.5, enabled: true}  # everyone: the ritual begins
+    awaken: {event: ITEM_TOTEM_USE, volume: 1.0, pitch: 0.6, enabled: true}
+    snap: {event: BLOCK_NOTE_BLOCK_BELL, volume: 1.4, pitch: 0.5, enabled: true, layer: {event: ENTITY_ITEM_BREAK, volume: 1.2, pitch: 0.6}}  # everyone: a deep bell and a crack
+    drill: {event: ITEM_TRIDENT_RIPTIDE_3, volume: 1.0, pitch: 1.2, enabled: true}
   wealth: # Wealth: coins, locks (no XP orb anywhere)
     pockets: {event: BLOCK_ENDER_CHEST_OPEN, volume: 1.0, pitch: 1.3, enabled: true}
     item-lock: {event: BLOCK_CHEST_LOCKED, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_IRON_TRAPDOOR_CLOSE, volume: 0.8, pitch: 0.7}}
@@ -933,3 +945,54 @@ puff:
 # energy.start energy. Once per player (starter-gems.yml remembers who), so losing a gem later never hands out another.
 starter-gem:
   enabled: true
+
+# The Gold Gem (/goldgem, see the changelog): admins turn a player's gem into one; that gem is its core. It sockets the
+# gems of marked players it repurposes (one of each type, 8 in all) and works like whichever is active (sneak + F, or
+# /goldgem switch). It runs at full energy, with no energy gain or loss.
+gold:
+  max-on-server: 1
+  switch-cooldown-seconds: 2
+  max-cooldown-seconds: 170 # nothing on the Gold Gem waits longer (Snap's 175 is capped to this too)
+  keep-marks-on-death: false
+  release-message: "The Gold Gem shatters. Stolen souls return home."
+  marks: # /goldgem mark <player>: Tier 2 gem users only
+    slots: 3
+    lock-minutes: 30 # a mark can't come off this soon after it's placed
+    glow: true # they glow red (a red team, their own team comes back after)
+    red-name: true # their name tag is red
+    red-tab: true
+    red-chat: true # the invisibility scramble still wins in chat
+  repurpose: # killing a marked player (the blow, or anything within 10 s of your last hit on them)
+    seconds: 5
+    lightning: 4 # cosmetic strikes around them (no fire, no damage)
+    chains: 4
+    message: "{victim}'s soul was repurposed."
+    respawn-message: "Your gem was taken by the Gold Gem holder. Kill them to take it back."
+    overlay: # the victim's screen during it (camera overlay textures under textures/); gold_0 until per-gem ones exist
+      astra: blissgems:overlay/gold_0
+      fire: blissgems:overlay/gold_0
+      flux: blissgems:overlay/gold_0
+      life: blissgems:overlay/gold_0
+      puff: blissgems:overlay/gold_0
+      speed: blissgems:overlay/gold_0
+      strength: blissgems:overlay/gold_0
+      wealth: blissgems:overlay/gold_0
+  ritual: # all 8 gems: right-click the site's centre block (/goldgem ritual set) with the Gold Gem
+    seconds: 30
+    radius: 6 # stay this close or it breaks (no cost)
+    title: "The Gold Gem awakens"
+    flash-ticks: 20
+  flash: # the gold flash (Snap, the end of the ritual): a title glyph like the finale's; U+E120 tinted gold until a gold one exists
+    glyph: "\uE120"
+    color: "#FFC846"
+  snap: # awakened, GOLD mode: sneak + left-click
+    cooldown-seconds: 175
+    disable-minutes: 5
+    targets: 3
+    exclude-trusted: false
+    flash-ticks: 4
+    message: "{holder} snapped. {count} gems fall silent."
+  drill: # awakened, GOLD mode: sneak + right-click. A Riptide spin where you look; the first one you hit takes the damage
+    cooldown-seconds: 30
+    damage: 8.0 # before ability-damage.multiplier
+    speed: 3.0

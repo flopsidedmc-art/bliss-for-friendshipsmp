@@ -67,6 +67,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     Amplification amplification() { return amplification; }
     private FluxPower flux;
     FluxPower flux() { return flux; }
+    private GoldGem gold;
+    GoldGem gold() { return gold; }
     private MaceRules maceRules;
 
     /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
@@ -125,6 +127,13 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(amplification, this);
         amplification.start();
         Bukkit.getPluginManager().registerEvents(new StarterGem(this), this); // a random Tier 1 gem on a player's first join
+        gold = new GoldGem(this); // the Gold Gem: sockets, marks, repurposing, the ritual, Snap and Golden Drill
+        Bukkit.getPluginManager().registerEvents(gold, this);
+        GoldCommand goldCommand = new GoldCommand(this);
+        if (getCommand("goldgem") != null) {
+            getCommand("goldgem").setExecutor(goldCommand);
+            getCommand("goldgem").setTabCompleter(goldCommand);
+        }
         flux = new FluxPower(this); // Flux: the charged beam, Ground, Overcharge, Overdrive's meter, Shocking Chance
         Bukkit.getPluginManager().registerEvents(flux, this);
         flux.start();
@@ -253,6 +262,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (bounty != null) bounty.shutdown(); // open offerings go back to their players, every hunt ends
         if (amplification != null) amplification.shutdown(); // no item stays enchanted higher
         if (flux != null) flux.shutdown(); // charging stops, every stun comes off
+        if (gold != null) gold.shutdown(); // every repurpose finishes, every ritual stops, gold.yml saved
     }
 
     /**

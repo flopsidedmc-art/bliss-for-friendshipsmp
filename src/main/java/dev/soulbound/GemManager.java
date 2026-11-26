@@ -27,6 +27,10 @@ public class GemManager {
     private final NamespacedKey keyLoreStyle = new NamespacedKey("soulbound-gems", "lore_style");
     /** A player's nickname for this gem (Nicknames), and who gave it (a mythic changing hands loses it). */
     private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
+    /** On the Gold Gem: its holder's id. Its look, lore and energy are the Gold Gem's own (GoldGem), never rebuilt here. */
+    final NamespacedKey keyGold = new NamespacedKey("soulbound-gems", "gold_gem");
+    /** Rebuilds a Gold Gem's look and lore from its state (set by GoldGem). */
+    static java.util.function.Consumer<ItemStack> goldLook;
     private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
     private static final int LORE_VERSION = 13; // 10: Amplification is sneak + right-click; 11: Auratus damage lines; 12: Flux; 13: Puff
@@ -59,6 +63,11 @@ public class GemManager {
         return (t == null || t < 1) ? 1 : Math.min(t, 2);
     }
 
+    /** The Gold Gem (a gem item whose type is its active gem). */
+    public boolean isGold(ItemStack item) {
+        return isGem(item) && item.getItemMeta().getPersistentDataContainer().has(keyGold, PersistentDataType.STRING);
+    }
+
     public boolean isMythic(ItemStack item) {
         GemType type = getType(item);
         return type != null && type.isMythic();
@@ -73,7 +82,7 @@ public class GemManager {
     }
 
     public void setEnergy(ItemStack item, int energy) {
-        if (!isGem(item) || isMythic(item)) return;
+        if (!isGem(item) || isMythic(item) || isGold(item)) return; // the Gold Gem runs at full energy, no gain or loss
         energy = EnergyStage.clamp(energy);
         ItemMeta m = item.getItemMeta();
         m.getPersistentDataContainer().set(keyEnergy, PersistentDataType.INTEGER, energy);
@@ -83,7 +92,7 @@ public class GemManager {
     }
 
     public void setTier(ItemStack item, int tier) {
-        if (!isGem(item) || isMythic(item)) return;
+        if (!isGem(item) || isMythic(item) || isGold(item)) return;
         tier = Math.max(1, Math.min(2, tier));
         ItemMeta m = item.getItemMeta();
         m.getPersistentDataContainer().set(keyTier, PersistentDataType.INTEGER, tier);
@@ -141,7 +150,7 @@ public class GemManager {
      * lines are carried over. The gem remembers its style, so this is one PDC read when nothing changed.
      */
     public void styleLore(ItemStack item) {
-        if (!isGem(item)) return;
+        if (!isGem(item) || isGold(item)) return;
         String style = loreStyle() + ":" + LORE_VERSION + ":" + GemNames.current().version(); // a rename rebuilds it once
         ItemMeta meta = item.getItemMeta();
         if (meta == null || style.equals(meta.getPersistentDataContainer().get(keyLoreStyle, PersistentDataType.STRING))) return;
@@ -163,6 +172,7 @@ public class GemManager {
     /** Rebuilds a gem's name and lore now (after a rename, a nickname change, /gems names refresh). */
     public void restyle(ItemStack item) {
         if (!isGem(item)) return;
+        if (isGold(item)) { if (goldLook != null) goldLook.accept(item); return; }
         ItemMeta m = item.getItemMeta();
         if (m == null) return;
         m.getPersistentDataContainer().remove(keyLoreStyle);
@@ -232,6 +242,7 @@ public class GemManager {
     /** Lore text. Strength layout matches user-provided screenshots; wording is user-supplied. */
     public void refreshLore(ItemStack item) {
         if (!isGem(item)) return;
+        if (isGold(item)) { if (goldLook != null) goldLook.accept(item); return; }
         GemType type = getType(item);
         if (type != null && type.isMythic()) {
             refreshMythicLore(item, type);
@@ -524,7 +535,7 @@ public class GemManager {
 
     /** Applies the exact CustomModelData/material binding from the user-provided Bliss pack. */
     public void refreshVisuals(ItemStack item) {
-        if (!isGem(item)) return;
+        if (!isGem(item) || isGold(item)) return; // the Gold Gem keeps its item_model
         GemType type = getType(item);
         if (type == null || type.isMythic()) return;
         int tier = getTier(item);
