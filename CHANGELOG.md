@@ -1,3 +1,82 @@
+# Puff revamp (and Flux: Q again at 100 W for Overcharge)
+
+## Flux change first
+- **Charging now holds at 100 W** for as long as you like. **Q again at 100 W switches Overcharge on**; Q once more drops you back to 100.
+- **Removed:** the automatic 1 s hold, and `flux.overcharge.hold-seconds`.
+- **Ground works the same:** left-click a player while at 100 W.
+
+## What I found first
+- **Dash:** your velocity was set once to your look × 6, with the upward part forced to at least 0.2.
+  - **The launch:** looking up, that's 6 blocks a tick straight up, so you flew far higher than 40 blocks.
+  - **The damage:** anyone within 3 blocks during its first half second was hurt once a second for 3 s (3.0 × the ability multiplier each time).
+- **Slow Falling:** there was no Slow Falling from the dash itself. Puff's held passive gave you Slow Falling all the time, which is what you noticed after a dash.
+- **Breezy Bash, left-click:** it wasn't radial at all. It launched the **single nearest** untrusted player within 8 blocks up and slammed them down (6 × the multiplier). The guide called it a "radial launch".
+- **Breezy Bash, hit:** it has **no cooldown**. It launches and slams on every Tier 2 melee hit. It's left as it is, as you asked.
+- **The hit passive:** a 25% chance per hit of 3 s Levitation or 5 s Slow Falling.
+- **Unchanged:** Double Jump (double-tap space or off-hand right-click), no fall damage, auto Power/Punch, Sculk Silence and Crop Tramp-Less.
+
+## What changed
+- **Dash** (right-click, the 40 s cooldown, the sounds and the cloud trail kept):
+  - **Distance:** it covers `abilities.dash.distance` (16) blocks where you look, in `ticks` (8): any direction, up included.
+  - **Going up:** never more than `max-rise` (16) blocks, so looking straight up takes you 16 blocks up and stops.
+  - **When it ends:** it pushes you each tick and stops when the distance (or the rise) is used up. At the end your upward speed is cut to 0 and your sideways speed to a fifth, so nothing carries you on.
+  - **Looking down** still dashes down. A wall ends it.
+  - **Contact damage:** anyone whose hitbox touches yours takes `contact-damage` (4.0 × the ability multiplier).
+    - **Catching fast passes:** the check sweeps from your last position to this tick's, so a fast dash can't skip past someone.
+    - **The limit:** at most once per target every 10 ticks.
+    - **Removed:** the damage-over-time.
+  - **Trusted players** are never hurt.
+- **Slow Falling** is gone: Puff has no fall damage anyway.
+- **Breezy Bash, left-click: a wind blast that repels** (60 s cooldown and its sound kept).
+  - **Who:** everyone within `radius` (6) is shoved straight away from you.
+    - **The push:** `push` (1.8) sideways and `up` (0.35) at point blank, falling to 40% at the edge.
+    - **The damage:** `damage` (2.0 × the multiplier).
+    - **Trusted players** are left alone (`affect-trusted: false`).
+  - **The look:** a ring of gusts and white cloud spreads out from you at chest height over 8 ticks, with white streaks flying outward.
+- **Breezy Bash, hit: launch and slam**, unchanged. The lore and guide now explain both versions.
+- **The combo** replaces the random levitation:
+  - **The trigger:** `puff.combo.hits` (5) melee hits in a row on one target, each within `window-seconds` (1.5) of the last.
+  - **The result:** Levitation for `levitation-ticks` (20). That target then can't be combo-levitated for `cooldown-seconds` (6).
+  - **Starting over:** switching targets, a slow hit, or being hit by them restarts your combo.
+- **The lore and guide text** cover Dash, both Breezy Bashes and the combo. The lore version is bumped.
+
+## Files
+- **New:**
+  - `PuffMath.java`: the dash's speed, step, end, the rise cap, touching and swept boxes, the 10-tick limit, the repel and its falloff, the combo;
+  - `PuffTest.java`.
+- **Changed:**
+  - `GemListener.java`: Dash, the wind blast, the combo and its reset; the Slow Falling passive and the old damage-over-time removed;
+  - `GemType.java` and `GemManager.java`: guide and lore;
+  - `config.yml`: `abilities.dash`, `abilities.breezy-bash` and `puff.combo`;
+  - **Flux:** `FluxMath.java`, `FluxPower.java`, `FluxTest.java`, the Flux lore and guide, and config.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 257 unit tests pass (13 new for Puff). They cover:
+  - **Dash contact:** only a touch hurts (passing beside, above or a little to the side doesn't); a fast pass is caught by the swept box; once per target per 10 ticks; trusted players are safe; the damage-over-time and Slow Falling are gone.
+  - **Distance:** 16 blocks flat; exactly 16 up looking straight up, in the same short time; looking down goes down; a wall ends it; nothing carries you on.
+  - **The repel:** straight away from you, mostly sideways with a little lift, nothing outside the radius, stronger closer (40% at the edge), the config, and the 60 s cooldown.
+  - **Both Breezy Bashes** wired, and the lore.
+  - **The combo:** 5 quick hits levitate; again right away doesn't (6 s); a slow hit or another target starts over; being hit by them resets it (someone else doesn't); the random levitation is gone.
+  - **Double Jump and no fall damage** are untouched.
+  - **Flux:** what each Q press does, and holding at 100 W.
+
+## Not tested
+- **Nothing was run in game:**
+  - how the dash feels (a push every tick is how the plugin moves players elsewhere, but the exact distance depends on the client);
+  - real contact hits;
+  - the wind ring's look;
+  - the shove in a real group;
+  - the combo's levitation;
+  - Flux's Q at 100 W.
+
+## In-game test plan
+1. **Contact damage:** dash past a friend without touching: no damage. Dash through them: one hit. Dash through someone stuck in cobwebs repeatedly: a hit each pass.
+2. **Distance:** dash looking straight up: about 16 blocks up, and you stop there, not a launch to space. The dash distance is about 16 blocks, with no Slow Falling afterwards.
+3. **The wind blast:** Breezy Bash in a group: everyone is shoved away from you, not up, with light damage and an expanding wind ring.
+   - **The hit version:** Breezy Bash by hitting someone: they're launched up and slammed down, as before.
+4. **The combo:** hit a friend 5 times quickly: they float for a second. Again right away: no levitation for 6 s.
+5. **Flux:** charge to 100 W: it holds. Q again: Overcharge starts climbing. Q once more: back to 100.
+
 # Flux revamp
 
 ## What I found first

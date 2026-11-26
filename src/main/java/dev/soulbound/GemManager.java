@@ -29,7 +29,7 @@ public class GemManager {
     private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
     private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
-    private static final int LORE_VERSION = 12; // 10: Amplification is sneak + right-click; 11: Auratus damage lines; 12: Flux
+    private static final int LORE_VERSION = 13; // 10: Amplification is sneak + right-click; 11: Auratus damage lines; 12: Flux; 13: Puff
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -379,14 +379,15 @@ public class GemManager {
             lore.add("§7— Enchants Punch");
             lore.add("§7— Sculk Silence");
             lore.add("§7— Crop Tramp-Less");
+            lore.add("§7— Combo §8[5 quick hits: they float]");
             lore.add("§f● §bABILITY");
             lore.add("§7— §fDouble Jump");
             lore.add("§f● §bPOWERS");
             if (tier >= 2) {
-                lore.add("§7— §f♨ BREEZY BASH §c🔥");
-                lore.add("§7— §f♨ BREEZY BASH §c🔥");
+                lore.add("§7— §f♨ BREEZY BASH §c🔥 §8[Left-click: a wind blast that repels]");
+                lore.add("§7— §f♨ BREEZY BASH §c🔥 §8[Hit: launch them up and slam]");
                 lore.add("");
-                lore.add("§7— §f➶ DASH");
+                lore.add("§7— §f➶ DASH §8[Right-click: 16 blocks, hits on contact]");
             } else {
                 lore.add("§8Unknown");
             }

@@ -588,9 +588,17 @@ abilities:
     charges: 3
     # Each charge takes cooldowns.storm seconds to come back (also editable in /config).
     # Add "charge-recharge-seconds: <n>" here to override that.
-  dash: # Puff gem, Dash: anyone you dash past is hurt once a second
-    damage-per-second: 3.0 # before ability-damage.multiplier
-    damage-seconds: 3
+  dash: # Puff gem, Dash: a fast dash where you look; it stops when the distance is used up (no flying off)
+    contact-damage: 4.0 # before ability-damage.multiplier: anyone whose hitbox touches yours, at most once per target every 10 ticks
+    distance: 16 # blocks, in any direction
+    max-rise: 16 # never more than this far up, so looking straight up isn't a trip to space
+    ticks: 8 # how long it takes
+  breezy-bash: # Puff gem, Breezy Bash [left-click]: a wind blast that shoves everyone away from you (the [hit] version is the launch and slam)
+    radius: 6
+    push: 1.8 # sideways, at point blank (40% of it at the edge)
+    up: 0.35 # a little lift, so they're shoved back, not sent into the sky
+    damage: 2.0 # before ability-damage.multiplier
+    affect-trusted: false # true: your trusted players are pushed and hurt too
   blur: # Speed gem, Blur
     clone-damage: 1.0 # each clone's hit, x ability-damage.multiplier, pierces armour; at most one hit a second per clone
     # Blur stays active for as long as you keep hitting the same target with the gem in your main hand.
@@ -908,3 +916,13 @@ flux:
     damage: 2.0 # added to the arrow's hit
     stun-seconds: 1.0 # no moving or jumping
     cooldown-seconds: 3 # at most once per target this often. Trusted players are never shocked
+
+# Puff's hit combo (both tiers): land this many melee hits in a row on the same target, each within window-seconds of
+# the last, and they float for levitation-ticks so you can juggle them. Then that target can't be combo-levitated again
+# for cooldown-seconds. Being hit by them starts your combo over.
+puff:
+  combo:
+    hits: 5
+    window-seconds: 1.5
+    levitation-ticks: 20
+    cooldown-seconds: 6

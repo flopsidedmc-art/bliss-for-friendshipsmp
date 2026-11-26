@@ -112,6 +112,7 @@ public class GemListener implements Listener {
         int energy;
     }
     private final Map<UUID, BlurRun> blurRuns = new HashMap<>();
+    private final Map<UUID, PuffMath.Combo> puffCombos = new HashMap<>(); // Puff holder -> their hit combo
     private final Map<UUID, Long> cloneLastHit = new HashMap<>(); // Blur clone -> its last hit (ms)
     private BlurClones blurClones;
 
@@ -523,8 +524,7 @@ public class GemListener implements Listener {
                 p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, 80, 0, true, false, false));
                 p.removePotionEffect(PotionEffectType.WITHER);
                 break;
-            case PUFF:
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 60, 0, true, false, false));
+            case PUFF: // no Slow Falling any more: Puff has no fall damage anyway
                 // Sculk Silence: unable to alert sculk shriekers
                 // (handled via player move event — no sculk shrieker alert when holding Puff)
                 // User kit: Power 3/Punch 1 (T1), Power 5/Punch 2 (T2) on bows
@@ -762,6 +762,7 @@ public class GemListener implements Listener {
     public void onLeave(PlayerQuitEvent e) {
         Player p = e.getPlayer();
         restoreHearts(p); // a heart lock running out while they're away would never put them back
+        puffCombos.remove(p.getUniqueId());
         if (!blurRuns.isEmpty()) endBlursOf(p.getUniqueId(), false); // no clones left behind
         trackAlertUntil.remove(p.getUniqueId());
         clearAstraDaggers(p.getUniqueId());
@@ -947,7 +948,7 @@ public class GemListener implements Listener {
                 long rem = cdRemain(p, "bash");
                 if (rem > 0) { /* Silenced */ return; }
                 cdStart(p, "bash", cooldownMs("bash", energy));
-                useBreezySlam(p, energy);
+                useWindBlast(p);
                 return;
             }
             if (!right) return;
@@ -2040,6 +2041,16 @@ public class GemListener implements Listener {
         }
     }
 
+    /** Puff's hit combo: the one you're comboing hitting you back starts your combo over. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPuffComboBroken(EntityDamageByEntityEvent e) {
+        if (puffCombos.isEmpty()) return;
+        PuffMath.Combo c = puffCombos.get(e.getEntity().getUniqueId());
+        if (c == null) return;
+        Entity by = e.getDamager() instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Entity s ? s : e.getDamager();
+        c.hitBy(by.getUniqueId());
+    }
+
     /** Blur clones are only part of the effect: they can't be hurt, hit by projectiles or targeted. */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBlurCloneHurt(EntityDamageEvent e) {
@@ -2113,72 +2124,122 @@ public class GemListener implements Listener {
         usedOn(attacker, GemNames.tx("Breezy Bash"), victim.getName());
     }
 
-    /** Breezy Bash [Left Click]: launch a single target straight up, then crash them down. */
-    private void useBreezySlam(Player p, int energy) {
-        // Find closest untrusted player in radius
-        Player target = null;
-        double bestDist = 8 * 8;
-        for (Entity e : p.getNearbyEntities(8, 4, 8)) {
-            if (!(e instanceof Player o)) continue;
-            if (o.getUniqueId().equals(p.getUniqueId()) || isTrusted(p, o)) continue;
-            double d = p.getLocation().distanceSquared(o.getLocation());
-            if (d < bestDist) { bestDist = d; target = o; }
+    /**
+     * Breezy Bash [Left Click]: a wind blast that shoves everyone within abilities.breezy-bash.radius away from you,
+     * flat (not up into the sky), harder the closer they are, with light damage. Trusted players are left alone.
+     */
+    private void useWindBlast(Player p) {
+        var c = plugin.getConfig();
+        double radius = Math.max(1, c.getDouble("abilities.breezy-bash.radius", 6)), push = c.getDouble("abilities.breezy-bash.push", 1.8);
+        double up = c.getDouble("abilities.breezy-bash.up", 0.35), dmg = c.getDouble("abilities.breezy-bash.damage", 2.0);
+        boolean trusted = c.getBoolean("abilities.breezy-bash.affect-trusted", false);
+        Location at = p.getLocation();
+        for (Entity e : p.getNearbyEntities(radius, 3, radius)) {
+            if (!(e instanceof LivingEntity le) || e.equals(p) || e instanceof org.bukkit.entity.ArmorStand) continue;
+            if (e instanceof Player o && !trusted && isTrusted(p, o)) continue;
+            double dx = le.getLocation().getX() - at.getX(), dz = le.getLocation().getZ() - at.getZ();
+            double[] v = PuffMath.repel(dx, dz, radius, push, up);
+            if (v[0] == 0 && v[1] == 0 && v[2] == 0) continue;
+            if (dmg > 0) abilityDamage(le, dmg, p);
+            le.setVelocity(new Vector(v[0], v[1], v[2]));
         }
-        if (target == null) {
-            p.sendMessage(ChatColor.GRAY + GemNames.tx("Breezy Bash: no target in range."));
-            return;
-        }
-        // Launch straight up
-        target.setVelocity(new Vector(0, 1.8, 0));
-        GemSounds.play(plugin, "puff.breezy-bash", target.getLocation());
-        // Crash down after a short delay (lambdas need a final copy of the target)
-        final Player victim = target;
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!victim.isOnline()) return;
-            victim.setVelocity(new Vector(0, -2.5, 0));
+        GemSounds.play(plugin, "puff.breezy-bash", at);
+        windRing(p, radius);
+        used(p, GemNames.tx("Breezy Bash"));
+    }
+
+    /** The blast's look: a ring of gusts and white cloud spreading out from you at chest height, with streaks flying outward. */
+    private void windRing(Player p, double radius) {
+        World w = p.getWorld();
+        Location centre = p.getLocation().add(0, 1.1, 0);
+        int steps = 8;
+        for (int t = 0; t < steps; t++) {
+            final double r = 0.6 + (radius - 0.6) * t / (steps - 1);
+            final int tick = t;
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (victim.isOnline()) abilityDamage(victim, 6.0, p);
-            }, 10L);
-        }, 15L);
-        p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 40, 2, 1, 2, 0.1);
-        usedOn(p, GemNames.tx("Breezy Bash"), target.getName());
+                int points = (int) Math.max(12, r * 7);
+                for (int i = 0; i < points; i++) {
+                    double a = Math.PI * 2 * i / points;
+                    double cx = Math.cos(a), cz = Math.sin(a);
+                    Location at = centre.clone().add(cx * r, 0, cz * r);
+                    w.spawnParticle(Particle.CLOUD, at, 0, cx, 0.02, cz, 0.25); // drifting outward
+                    if (i % 4 == tick % 4) w.spawnParticle(i % 8 == 0 ? Particle.GUST_EMITTER_SMALL : Particle.GUST, at, 1, 0, 0, 0, 0);
+                }
+                if (tick < 3) for (int k = 0; k < 6; k++) { // white streaks flying out
+                    double a = Math.random() * Math.PI * 2;
+                    w.spawnParticle(Particle.CLOUD, centre.clone().add(Math.cos(a) * 0.5, (Math.random() - 0.5) * 0.6, Math.sin(a) * 0.5), 0,
+                            Math.cos(a), 0, Math.sin(a), 0.9);
+                }
+            }, t);
+        }
     }
 
     /**
-     * Dash [Right Click]: 40-block dash. Anyone the caster passes is caught once, then hurt once a
-     * second: abilities.dash.damage-per-second for abilities.dash.damage-seconds.
+     * Dash [Right Click]: a fast dash where you look, about abilities.dash.distance (16) blocks in any direction, up
+     * included (at most abilities.dash.max-rise), and it stops there: no momentum carries you on. Anyone whose hitbox
+     * touches yours on the way takes abilities.dash.contact-damage, at most once per target every 10 ticks.
      */
     private void useDash(Player p, int energy) {
-        Vector dir = p.getLocation().getDirection().normalize().multiply(6.0);
-        dir.setY(Math.max(dir.getY(), 0.2));
-        p.setVelocity(dir);
+        var c = plugin.getConfig();
+        double distance = Math.max(1, c.getDouble("abilities.dash.distance", 16)), maxRise = Math.max(0, c.getDouble("abilities.dash.max-rise", 16));
+        int ticks = Math.max(2, c.getInt("abilities.dash.ticks", 8));
+        double speed = PuffMath.dashSpeed(distance, ticks), dmg = Math.max(0, c.getDouble("abilities.dash.contact-damage", 4.0));
+        Vector dir = p.getLocation().getDirection().normalize();
+        double startY = p.getLocation().getY();
         p.setFallDistance(0);
         GemSounds.play(plugin, "puff.dash", p.getLocation());
-        double perSecond = Math.max(0.0, plugin.getConfig().getDouble("abilities.dash.damage-per-second", 3.0));
-        int seconds = Math.max(1, plugin.getConfig().getInt("abilities.dash.damage-seconds", 3));
-        Set<UUID> caught = new HashSet<>();
-        // The dash covers its 40 blocks in about half a second: sweep around the caster on every one of those ticks.
-        for (int i = 1; i <= 10; i++) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!p.isOnline()) return;
-                for (Entity e : p.getNearbyEntities(3, 3, 3)) {
-                    if (e.getUniqueId().equals(p.getUniqueId())) continue;
-                    if (e instanceof Player o && isTrusted(p, o)) continue;
-                    if (e instanceof LivingEntity le && caught.add(le.getUniqueId())) dashHurt(p, le, perSecond, seconds);
+        UUID id = p.getUniqueId();
+        final double[] travelled = {0};
+        final Location[] last = {p.getLocation()};
+        final org.bukkit.util.BoundingBox[] lastBox = {p.getBoundingBox()};
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int tick;
+
+            @Override public void run() {
+                if (!p.isOnline() || p.isDead()) { cancel(); return; }
+                Location now = p.getLocation();
+                if (now.getWorld().equals(last[0].getWorld())) travelled[0] += now.distance(last[0]);
+                last[0] = now;
+                org.bukkit.util.BoundingBox box = p.getBoundingBox();
+                dashContact(p, lastBox[0], box, dmg);
+                lastBox[0] = box;
+                double risen = now.getY() - startY;
+                if (PuffMath.dashDone(travelled[0], distance, risen, maxRise, tick, ticks)) {
+                    Vector v = p.getVelocity();
+                    p.setVelocity(new Vector(v.getX() * 0.2, Math.min(0, v.getY()), v.getZ() * 0.2)); // it stops here: nothing carries you on
+                    cancel();
+                    return;
                 }
-                p.getWorld().spawnParticle(Particle.CLOUD, p.getLocation(), 10, 0.3, 0.3, 0.3, 0.05);
-            }, i);
-        }
+                double[] step = PuffMath.dashStep(dir.getX(), dir.getY(), dir.getZ(), speed, distance - travelled[0], maxRise - risen);
+                p.setVelocity(new Vector(step[0], step[1], step[2]));
+                p.setFallDistance(0);
+                p.getWorld().spawnParticle(Particle.CLOUD, now, 10, 0.3, 0.3, 0.3, 0.05);
+                tick++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
         used(p, GemNames.tx("Dash"));
     }
 
-    /** One hit now and one each following second. A second apart, every hit lands (no hurt-immunity overlap). */
-    private void dashHurt(Player p, LivingEntity victim, double perSecond, int seconds) {
-        for (int second = 0; second < seconds; second++) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (p.isOnline() && victim.isValid() && !victim.isDead()) abilityDamage(victim, perSecond, p);
-            }, second * 20L);
+    private final Map<String, Long> dashHits = new HashMap<>(); // "dasher:target" -> the tick it was last hit
+
+    /** The dash's hit: anyone whose hitbox your hitbox touched since last tick (never you or your trusted players). */
+    private void dashContact(Player p, org.bukkit.util.BoundingBox from, org.bukkit.util.BoundingBox to, double dmg) {
+        double[] me = PuffMath.swept(box(from), box(to));
+        long tick = Bukkit.getCurrentTick();
+        for (Entity e : p.getNearbyEntities(4, 4, 4)) {
+            if (!(e instanceof LivingEntity le) || e.equals(p) || e instanceof org.bukkit.entity.ArmorStand) continue;
+            if (e instanceof Player o && isTrusted(p, o)) continue;
+            if (!PuffMath.touching(me, box(le.getBoundingBox()))) continue;
+            String k = p.getUniqueId() + ":" + le.getUniqueId();
+            if (!PuffMath.contactReady(dashHits.get(k), tick, 10)) continue;
+            dashHits.put(k, (long) tick);
+            abilityDamage(le, dmg, p);
         }
+        if (dashHits.size() > 256) dashHits.values().removeIf(t -> tick - t > 200);
+    }
+
+    private static double[] box(org.bukkit.util.BoundingBox b) {
+        return new double[] {b.getMinX(), b.getMinY(), b.getMinZ(), b.getMaxX(), b.getMaxY(), b.getMaxZ()};
     }
 
     // ================= ASTRA (user kit, Drift offhand-only) =================
@@ -2890,11 +2951,16 @@ public class GemListener implements Listener {
             return;
         }
         if (gtype == GemType.PUFF) {
-            // Hit passive (both tiers): chance to levitate or slow-fall the victim
-            if (EnergyStage.allowsPassives(gems.getEnergy(gem)) && e.getEntity() instanceof LivingEntity le
-                    && Math.random() < 0.25) {
-                if (Math.random() < 0.5) le.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 60, 0));
-                else le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0));
+            // Hit combo (both tiers): puff.combo.hits melee hits in a row on one target levitate them briefly (juggle)
+            boolean meleeHit = e.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK || e.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK;
+            if (EnergyStage.allowsPassives(gems.getEnergy(gem)) && meleeHit && abilityHits <= 0 && e.getEntity() instanceof LivingEntity le) {
+                var cfg = plugin.getConfig();
+                if (puffCombos.computeIfAbsent(p.getUniqueId(), k -> new PuffMath.Combo()).hit(le.getUniqueId(), System.currentTimeMillis(),
+                        Math.max(1, cfg.getInt("puff.combo.hits", 5)), (long) (cfg.getDouble("puff.combo.window-seconds", 1.5) * 1000),
+                        (long) (cfg.getDouble("puff.combo.cooldown-seconds", 6) * 1000))) {
+                    le.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, Math.max(1, cfg.getInt("puff.combo.levitation-ticks", 20)), 0));
+                    le.getWorld().spawnParticle(Particle.CLOUD, le.getLocation().add(0, 0.2, 0), 12, 0.3, 0.1, 0.3, 0.02);
+                }
             }
             // Breezy Bash [Hit] T2: launch up + slam down
             if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
