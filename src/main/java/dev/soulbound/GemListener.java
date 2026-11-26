@@ -106,16 +106,20 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> richRushUntil = new HashMap<>();
     private final Map<UUID, Integer> oreCount = new HashMap<>();
     // Speed systems (user-supplied kit). Thunderstep is offhand-right-click only.
-    /** One running Blur: who it is on, when its caster last hit them, and the clones attacking them. */
+    /** One running Blur: who it is on and when its caster last hit them. Its clones are BlurClones'. */
     private static final class BlurRun {
         UUID victim;
         long lastHit;
         int energy;
-        final List<org.bukkit.entity.Vex> clones = new ArrayList<>();
     }
     private final Map<UUID, BlurRun> blurRuns = new HashMap<>();
-    private final Map<UUID, UUID> blurCloneVictim = new HashMap<>();
     private final Map<UUID, Long> cloneLastHit = new HashMap<>(); // Blur clone -> its last hit (ms)
+    private BlurClones blurClones;
+
+    BlurClones blurClones() {
+        if (blurClones == null) blurClones = new BlurClones(plugin);
+        return blurClones;
+    }
     private final Map<UUID, SpeedStorm> storms = new HashMap<>();
     private final Map<UUID, Long> stormLastStrike = new HashMap<>();
     private final Map<UUID, Long> amplifyCooldown = new HashMap<>();
@@ -734,6 +738,7 @@ public class GemListener implements Listener {
     public void onLeave(PlayerQuitEvent e) {
         Player p = e.getPlayer();
         restoreHearts(p); // a heart lock running out while they're away would never put them back
+        if (!blurRuns.isEmpty()) endBlursOf(p.getUniqueId(), false); // no clones left behind
         trackAlertUntil.remove(p.getUniqueId());
         clearAstraDaggers(p.getUniqueId());
     }
@@ -1724,6 +1729,8 @@ public class GemListener implements Listener {
 
     void shutdown() {
         for (Player p : Bukkit.getOnlinePlayers()) restoreHearts(p);
+        blurRuns.clear();
+        if (blurClones != null) blurClones.removeAll(); // every Blur clone is gone
         for (UUID id : new ArrayList<>(volleys.keySet())) clearAstraDaggers(id);
         for (ItemDisplay d : flyingDaggers) if (d.isValid()) d.remove();
         flyingDaggers.clear();
@@ -2005,37 +2012,41 @@ public class GemListener implements Listener {
         run.victim = victim.getUniqueId();
         run.lastHit = System.currentTimeMillis();
         run.energy = energy;
-        for (int i = 0; i < 3; i++) {
-            Location at = victim.getLocation().clone().add((Math.random() - 0.5) * 4, 1, (Math.random() - 0.5) * 4);
-            org.bukkit.entity.Vex vex;
-            try {
-                vex = p.getWorld().spawn(at, org.bukkit.entity.Vex.class);
-            } catch (Exception ex) { continue; }
-            vex.setPersistent(false); // never saved: a restart cannot leave stray clones behind
-            blurCloneVictim.put(vex.getUniqueId(), run.victim);
-            run.clones.add(vex);
-            try { vex.setTarget(victim); } catch (Exception ignored) { }
-            vex.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, PotionEffect.INFINITE_DURATION, 1));
-            p.getWorld().spawnParticle(Particle.PORTAL, at, 30, 0.5, 0.5, 0.5, 0.2);
-        }
         blurRuns.put(id, run);
+        blurClones().begin(p, victim);
+        blurClones().hit(p, victim, this::cloneSwing); // the first hit brings the first clone
         GemSounds.play(plugin, "speed.blur", p.getLocation());
         usedOn(p, GemNames.tx("Blur"), victim.getName());
     }
 
-    /** Ends a Blur: clones vanish and the cooldown starts now, not when it was activated. */
-    private void endBlur(UUID ownerId) {
+    /** Ends a Blur: the clones shatter and the cooldown starts now, not when it was activated. */
+    private void endBlur(UUID ownerId) { endBlur(ownerId, true); }
+
+    /** {@code shatter} false: the clones just go (logout, chunk unload, plugin disable). */
+    private void endBlur(UUID ownerId, boolean shatter) {
         BlurRun run = blurRuns.remove(ownerId);
         if (run == null) return;
-        for (org.bukkit.entity.Vex clone : run.clones) {
-            blurCloneVictim.remove(clone.getUniqueId());
-            if (clone.isValid()) {
-                clone.getWorld().spawnParticle(Particle.PORTAL, clone.getLocation(), 20, 0.3, 0.3, 0.3, 0.2);
-                clone.remove();
-            }
-        }
+        if (shatter) blurClones().shatter(ownerId); else blurClones().remove(ownerId);
+        cloneLastHit.keySet().removeIf(c -> Bukkit.getEntity(c) == null); // only clones still standing keep a timer
         Player owner = Bukkit.getPlayer(ownerId);
         if (owner != null) cdStart(owner, "blur", cooldownMs("blur", run.energy));
+    }
+
+    /** Every Blur on or by this player ends now. */
+    private void endBlursOf(UUID player, boolean shatter) {
+        endBlur(player, shatter);
+        for (var en : new ArrayList<>(blurRuns.entrySet())) if (en.getValue().victim.equals(player)) endBlur(en.getKey(), shatter);
+    }
+
+    /** A clone swings (BlurClones): its damage lands now, abilities.blur.clone-damage, at most once a second per clone. */
+    private void cloneSwing(UUID ownerId, LivingEntity clone) {
+        BlurRun run = blurRuns.get(ownerId);
+        Player owner = Bukkit.getPlayer(ownerId);
+        if (run == null || owner == null || !(Bukkit.getEntity(run.victim) instanceof LivingEntity target) || target.isDead()) return;
+        long n = System.currentTimeMillis();
+        if (n - cloneLastHit.getOrDefault(clone.getUniqueId(), 0L) < 1000) return;
+        cloneLastHit.put(clone.getUniqueId(), n);
+        abilityDamage(target, plugin.getConfig().getDouble("abilities.blur.clone-damage", 1.0), owner);
     }
 
     /** Blur has no fixed length: it lasts while the caster keeps landing hits inside the combo window. */
@@ -2049,10 +2060,6 @@ public class GemListener implements Listener {
             if (owner == null || owner.isDead() || !(target instanceof LivingEntity victim) || victim.isDead() || !victim.isValid()
                     || !victim.getWorld().equals(owner.getWorld()) || now - run.lastHit > window) {
                 endBlur(entry.getKey());
-                continue;
-            }
-            for (org.bukkit.entity.Vex clone : run.clones) {
-                if (clone.isValid() && clone.getTarget() != victim) clone.setTarget(victim);
             }
         }
     }
@@ -2074,32 +2081,56 @@ public class GemListener implements Listener {
                 || e.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK;
         // Only a hit made with the Speed gem itself keeps Blur going; switching to a weapon lets it lapse.
         ItemStack striking = caster.getInventory().getItemInMainHand();
-        if (melee && gems.isGem(striking) && gems.getType(striking) == GemType.SPEED) mine.lastHit = System.currentTimeMillis();
+        if (melee && abilityHits <= 0 && gems.isGem(striking) && gems.getType(striking) == GemType.SPEED) {
+            mine.lastHit = System.currentTimeMillis();
+            if (e.getEntity() instanceof LivingEntity victim) blurClones().hit(caster, victim, this::cloneSwing); // one more clone, and they swing
+        }
     }
 
-    /** Blur clones are real vexes; stop them from hurting or chasing anyone but the Blur target. */
+    /** Blur clones are only part of the effect: they can't be hurt, hit by projectiles or targeted. */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onBlurCloneHit(EntityDamageByEntityEvent e) {
-        UUID victim = blurCloneVictim.get(e.getDamager().getUniqueId());
-        if (victim == null) return;
-        e.setCancelled(true); // a clone never deals its own vex damage
-        if (!victim.equals(e.getEntity().getUniqueId()) || !(e.getEntity() instanceof LivingEntity target)) return;
-        // Instead: abilities.blur.clone-damage as an ability hit (x multiplier, piercing), at most once a second per clone.
-        long n = System.currentTimeMillis();
-        if (n - cloneLastHit.getOrDefault(e.getDamager().getUniqueId(), 0L) < 1000) return;
-        cloneLastHit.put(e.getDamager().getUniqueId(), n);
-        for (Map.Entry<UUID, BlurRun> run : blurRuns.entrySet()) {
-            if (!run.getValue().clones.contains(e.getDamager())) continue;
-            Player owner = Bukkit.getPlayer(run.getKey());
-            if (owner != null) abilityDamage(target, plugin.getConfig().getDouble("abilities.blur.clone-damage", 1.0), owner);
-            return;
-        }
+    public void onBlurCloneHurt(EntityDamageEvent e) {
+        if (blurClones != null && blurClones.isClone(e.getEntity())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onBlurCloneShot(org.bukkit.event.entity.ProjectileHitEvent e) {
+        if (blurClones != null && blurClones.isClone(e.getHitEntity())) e.setCancelled(true); // it flies through
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onBlurCloneTarget(org.bukkit.event.entity.EntityTargetEvent e) {
-        UUID victim = blurCloneVictim.get(e.getEntity().getUniqueId());
-        if (victim != null && (e.getTarget() == null || !victim.equals(e.getTarget().getUniqueId()))) e.setCancelled(true);
+        if (blurClones != null && blurClones.isClone(e.getTarget())) e.setCancelled(true);
+    }
+
+    /** Nothing a clone wears or holds can ever drop. */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onBlurCloneDeath(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (blurClones == null || !blurClones.isClone(e.getEntity())) return;
+        e.getDrops().clear();
+        e.setDroppedExp(0);
+        UUID owner = blurClones.ownerOf(e.getEntity());
+        if (owner != null) endBlur(owner, false);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBlurDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
+        if (!blurRuns.isEmpty()) endBlursOf(e.getEntity().getUniqueId(), true);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBlurWorld(org.bukkit.event.player.PlayerChangedWorldEvent e) {
+        if (!blurRuns.isEmpty()) endBlursOf(e.getPlayer().getUniqueId(), true);
+    }
+
+    /** A clone's chunk unloading: that Blur's clones go (they'd vanish unsaved anyway). */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBlurUnload(org.bukkit.event.world.EntitiesUnloadEvent e) {
+        if (blurClones == null || blurRuns.isEmpty()) return;
+        for (Entity en : e.getEntities()) {
+            UUID owner = blurClones.ownerOf(en);
+            if (owner != null) endBlur(owner, false);
+        }
     }
 
     // ================= PUFF (user kit, Double Jump offhand-only) =================

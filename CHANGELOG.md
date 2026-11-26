@@ -1,3 +1,80 @@
+# Speed: Blur clones rework
+
+## What I found first
+- **The clones were three real Vexes,** all spawned on the first hit at random spots within 2 blocks of the target. They had Speed II, and their AI chased the target.
+  - **Their own vex damage was cancelled.** Instead, each time a vex's AI attacked, the target took `abilities.blur.clone-damage` (1.0 × the ability multiplier, armour-piercing), at most once a second per clone.
+  - **They looked like vexes, not like you,** and appeared and vanished in purple portal particles.
+- **The rules** (unchanged):
+  - **How it starts:** a melee hit with the Tier 2 Speed gem in the main hand, off cooldown, with powers allowed.
+  - **What keeps it going:** each melee hit with the gem.
+  - **How it ends:**
+    - the target hits you back;
+    - `combo-window-seconds` (3) without a hit;
+    - you die or change worlds, or the target dies or leaves.
+  - **The cooldown** (15 s) starts when it ends.
+- **Cleanup gaps:**
+  - **Logout and the plugin stopping:** the vexes were only removed on the next 0.5 s tick, and stopping the plugin didn't remove them. A `/reload` could leave them standing until a restart.
+  - **The damage timers** were never cleared.
+- **Glow colours:** no part of the plugin uses scoreboard teams. The Relay and Temporal outlines are colour overrides on display entities. A team of its own for the clones can't change any other glow.
+- **Mannequins** are already used for Astra's body (`MannequinBody`, kept separate so servers without them never load it). The clones use the same class.
+
+## What changed
+- **Each clone is a Mannequin** with your skin, a copy of your armour and what's in your hands, and a yellow outline.
+  - **The outline:** the clones' own `sg_blur_clones` team, coloured yellow, also with no collision and no name tags.
+  - **Only part of the effect:** they can't be hurt, pushed, collided with, targeted by mobs or hit by projectiles (arrows fly through), and make no sounds.
+  - **Nothing they wear or hold can ever drop.**
+  - **Without Mannequins** (before Paper 1.21.9) they're vexes again. They stand in the same spots and use their charge pose for the swing.
+- **One clone per hit in the run,** up to `max-clones` (3):
+  - the first on the target's left, the second on their right, the third behind them;
+  - 1.2 blocks away (`clone-distance`), facing the target;
+  - "the target's front" is the side facing you.
+- **They follow the target smoothly:** a third of the way to their spot every tick (the client smooths the moves), or straight there if far behind.
+- **The swing:** after each of your hits, each clone swings its arm `clone-delay-ticks` (3) later, and 2 more ticks for each extra clone (`clone-delay-step-ticks`), so they go tk-tk-tk.
+  - **That's when its damage lands:** the same `clone-damage`, armour-piercing, still at most once a second per clone.
+  - **A clone's own damage never counts as one of your hits.**
+- **Sparks:** five times a second, a thin crackling arc of ELECTRIC_SPARK and small yellow dust jumps between two clones (or from the only clone to the target).
+- **Two hits within 10 ticks:** every clone flickers out for 2 ticks.
+- **When the run ends** (hit back, you stop hitting, you switch away, a death, a world change), every clone shatters at once: yellow dust and sparks where each stood, and a quiet, sharp crackle (`sounds.speed.blur-shatter`, ENTITY_LIGHTNING_BOLT_IMPACT, pitch 2.0, volume 0.4).
+- **Removed at once, with nothing left behind:**
+  - on logout (yours or the target's), death, world change or chunk unload;
+  - on plugin disable;
+  - they're never saved.
+- **Unchanged:**
+  - how Blur starts, the combo window, its endings, the clone damage and the cooldown;
+  - Speedy Storm, Thunderstep and the passive.
+- **One difference in feel:** the clones arrive one per hit, so on the first two hits there are fewer clones swinging than the old three vexes. That was your design. Each clone's damage and its once-a-second limit are exactly as before.
+
+## Files
+- **New:**
+  - `BlurMath.java`: the spots, the count, the swing delays, the flicker, facing, smooth following;
+  - `BlurClones.java`: the clones, outline, following, swings, sparks, flicker, shatter, removal;
+  - `BlurTest.java`.
+- **Changed:**
+  - `GemListener.java`: Blur uses BlurClones; the clone damage lands on the swing; cleanup on logout, death, world change, chunk unload and disable. The old vex handlers are gone.
+  - `MannequinBody.java`: `spawnClone`.
+  - `config.yml`: `abilities.blur.max-clones`, `clone-distance`, `clone-delay-ticks`, `clone-delay-step-ticks`, and `sounds.speed.blur-shatter`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 222 unit tests pass (11 new). They cover:
+  - **Placement:** one clone a hit up to the max; left, then right, then behind, 1.2 blocks away, turning with the target; facing it; smooth following.
+  - **The swing delay:** 3, 5 and 7 ticks.
+  - **The flicker:** fast hits within 10 ticks.
+  - **The damage is unchanged:** the same value, once a second per clone, a clone's hit never counts as yours, and being hit back still ends it.
+  - **Cleanup:** every end path removes the clones (combo timeout, being hit back, death, world change, logout, chunk unload, disable), they're never saved, and they leave the glow team.
+  - **The clones are only an effect,** and the config.
+
+## Not tested
+- **Nothing was run in game:**
+  - how the Mannequin clones, the yellow outline, the swing, the following, the sparks, the flicker and the shatter look;
+  - the vex fallback;
+  - whether a swing at the target can be blocked by a clone's hitbox. A hit landing on a clone does nothing, and they stand beside or behind the target, not between you.
+
+## In-game test plan
+1. **Three clones:** hit a friend with the Speed gem 3 times. Three copies of you with a yellow outline appear (left, right, behind), each swinging just after you, with sparks between them.
+2. **The flicker:** hit fast, and the clones flicker.
+3. **The shatter:** your friend hits you back, and every clone shatters into yellow sparks with a crackle.
+4. **Logout:** log out mid-Blur. No clones are left behind.
+
 # Item provenance + Bounty Hunter rework
 
 ## What I found first

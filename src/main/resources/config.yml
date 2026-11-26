@@ -81,6 +81,7 @@ sounds:
     crisp-cool: {event: BLOCK_LAVA_EXTINGUISH, volume: 0.6, pitch: 1.0, enabled: true}  # the land cooling back
   speed: # Speed: high, electric
     blur: {event: ITEM_TRIDENT_RIPTIDE_1, volume: 1.0, pitch: 1.6, enabled: true}
+    blur-shatter: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.4, pitch: 2.0, enabled: true}  # every clone breaking when Blur ends
     speedy-storm: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.9, pitch: 1.4, enabled: true, layer: {event: BLOCK_BEACON_POWER_SELECT, volume: 0.5, pitch: 1.8}}  # no thunder
     storm-bolt: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.5, pitch: 1.8, enabled: true}  # each particle bolt
     thunderstep: {event: ENTITY_LIGHTNING_BOLT_IMPACT, volume: 0.5, pitch: 2.0, enabled: true, layer: {event: ITEM_TRIDENT_RETURN, volume: 0.9, pitch: 1.8}}
@@ -581,6 +582,12 @@ abilities:
     # Blur stays active for as long as you keep hitting the same target with the gem in your main hand.
     # It ends if you go this long without hitting them, or as soon as they hit you back.
     combo-window-seconds: 3.0
+    # The clones: copies of you (your skin, armour and held item) with a yellow outline, only part of the effect (they
+    # can't be hit, pushed or targeted). One more with each hit you land: left of the target, right, then behind.
+    max-clones: 3
+    clone-distance: 1.2 # blocks from the target
+    clone-delay-ticks: 3 # each clone swings this long after your hit (that's when its clone-damage lands) ...
+    clone-delay-step-ticks: 2 # ... and each extra clone this much later, so they go tk-tk-tk
 
 # Astra Daggers (T2): 5 hover round you; each left-click fires one (the pack's dagger model, flying tip first).
 # The cooldown (cooldowns.daggers, 90 s) starts after the fifth; then all 5 come back.

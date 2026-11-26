@@ -7,7 +7,8 @@ import org.bukkit.entity.Player;
 
 /**
  * Astral Projection's body as a Mannequin (Paper 1.21.9+): your skin, your armour, standing still where you were.
- * Kept in its own class so a server without Mannequin never loads it; AstralSpectate falls back to a zombie there.
+ * Also Speed's Blur clones (spawnClone). Kept in its own class so a server without Mannequin never loads it; AstralSpectate
+ * falls back to a zombie there, and Blur to vexes.
  */
 final class MannequinBody {
     private MannequinBody() {}
@@ -19,6 +20,17 @@ final class MannequinBody {
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** A Blur clone (BlurClones): your skin, armour and held item, no name or description. */
+    static LivingEntity spawnClone(Player p, Location at) {
+        return at.getWorld().spawn(at, org.bukkit.entity.Mannequin.class, m -> {
+            m.setProfile(io.papermc.paper.datacomponent.item.ResolvableProfile.resolvableProfile(p.getPlayerProfile()));
+            m.setImmovable(true);
+            m.setDescription(Component.empty());
+            m.setPersistent(false);
+            BlurClones.dress(m, p);
+        });
     }
 
     static LivingEntity spawn(Player p, Location at) {
