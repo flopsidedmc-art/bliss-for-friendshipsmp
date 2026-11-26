@@ -1,3 +1,26 @@
+# Starter gems, and the new pack
+
+## What changed
+- **Starter gems** (`starter-gem.enabled`, on): a player joining for the first time gets a random Tier 1 standard gem (Astra, Fire, Flux, Life, Puff, Speed, Strength or Wealth; never a mythic). It comes with `energy.start` energy, and a message names it.
+  - **Once per player:** `starter-gems.yml` remembers who has had one, so losing a gem later (or the Gold Gem taking it) never hands out another.
+  - **Existing players:** anyone who already carries a gem the first time they join after this update is only recorded, not given a second.
+- **The resource pack in the repo** (`resource-pack/Relay-Temporal-Pack.zip`) is now the one you sent: glowing gems, the Gold Gem's 256 looks plus the awakened one, and the 26.x fix.
+  - **The pink-and-black Astra dagger:** the pack's README explains it. Minecraft 26.x refuses an item's models if any one of them points at a missing texture. The missing pristine 2-4 gem textures broke every custom nautilus shell model, the dagger included. This pack adds them, so the dagger renders with it; nothing changes in the plugin.
+
+## Files
+- **New:** `StarterGem.java`, `StarterGemTest.java`.
+- **Changed:** `SoulboundGemsPlugin.java` (registers it), `config.yml` (`starter-gem:`), `resource-pack/Relay-Temporal-Pack.zip`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 265 unit tests pass (3 new). They cover: only standard gems; once per player; nobody who already carries a gem gets another; Tier 1 with the starting energy; wired in.
+
+## Not tested
+- **Nothing was run in game:** a real first join; the pack in the client.
+
+## In-game test plan
+1. **First join:** join with a fresh account. You get a random Tier 1 gem and a message.
+2. **Only once:** rejoin: nothing more. Lose the gem and rejoin: still nothing.
+
 # Fixes from testing, round 1 (and /bliss, /blissop)
 
 ## What I found first

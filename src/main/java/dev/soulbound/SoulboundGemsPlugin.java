@@ -124,6 +124,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         amplification = new Amplification(this); // Wealth's Amplification: the buff and getting every item back to normal
         Bukkit.getPluginManager().registerEvents(amplification, this);
         amplification.start();
+        Bukkit.getPluginManager().registerEvents(new StarterGem(this), this); // a random Tier 1 gem on a player's first join
         flux = new FluxPower(this); // Flux: the charged beam, Ground, Overcharge, Overdrive's meter, Shocking Chance
         Bukkit.getPluginManager().registerEvents(flux, this);
         flux.start();

@@ -928,3 +928,8 @@ puff:
     window-seconds: 1.5
     levitation-ticks: 20
     cooldown-seconds: 6
+
+# Starter gems: a player joining for the first time gets a random Tier 1 standard gem (never a mythic), with
+# energy.start energy. Once per player (starter-gems.yml remembers who), so losing a gem later never hands out another.
+starter-gem:
+  enabled: true
