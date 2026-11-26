@@ -61,6 +61,8 @@ class FixesRoundOneTest {
         String b = read("BlissCommand.java");
         for (String gone : List.of("createSpiritDagger()", "createRemote()", "createTotemToken()", "createFragment()", "createReviveItem()", "createRevivalItem()"))
             assertFalse(b.contains(gone), gone);
+        assertTrue(b.contains("// Everyone sees every subcommand and its arguments; the admin ones still need bliss.admin to run."));
+        assertTrue(b.contains("case \"give\" -> {\n                if (!s.hasPermission(\"bliss.admin\"))"), "running an admin one still needs the permission");
         String o = read("BlissOpCommand.java");
         for (String gone : List.of("\"assessment\"", "\"energy\"", "\"test\"", "\"gold\"")) assertFalse(o.contains(gone), gone);
         for (String kept : List.of("\"give\"", "\"mythic\"", "\"progression\"", "\"border\"", "\"stalker\"", "\"pris\"", "\"mace\"", "\"reloadconfig\""))
