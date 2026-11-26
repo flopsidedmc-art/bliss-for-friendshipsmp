@@ -113,7 +113,7 @@ public class ConfigGUI implements Listener {
                     new StdSetting(c + "pockets", Material.BARREL, GemNames.tx("Pockets"), 5, 30, 0, 900));
             case FLUX -> List.of(
                     new StdSetting(c + "beam", Material.BEACON, GemNames.tx("Energy Beam"), 5, 30, 0, 900),
-                    new StdSetting(c + "overdrive", Material.REPEATER, "Overdrive", 5, 30, 0, 900),
+                    new StdSetting("flux.overdrive.max-per-second", Material.REPEATER, "Overdrive Fill / s", 1, 5, 1, 100), // its meter, no cooldown
                     new StdSetting(c + "burst", Material.TNT, GemNames.tx("Kinetic Burst"), 5, 30, 0, 900));
             case ASTRA -> List.of(
                     new StdSetting(c + "daggers", Material.ARROW, GemNames.tx("Daggers"), 5, 30, 0, 900),

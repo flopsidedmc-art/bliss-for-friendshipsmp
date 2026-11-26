@@ -16,7 +16,7 @@ cooldowns-seconds:
   #   burst 10, drift 15 (flat), bounty 35.
   # Powers: cozy 180, chad 120, nullify 120, fireball 120, itemlock 120,
   #   richrush 300, amp 240, storm 120, dash 40, bash 60, daggers 90,
-  #   projection 20 (it uses the power fallback below), heartdrainer 120, circle 120, beam 120, overdrive 180, void 120.
+  #   projection 20 (it uses the power fallback below), heartdrainer 120, circle 120, beam 8, void 120. (Kinetic Overdrive has a meter, not a cooldown: flux.overdrive.)
   power: 20
   tier2-ability: 35
   # energy 3-4 makes cooldowns 1.5x longer (Cracked/Scratched)
@@ -107,6 +107,10 @@ sounds:
     kinetic-burst: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 0.5, pitch: 1.6, enabled: true}
     overdrive: {event: BLOCK_BEACON_ACTIVATE, volume: 0.9, pitch: 1.0, enabled: true, layer: {event: BLOCK_CONDUIT_ACTIVATE, volume: 0.8, pitch: 1.0}}
     ingot-to-watts: {event: BLOCK_CONDUIT_AMBIENT_SHORT, volume: 0.8, pitch: 1.6, enabled: true}  # you only
+    beam-charge: {event: BLOCK_CONDUIT_AMBIENT, volume: 0.5, pitch: 1.2, enabled: true}  # the hum while charging; louder and higher with the watts
+    overcharge: {event: BLOCK_FIRE_AMBIENT, volume: 0.8, pitch: 1.8, enabled: true, layer: {event: BLOCK_CONDUIT_ATTACK_TARGET, volume: 0.5, pitch: 1.6}}  # the crackle above 100 W
+    beam-max: {event: ENTITY_WARDEN_SONIC_BOOM, volume: 1.0, pitch: 0.8, enabled: true, layer: {event: ENTITY_GENERIC_EXPLODE, volume: 0.9, pitch: 0.7}}  # a 200 W beam
+    ground: {event: ITEM_TRIDENT_THUNDER, volume: 0.6, pitch: 1.6, enabled: true}  # Ground at 100 W
   wealth: # Wealth: coins, locks (no XP orb anywhere)
     pockets: {event: BLOCK_ENDER_CHEST_OPEN, volume: 1.0, pitch: 1.3, enabled: true}
     item-lock: {event: BLOCK_CHEST_LOCKED, volume: 1.0, pitch: 1.0, enabled: true, layer: {event: BLOCK_IRON_TRAPDOOR_CLOSE, volume: 0.8, pitch: 0.7}}
@@ -677,10 +681,9 @@ cooldowns:
   storm: 120
   heartdrainer: 120
   circle: 120
-  beam: 120
+  beam: 8 # short: charging (Q) is the Energy Beam's cost now
   void: 120
   fireball: 120
-  overdrive: 180
   cozy: 180
   amp: 240
   richrush: 300
@@ -873,3 +876,36 @@ wealth:
   amplification:
     radius: 8 # blocks
     seconds: 30
+
+# Flux (Tier 2 for the beam, Ground and Overdrive; Shocking Chance at both tiers). Flow State, Tireless and Kinetic Burst
+# are unchanged. Colours follow the gem's colour (names.yml).
+flux:
+  watts:
+    # Feeding (Flux in the off hand, the item in your main hand, right-click). Max 100. Add other items by their own
+    # name (copper_block: 100). Ore energy you bank by mining goes in when you start charging.
+    per-ingot: {copper: 12, netherite: 10, gold: 8, iron: 5}
+  beam: # Energy Beam: press Q with the gem in your main hand to charge (the gem stays), left-click to fire; it spends every watt
+    charge-per-second: 12 # watts while charging, on top of what you have
+    min-damage: 3.0 # HP before armour at 1 W ...
+    damage-at-100: 24.0 # ... rising to this at 100 W (and on in Overcharge)
+    min-range: 12 # blocks at 1 W ...
+    range-at-100: 30 # ... to this at 100 W
+    stop-on-damage: 0 # a hit this big (HP) stops the charge; 0 = off
+  ground: # at exactly 100 W, left-click a player in range instead: all 100 W spent, they're stunned and their hotbar and inventory shuffled
+    stun-seconds: 1.5 # no moving or jumping. Trusted players can't be grounded
+  overcharge: # keep charging at 100 W (after hold-seconds there) and the watts go on toward 200
+    hold-seconds: 1.0 # the charge rests at 100 W this long first, so you can Ground (or press Q to stop) before Overcharge
+    damage-per-second: 2.0 # what it costs you above 100 W, through armour; it can kill you. Q again: back to 100, no more damage
+    max-damage: 90.0 # the beam at exactly 200 W, HP before armour (it rises from damage-at-100)
+    max-range: 48
+  overdrive: # Kinetic Overdrive fills a 0-100 meter from what happens within radius; right-click when FULL (its effect is unchanged)
+    radius: 12
+    per-hit: 3 # any hit: yours, on you, or a fight near you
+    per-block-mined: 1
+    per-block-moved: 0.25 # anyone moving near you (you too), per block
+    max-per-second: 6 # so no one source fills it at once
+  shock: # Shocking Chance (both tiers): your arrows and bolts
+    chance: 0.10 # per hit: lightning (only the look: no fire, nobody else hurt), a sting and a freeze
+    damage: 2.0 # added to the arrow's hit
+    stun-seconds: 1.0 # no moving or jumping
+    cooldown-seconds: 3 # at most once per target this often. Trusted players are never shocked

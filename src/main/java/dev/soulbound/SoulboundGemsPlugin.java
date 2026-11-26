@@ -65,6 +65,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     BountyHunt bounty() { return bounty; }
     private Amplification amplification;
     Amplification amplification() { return amplification; }
+    private FluxPower flux;
+    FluxPower flux() { return flux; }
     private MaceRules maceRules;
 
     /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
@@ -122,6 +124,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         amplification = new Amplification(this); // Wealth's Amplification: the buff and getting every item back to normal
         Bukkit.getPluginManager().registerEvents(amplification, this);
         amplification.start();
+        flux = new FluxPower(this); // Flux: the charged beam, Ground, Overcharge, Overdrive's meter, Shocking Chance
+        Bukkit.getPluginManager().registerEvents(flux, this);
+        flux.start();
         Bukkit.getPluginManager().registerEvents(energy, this);
         Bukkit.getPluginManager().registerEvents(edge, this);
         Bukkit.getPluginManager().registerEvents(stalker, this);
@@ -245,6 +250,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (combatRules != null) combatRules.shutdown(); // everyone hidden from the tab list is back on it
         if (bounty != null) bounty.shutdown(); // open offerings go back to their players, every hunt ends
         if (amplification != null) amplification.shutdown(); // no item stays enchanted higher
+        if (flux != null) flux.shutdown(); // charging stops, every stun comes off
     }
 
     /**
@@ -254,7 +260,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 6) return;
+        if (version >= 7) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -288,7 +294,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             }
             c.set(aur + "flagpole.finisher-damage", null); // the launch is worked out from the three now
         }
-        c.set("balance-version", 6);
+        // Balance 7: the Energy Beam is charged now (Q), so its cooldown is short.
+        if (version < 7 && c.getInt("cooldowns.beam", 120) == 120) { c.set("cooldowns.beam", 8); changed.add("Energy Beam cooldown 120 -> 8 s (charging is the cost now)"); }
+        c.set("balance-version", 7);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 

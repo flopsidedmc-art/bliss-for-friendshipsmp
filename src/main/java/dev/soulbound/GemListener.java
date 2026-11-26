@@ -71,7 +71,6 @@ public class GemListener implements Listener {
     // Flux has four HUD entries with independent status: beam/ground, burst charge, wattage, overdrive.
     private final Map<UUID, Long> fluxBeamCooldown = new HashMap<>();
     private final Map<UUID, Long> fluxBurstCooldown = new HashMap<>();
-    private final Map<UUID, Long> fluxOverdriveCooldown = new HashMap<>();
     private final Map<UUID, Integer> hitCount = new HashMap<>();
     private final Map<UUID, Boolean> chadArmed = new HashMap<>();
     private final Map<UUID, ItemStack> pendingRespawnGem = new HashMap<>();
@@ -147,7 +146,6 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> overdriveUntil = new HashMap<>();
     private final Map<UUID, Integer> overdriveTaken = new HashMap<>();
     private final Map<UUID, Boolean> overdriveArmed = new HashMap<>();
-    private final Set<UUID> stunShots = new HashSet<>();
 
     private static class SpeedStorm {
         Location loc;
@@ -212,6 +210,7 @@ public class GemListener implements Listener {
 
     /** Above zero only while abilityDamage is dealing its hit, so the cap applies to that hit alone. */
     private int abilityHits;
+    private int uncappedHits; // the Energy Beam: an ability hit past the cap (Overcharge reaches flux.overcharge.max-damage)
 
     /**
      * Flat damage from a standard-gem ability (Crisp, Breezy Bash, Dash, Kinetic Burst, Energy Beam).
@@ -244,6 +243,21 @@ public class GemListener implements Listener {
         abilityDamage(victim, base, source, false);
     }
 
+    /** An Energy Beam hit (FluxPower): raw HP before armour, past the ability cap. */
+    void beamHit(LivingEntity victim, double raw, Player source) {
+        abilityHits++;
+        uncappedHits++;
+        try { victim.damage(Math.max(0, raw), source); } finally { uncappedHits--; abilityHits--; }
+    }
+
+    void beamUsed(Player p) { used(p, GemNames.tx("Energy Beam")); }
+
+    /** Left-click with Tier 2 Flux: the beam (or Ground), on its short cooldown, which starts only if something fired. */
+    private void fluxFire(Player p, int energy) {
+        if (remain(fluxBeamCooldown, p.getUniqueId()) > 0 || plugin.flux() == null) return;
+        if (plugin.flux().fire(p)) fluxBeamCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("beam", energy));
+    }
+
     /** The Auratus' chains, Aegis and slam: raw HP (no multiplier), the ability-damage cap, armour counts (AuratusGem drops Protection). */
     void rawAbilityHit(LivingEntity victim, double raw, Player source) {
         abilityHits++;
@@ -265,7 +279,7 @@ public class GemListener implements Listener {
     /** Runs after onHit (NORMAL) has applied the holder's bonuses. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onAbilityDamageCap(EntityDamageByEntityEvent e) {
-        if (abilityHits <= 0) return;
+        if (abilityHits <= 0 || uncappedHits > 0) return;
         double cap = plugin.getConfig().getDouble("ability-damage.cap", 40.0);
         if (cap > 0 && e.getDamage() > cap) e.setDamage(cap);
     }
@@ -604,7 +618,8 @@ public class GemListener implements Listener {
     /** Flux: beam, Kinetic Burst (the ability), watts, overdrive at Tier 2; the burst only at Tier 1. */
     private void sendFluxActionbar(Player p, long now, int tier) {
         UUID id = p.getUniqueId();
-        String beam = hudEntry(icon(GemType.FLUX, "left"), remain(fluxBeamCooldown, id), false);
+        String charging = plugin.flux() == null ? null : plugin.flux().beamEntry(p, icon(GemType.FLUX, "left")); // the watts while charging
+        String beam = charging != null ? charging : hudEntry(icon(GemType.FLUX, "left"), remain(fluxBeamCooldown, id), false);
         int charge = fluxOf(fluxCharge, id);
         long burstCooldown = remain(fluxBurstCooldown, id);
         String burstIcon = abilityIcon(GemType.FLUX, tier);
@@ -612,7 +627,9 @@ public class GemListener implements Listener {
         String burst = burstCooldown > 0 ? hudEntry(burstIcon, burstCooldown, false)
                 : (charge >= 100 ? hudEntry(burstIcon, 0, false) : "§7" + burstIcon + " §b" + charge + "%");
         String watts = "§f" + tier2Glyph() + " §3" + String.format(java.util.Locale.ROOT, "%.1f", (double) fluxOf(fluxWatts, id));
-        String overdrive = hudEntry(icon(GemType.FLUX, "right"), remain(fluxOverdriveCooldown, id), overdriveUntil.getOrDefault(id, 0L) > now);
+        boolean odActive = overdriveUntil.getOrDefault(id, 0L) > now;
+        String overdrive = plugin.flux() == null ? hudEntry(icon(GemType.FLUX, "right"), 0, odActive)
+                : plugin.flux().overdriveEntry(p, icon(GemType.FLUX, "right"), odActive); // its meter, FULL when ready
 
         String msg = (tier >= 2 ? beam + "  " + burst + "  " + watts + "  " + overdrive : burst) + captureHud(p);
         p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(msg));
@@ -979,23 +996,17 @@ public class GemListener implements Listener {
             return;
         }
 
-        // Flux routing: Energy Beam [Left-click] + Kinetic Overdrive [Right-click] (T2 powers).
+        // Flux routing: Energy Beam / Ground [Left-click] + Kinetic Overdrive [Right-click, meter full] (T2 powers). Q charges (onDrop).
         // Kinetic Burst (ability) is offhand-only.
         if (type == GemType.FLUX) {
             if (tier < 2) {
                 // Silenced — no chat spam
                 return;
             }
-            if (left) {
-                long rem = remain(fluxBeamCooldown, p.getUniqueId());
-                if (rem > 0) { /* Silenced */ return; }
-                fluxBeamCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("beam", energy));
-                useEnergyBeam(p, energy);
-                return;
-            }
-            long rem = remain(fluxOverdriveCooldown, p.getUniqueId());
-            if (rem > 0) { /* Silenced */ return; }
-            fluxOverdriveCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("overdrive", energy));
+            if (left) { fluxFire(p, energy); return; }
+            // Kinetic Overdrive: only when its meter is full (FluxPower fills it from what happens around you); it empties
+            if (plugin.flux() == null || !plugin.flux().overdriveFull(p)) { /* Silenced */ return; }
+            plugin.flux().emptyOverdrive(p);
             useOverdrive(p, energy);
             return;
         }
@@ -2505,52 +2516,6 @@ public class GemListener implements Listener {
         used(p, GemNames.tx("Kinetic Burst"));
     }
 
-    /** Energy Beam [Left Click]: ray of wattage. Consumes 30 watts. */
-    private void useEnergyBeam(Player p, int energy) {
-        int watts = fluxOf(fluxWatts, p.getUniqueId());
-        if (watts < 10) {
-            p.sendMessage(ChatColor.GRAY + GemNames.tx("Energy Beam: no wattage (feed ingots or convert ore energy: ") + watts + "/100).");
-            fluxBeamCooldown.remove(p.getUniqueId());
-            return;
-        }
-        double dmg = 2.0 + watts / 8.0;
-        Location eye = p.getEyeLocation();
-        Vector dir = eye.getDirection();
-        World w = p.getWorld();
-        for (int i = 1; i <= 20; i++) {
-            Location at = eye.clone().add(dir.clone().multiply(i));
-            w.spawnParticle(Particle.ELECTRIC_SPARK, at, 2, 0.1, 0.1, 0.1, 0);
-            if (!at.getBlock().getType().isAir()) break;
-            for (Entity e : w.getNearbyEntities(at, 1.5, 1.5, 1.5)) {
-                if (e.getUniqueId().equals(p.getUniqueId())) continue;
-                if (e instanceof Player o && isTrusted(p, o)) continue;
-                if (e instanceof LivingEntity le) abilityDamage(le, dmg, p);
-            }
-        }
-        fluxAdd(fluxWatts, p.getUniqueId(), -30);
-        GemSounds.play(plugin, "flux.energy-beam", p.getLocation());
-        used(p, GemNames.tx("Energy Beam"));
-    }
-
-    /** Ground [Hit]: wattage damage + stun; 100% watts scrambles the victim's inventory. */
-    private void useGroundHit(Player attacker, Player victim, int watts) {
-        double bonus = watts / 10.0;
-        int stunSecs = Math.max(1, watts / 20);
-        victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, stunSecs * 20, 8, true, false, false));
-        victim.sendMessage(ChatColor.GRAY + "Grounded: stunned " + stunSecs + "s!");
-        usedOn(attacker, GemNames.tx("Ground"), victim.getName());
-        if (watts >= 100) {
-            ItemStack[] contents = victim.getInventory().getContents();
-            List<ItemStack> items = new ArrayList<>();
-            for (ItemStack s : contents) items.add(s);
-            java.util.Collections.shuffle(items);
-            for (int i = 0; i < contents.length; i++) contents[i] = items.get(i);
-            victim.getInventory().setContents(contents);
-            victim.sendMessage(ChatColor.RED + "Your inventory scrambles!");
-            attacker.sendMessage(ChatColor.YELLOW + GemNames.tx("Ground: 100% watts scrambled ") + victim.getName() + "!");
-        }
-    }
-
     /** Kinetic Overdrive [Right Click]: 30s buff; every 3 hits taken arms a big next hit. */
     private void useOverdrive(Player p, int energy) {
         overdriveUntil.put(p.getUniqueId(), System.currentTimeMillis() + 30_000L);
@@ -2565,24 +2530,13 @@ public class GemListener implements Listener {
         ItemStack off = p.getInventory().getItemInOffHand();
         if (!gems.isGem(off) || gems.getType(off) != GemType.FLUX || gems.getTier(off) < 2) return false;
         if (!EnergyStage.allowsPowers(gems.getEnergy(off)) || isGemDisabled(p)) return false;
-        int gain = switch (main.getType()) {
-            case COPPER_INGOT -> 10;
-            case IRON_INGOT -> 15;
-            case DIAMOND -> 30;
-            case NETHERITE_INGOT -> 50;
-            case COPPER_BLOCK -> 80;
-            case IRON_BLOCK -> 100;
-            case DIAMOND_BLOCK -> 100;
-            case NETHERITE_BLOCK -> 100;
-            case RAW_COPPER, RAW_IRON, RAW_GOLD -> 8;
-            default -> 0;
-        };
+        int gain = plugin.flux() == null ? 0 : plugin.flux().ingotWatts(main.getType()); // flux.watts.per-ingot: copper is best
         if (gain <= 0) return false;
         if (main.getAmount() > 1) main.setAmount(main.getAmount() - 1);
         else p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-        fluxAdd(fluxWatts, p.getUniqueId(), gain);
+        int now = plugin.flux().feed(p, gain);
         GemSounds.playTo(plugin, "flux.ingot-to-watts", p);
-        p.sendMessage(ChatColor.YELLOW + GemNames.tx("Conduction: +") + gain + " watts (" + fluxOf(fluxWatts, p.getUniqueId()) + "/100).");
+        p.sendMessage(ChatColor.YELLOW + GemNames.tx("Conduction: +") + gain + " watts (" + now + "/100).");
         return true;
     }
 
@@ -2592,7 +2546,7 @@ public class GemListener implements Listener {
             case FIRE -> handleFireballClick(p, energy);
             case SPEED -> useSpeedyStorm(p, energy);
             case WEALTH -> useRichRush(p, energy);
-            case FLUX -> useEnergyBeam(p, energy);
+            case FLUX -> fluxFire(p, energy);
             case ASTRA -> handleAstraDaggers(p, energy);
             case LIFE -> {
                 double heal = Math.min(p.getMaxHealth() - p.getHealth(), 4.0);
@@ -2863,14 +2817,6 @@ public class GemListener implements Listener {
             }
             return;
         }
-        // Stun shots root players briefly
-        if (e.getDamager() instanceof org.bukkit.entity.Projectile sproj && stunShots.remove(sproj.getUniqueId())) {
-            if (e.getEntity() instanceof Player hit) {
-                hit.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 9, true, false, false));
-                hit.sendMessage(ChatColor.GRAY + "Stun shot: rooted!");
-            }
-            return;
-        }
         if (!(e.getDamager() instanceof Player p)) return;
         // Unfortunate victims fizzle 50% of their own attacks
         Long un = unfortunateUntil.get(p.getUniqueId());
@@ -2976,14 +2922,7 @@ public class GemListener implements Listener {
                 e.setDamage(e.getDamage() * 2.0);
                 p.sendMessage(ChatColor.YELLOW + "OVERDRIVE hit!");
             }
-            // Ground [Hit] T2: wattage damage + stun (100% scrambles players)
-            if (fTier >= 2 && EnergyStage.allowsPowers(fEnergy) && e.getEntity() instanceof Player hitP) {
-                int watts = fluxOf(fluxWatts, p.getUniqueId());
-                e.setDamage(e.getDamage() + watts / 10.0);
-                useGroundHit(p, hitP, watts);
-                fluxAdd(fluxWatts, p.getUniqueId(), -20);
-            }
-            return;
+            return; // Ground is a left-click at 100 W now (FluxPower), not every hit
         }
         if (gtype != GemType.STRENGTH) return;
         int energy = gems.getEnergy(gem);
@@ -3195,6 +3134,7 @@ public class GemListener implements Listener {
         ItemStack gem = findGem(p);
         if (gem == null || gems.getType(gem) != GemType.FLUX) return;
         if (!EnergyStage.allowsPassives(gems.getEnergy(gem)) || isGemDisabled(p)) return;
+        if (plugin.flux() != null && plugin.flux().selfHurting(p)) return; // Overcharge hurting you doesn't charge the Burst
         fluxAdd(fluxCharge, p.getUniqueId(), 8);
         if (fluxOf(fluxCharge, p.getUniqueId()) >= 100) {
             p.sendMessage(ChatColor.YELLOW + GemNames.tx("Flux fully charged (100)! Unleash Kinetic Burst!"));
@@ -3208,18 +3148,6 @@ public class GemListener implements Listener {
                 overdriveArmed.put(p.getUniqueId(), true);
                 p.sendMessage(ChatColor.YELLOW + "Overdrive charged: your next hit lands hard!");
             }
-        }
-    }
-
-    /** Flux: arrows may stun players they hit. */
-    @EventHandler
-    public void onFluxShoot(org.bukkit.event.entity.EntityShootBowEvent e) {
-        if (!(e.getEntity() instanceof Player p)) return;
-        ItemStack gem = findGem(p);
-        if (gem == null || gems.getType(gem) != GemType.FLUX) return;
-        if (!EnergyStage.allowsPassives(gems.getEnergy(gem)) || isGemDisabled(p)) return;
-        if (Math.random() < 0.25 && e.getProjectile() != null) {
-            stunShots.add(e.getProjectile().getUniqueId());
         }
     }
 
@@ -3364,25 +3292,25 @@ public class GemListener implements Listener {
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (!plugin.getConfig().getBoolean("protection.prevent-drop", true)) return;
+        if (fluxCharge(e)) return; // Flux's Q: the Energy Beam's charge, not a drop
         ItemStack dropped = e.getItemDrop().getItemStack();
+        if (!plugin.getConfig().getBoolean("protection.prevent-drop", true)) return;
         if (!gems.isGem(dropped)) return;
         if (LooseMythics.droppable(gems, dropped)) return; // Auratus and Heretic can be dropped and handed over now
         if (plugin.finale() != null && plugin.finale().claimsDrop(e.getPlayer(), dropped)) return; // a pedestal drop: the finale's alone
-        // Flux T2: dropping the gem converts banked ore energy into wattage (gem stays soulbound)
-        if (gems.getType(dropped) == GemType.FLUX && gems.getTier(dropped) >= 2) {
-            int banked = fluxOf(fluxOre, e.getPlayer().getUniqueId());
-            if (banked > 0 && EnergyStage.allowsPowers(gems.getEnergy(dropped)) && !isGemDisabled(e.getPlayer())) {
-                fluxOre.put(e.getPlayer().getUniqueId(), 0);
-                fluxAdd(fluxWatts, e.getPlayer().getUniqueId(), banked);
-                e.getPlayer().sendMessage(ChatColor.YELLOW + GemNames.tx("Conduction: converted ") + banked + " ore energy into "
-                        + fluxOf(fluxWatts, e.getPlayer().getUniqueId()) + "/100 watts!");
-                e.setCancelled(true);
-                return;
-            }
-        }
         e.setCancelled(true);
         e.getPlayer().sendMessage(ChatColor.RED + "Gems are soulbound and cannot be dropped.");
+    }
+
+    /** Flux T2: Q starts (or stops) charging the Energy Beam; the gem never leaves your hand (banked ore energy goes in too). */
+    private boolean fluxCharge(PlayerDropItemEvent e) {
+        ItemStack dropped = e.getItemDrop().getItemStack();
+        if (!gems.isGem(dropped) || gems.getType(dropped) != GemType.FLUX || gems.getTier(dropped) < 2 || plugin.flux() == null
+                || !EnergyStage.allowsPowers(gems.getEnergy(dropped)) || isGemDisabled(e.getPlayer())) return false;
+        e.setCancelled(true);
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTask(plugin, () -> { if (p.isOnline()) plugin.flux().toggle(p); }); // once it's back in hand
+        return true;
     }
 
     @EventHandler

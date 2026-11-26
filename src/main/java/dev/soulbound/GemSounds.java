@@ -40,6 +40,16 @@ final class GemSounds {
         if (p != null) emit(plugin, id, p.getLocation(), p);
     }
 
+    /** Louder or quieter, higher or lower than configured (both layers): a sound that grows with something, like Flux's watts. */
+    static void playScaled(SoulboundGemsPlugin plugin, String id, Location at, Player only, double volume, double pitch) {
+        if (at == null || at.getWorld() == null) return;
+        ConfigurationSection s = entry(plugin, id);
+        if (s == null) return;
+        one(plugin, s, at, only, volume, pitch);
+        ConfigurationSection layer = s.getConfigurationSection("layer");
+        if (layer != null && layer.getBoolean("enabled", true) && playable(plugin, layer.getString("event"))) one(plugin, layer, at, only, volume, pitch);
+    }
+
     /** Whether sounds.&lt;id&gt; has a layer that would play (callers that make the layer's sound some other way skip it). */
     static boolean enabled(SoulboundGemsPlugin plugin, String id) {
         ConfigurationSection s = plugin.getConfig().getConfigurationSection("sounds." + id);
@@ -88,11 +98,13 @@ final class GemSounds {
         return c > 0 && !event.substring(0, c).equalsIgnoreCase("minecraft");
     }
 
-    private static void one(SoulboundGemsPlugin plugin, ConfigurationSection s, Location at, Player only) {
+    private static void one(SoulboundGemsPlugin plugin, ConfigurationSection s, Location at, Player only) { one(plugin, s, at, only, 1, 1); }
+
+    private static void one(SoulboundGemsPlugin plugin, ConfigurationSection s, Location at, Player only, double volMul, double pitchMul) {
         String key = resolve(s.getString("event"));
         if (key == null) return;
-        float volume = (float) Math.max(0, s.getDouble("volume", 1.0) * plugin.getConfig().getDouble("sounds.volume", 1.0));
-        float pitch = (float) clampPitch(s.getDouble("pitch", 1.0));
+        float volume = (float) Math.max(0, s.getDouble("volume", 1.0) * volMul * plugin.getConfig().getDouble("sounds.volume", 1.0));
+        float pitch = (float) clampPitch(s.getDouble("pitch", 1.0) * pitchMul);
         if (only != null) only.playSound(at, key, SoundCategory.PLAYERS, volume, pitch);
         else at.getWorld().playSound(at, key, SoundCategory.PLAYERS, volume, pitch);
     }

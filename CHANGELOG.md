@@ -1,3 +1,113 @@
+# Flux revamp
+
+## What I found first
+- **Watts** (0-100) came from feeding with Flux in the off hand, the item in your main hand and a right-click: copper 10, iron 15, diamond 30, netherite 50, blocks 80-100, raw ores 8. **Gold ingots gave nothing.**
+- **Ore energy** banked by mining (+5 an ore) was converted into watts by pressing Q with the gem.
+- **Energy Beam:** a left-click on a **120 s** cooldown.
+  - **The cost:** it needed 10 watts and used 30.
+  - **The damage:** 2 + watts/8 (× the ability multiplier), along 20 blocks. It could hit the same target several times.
+- **Ground** was a melee passive, not a button: every Tier 2 hit on a player cost 20 watts for +watts/10 damage and a Slowness stun. At 100 W it shuffled their **whole** inventory, armour included.
+- **Kinetic Overdrive:** right-click on a 180 s cooldown. For 30 s, every 3rd hit you take arms a ×2 next hit.
+- **The arrow stun:** a 25% chance that your arrows root a player (Slowness X, 3 s).
+- **The action bar:** the beam (cooldown), Kinetic Burst (charge %), the watts, and Overdrive (cooldown).
+- **The Flux gem's configured colour is yellow** (`§e`, in names.yml), not cyan; the watts were shown in dark aqua. The new readouts use the configured colour, as you asked. For cyan, run `/gems color flux #55FFFF` (or any hex).
+- **Amplification:** no Flux code or lore uses it.
+- **Flow State, Tireless and Kinetic Burst** are untouched.
+
+## What changed
+- **Watts from ingots** (`flux.watts.per-ingot`): copper 12, netherite 10, gold 8, iron 5. Max 100.
+  - **No longer feedable:** diamonds, blocks and raw ores. Add anything back by its own name, e.g. `copper_block: 100`.
+  - **Banked ore energy** goes in when you start charging.
+- **Energy Beam, charged:**
+  - **Charging:** Q with the Tier 2 gem in your main hand starts charging. The drop is cancelled, so the gem stays in your hand.
+    - **The watts** rise by `charge-per-second` (12) on top of what you had.
+    - **On the action bar,** the beam entry shows the watts ("64W") in the gem's colour instead of Ready!/cooldown.
+    - **Above your head:** blue particles, more the more watts you have.
+    - **The hum:** `sounds.flux.beam-charge`, getting louder and higher.
+  - **Firing:** left-click fires.
+    - **Damage:** from 3 HP at 1 W up to `damage-at-100` (24) at 100 W, before armour.
+    - **Range:** 12 to 30 blocks.
+    - **Who it hits:** everyone along it, once each, never you or your trusted players.
+    - **The cost:** every watt, and charging ends.
+  - **Stopping:** Q again, switching away from the gem, logging out or dying stops the charge. The watts stay. A big hit can stop it too (`stop-on-damage`, off by default).
+  - **The cooldown** is now 8 s (`cooldowns.beam`; a server on the old 120 gets 8 once).
+  - **No watts:** left-click with 0 W tells you to charge (Q) or feed ingots, and costs no cooldown.
+- **At 100 W: Ground or Overcharge.**
+  - **The hold:** the charge rests at 100 W for `overcharge.hold-seconds` (1 s) first. That gives you time to Ground, or to press Q to stay at 100. I added this; without it you could never be at exactly 100 while charging.
+  - **Ground:** at exactly 100 W, left-click a player within beam range.
+    - **The cost:** all 100 W.
+    - **The stun:** `ground.stun-seconds` (1.5) of no moving or jumping.
+    - **The shuffle:** their hotbar and main inventory (armour and off hand untouched), with an electric arc between you.
+    - **Trusted players can't be grounded:** it tells you, and costs nothing.
+    - **The old Ground on every melee hit is gone.** This replaces it, reusing the scramble.
+  - **Overcharge:** keep charging and the watts go on toward 200.
+    - **The cost:** 2 HP a second (`damage-per-second`), through armour; it can kill you.
+    - **On the action bar:** the % ("173%"), fading from the gem's colour to white as it nears 200.
+    - **Stopping:** Q again drops you back to 100 and the damage stops.
+    - **The beam:** it keeps scaling, to exactly `max-damage` (90) at 200 W. That's past the ability cap, before armour. At 200 the watts stop rising, but the damage goes on until you fire or stop.
+- **Wilder with watts (charging):** within 60 particles a tick.
+  - **0-50 W:** a few blue dust particles and sparks above your head.
+  - **50-100 W:** blue and light blue swirls round your upper body, and more sparks.
+  - **100-150 W:** white joins, small sonic-boom puffs swirl round you, and a layered crackle starts (`sounds.flux.overcharge`).
+  - **150-200 W:** a full swirl of sonic booms, blue and white spirals, sparks everywhere, and a louder, higher hum.
+- **Wilder with watts (the beam):** it gets thicker, denser, glows longer, and sounds lower and louder.
+  - **At 200 W:** a huge blue-white beam with a sonic-boom trail, a flash at the end, and `sounds.flux.beam-max` (Warden sonic boom layered with an explosion).
+- **Kinetic Overdrive's meter (0-100)** replaces its cooldown. It fills from activity within `overdrive.radius` (12), at most `max-per-second` (6):
+  - any hit (yours, on you, or a fight nearby): 3;
+  - any block mined nearby: 1;
+  - anyone moving nearby (you too): 0.25 a block.
+  - **On the action bar:** % in the gem's colour, then "FULL".
+  - **Activating:** right-click when FULL activates the same Overdrive as before, and empties the meter.
+- **Shocking Chance** (both tiers) replaces the arrow stun.
+  - **When:** your arrows and crossbow bolts have a 10% chance on a hit, at most once per target every 3 s. Trusted players are never shocked.
+  - **What it does:** a lightning look only (no fire, nobody else hurt), +2 damage, and a 1 s freeze (no moving or jumping, sparks).
+- **The lore and guide text** cover watts, the charge, Ground, Overcharge, Overdrive's meter and Shocking Chance.
+- **The `/config` tuner:** the Flux page's dead Overdrive cooldown is now the meter's fill per second.
+
+## Files
+- **New:**
+  - `FluxMath.java`: ingot watts, the charge and hold, stopping, the beam's scaling, the readout, particle counts, the meter, the shock roll;
+  - `FluxPower.java`: charging, visuals and sounds, the beam, Ground, Overcharge, the stun, the meter's sources, Shocking Chance, cleanup;
+  - `FluxTest.java`.
+- **Changed:**
+  - `GemListener.java`: the controls (Q, left-click, right-click), feeding, the HUD entries, the beam hit past the cap. The old beam, melee Ground and arrow stun are removed.
+  - `GemSounds.java`: `playScaled`, for sounds that grow with the watts;
+  - `SoulboundGemsPlugin.java`: wiring, shutdown, and the balance 7 migration (beam cooldown 120 → 8);
+  - `ConfigGUI.java`: the Overdrive tuner entry;
+  - `GemType.java` and `GemManager.java`: guide and lore (lore version bumped);
+  - `config.yml`: `flux:`, the four sounds, `cooldowns.beam: 8`, and the dead `cooldowns.overdrive` removed;
+  - `GemSoundsTest.java`: allows the explosion sound for both Fire and Flux, as you asked.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 243 unit tests pass (12 new). They cover:
+  - **Ingot watts:** copper 12, netherite 10, gold 8, iron 5; nothing else unless listed; feeding stops at 100.
+  - **The charge:** 12 a second on top of what you have, up to 100, the hold there, Overcharge up to 200, and stopping keeps the watts but not Overcharge.
+  - **Ground** only at exactly 100 W.
+  - **The readout:** "64W" and "173%", and the colour.
+  - **Beam power:** stronger, longer, thicker and glowing longer with watts; 100 W is much stronger than 30 W; exactly 90 at 200 W.
+  - **Particles** grow with watts and stay within 60.
+  - **The Overdrive meter:** per-second cap, fill, never past 100, empty, and its three sources wired.
+  - **The shock chance:** about 1 in 10, never twice in 3 s on the same target, lightning look only, never on trusted players, and the old stun is gone.
+  - **The wiring:** Q cancels the drop and toggles, charging stops when you switch away or log out, the messages, Ground shuffles only slots 0-35, the 8 s cooldown, and the sounds.
+
+## Not tested
+- **Nothing was run in game:**
+  - Q keeping the gem in its slot;
+  - every particle stage and the beam's looks;
+  - the sounds and their scaling;
+  - the stun and the shuffle;
+  - Overcharge self-damage;
+  - the meter filling in real fights;
+  - lightning on real hits.
+
+## In-game test plan
+1. **Feeding:** feed a copper ingot: +12 watts; iron: +5.
+2. **Charging and the beam:** press Q with Flux. The gem stays, the beam entry shows rising watts in the gem's colour, with blue particles above your head and a hum. Left-click at 30 W and at 100 W: the 100 W beam is much stronger, and the watts go to 0.
+   - **Ground:** at 100 W, left-click a friend. They're stunned for 1.5 s and their hotbar and inventory are shuffled; your watts go to 0.
+   - **Overcharge:** at 100 W, keep charging. The watts climb toward 200 and you lose a heart every second; the particles get wilder (white, swirling sonic booms). Press Q: back to 100, and the damage stops. Charge to 200 and fire at a zombie with around 100 HP (or a dummy): about 90 damage, with the huge beam and boom.
+3. **Overdrive:** fight near a friend, mine and run around. The Overdrive meter fills; when FULL, right-click activates it and the meter empties.
+4. **Shocking Chance:** shoot 20 arrows at a zombie: about 2 shocks, each with lightning, a little damage and a 1 s freeze, never twice within 3 s on the same target.
+
 # Auratus damage rebalance
 
 ## What I found first

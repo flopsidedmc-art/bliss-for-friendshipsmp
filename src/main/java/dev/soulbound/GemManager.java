@@ -29,7 +29,7 @@ public class GemManager {
     private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
     private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
-    private static final int LORE_VERSION = 11; // 10: Amplification is sneak + right-click; 11: Auratus damage lines
+    private static final int LORE_VERSION = 12; // 10: Amplification is sneak + right-click; 11: Auratus damage lines; 12: Flux
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -476,10 +476,11 @@ public class GemManager {
             lore.add("§7— §bKinetic Burst");
             lore.add("§e● §bPOWERS");
             if (tier >= 2) {
-                lore.add("§7— §e⚡ ENERGY BEAM §c🔥");
-                lore.add("§7— §e◉ GROUND ◉");
+                lore.add("§7— §e⚡ ENERGY BEAM §c🔥 §8[Q charges, left-click fires]");
+                lore.add("§7— §e◉ GROUND ◉ §8[Left-click a player at 100 W]");
+                lore.add("§7— §fOVERCHARGE §8[Charge past 100 W: up to 200]");
                 lore.add("");
-                lore.add("§7— §b≫ KINETIC OVERDRIVE §a〰");
+                lore.add("§7— §b≫ KINETIC OVERDRIVE §a〰 §8[Right-click when FULL]");
             } else {
                 lore.add("§8Unknown");
             }
