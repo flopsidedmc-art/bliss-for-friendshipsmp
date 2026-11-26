@@ -18,6 +18,9 @@ import java.util.Locale;
  */
 final class GoldCommand implements CommandExecutor, TabCompleter {
     static final String ADMIN = "soulbound.gold.admin";
+    /** The test commands (socket, unsocket, awaken, unawaken, testrepurpose, testsnap), for testing alone. */
+    static final String TESTER = "soulbound.admin";
+    static final List<String> TESTS = List.of("socket", "unsocket", "awaken", "unawaken", "testrepurpose", "testsnap");
     private final SoulboundGemsPlugin plugin;
 
     GoldCommand(SoulboundGemsPlugin plugin) { this.plugin = plugin; }
@@ -67,9 +70,24 @@ final class GoldCommand implements CommandExecutor, TabCompleter {
                 if (!(s instanceof Player p) || !holder) { s.sendMessage(ChatColor.RED + "Only the Gold Gem holder can do that."); return true; }
                 gold().openSwitch(p);
             }
+            case "socket", "unsocket", "awaken", "unawaken", "testrepurpose", "testsnap" -> test(s, sub, a);
             default -> help(s, admin, holder);
         }
         return true;
+    }
+
+    private void test(CommandSender s, String sub, String[] a) {
+        if (!s.hasPermission(TESTER)) { s.sendMessage(ChatColor.RED + "You lack permission."); return; }
+        if (!(s instanceof Player p)) { s.sendMessage(ChatColor.RED + "Players only."); return; }
+        String gem = a.length > 1 ? a[1] : null;
+        String err = switch (sub) {
+            case "socket", "unsocket" -> gem == null ? "Usage: /goldgem " + sub + " <gem>" : sub.equals("socket") ? gold().testSocket(p, gem) : gold().testUnsocket(p, gem);
+            case "awaken" -> gold().testAwaken(p, true);
+            case "unawaken" -> gold().testAwaken(p, false);
+            case "testrepurpose" -> gold().testRepurpose(p, gem);
+            default -> { gold().testSnap(p); yield null; }
+        };
+        s.sendMessage(err == null ? ChatColor.GOLD + "[test] " + sub + (gem == null ? "" : " " + gem) + ": done." : ChatColor.RED + err);
     }
 
     private static void help(CommandSender s, boolean admin, boolean holder) {
@@ -81,7 +99,12 @@ final class GoldCommand implements CommandExecutor, TabCompleter {
             s.sendMessage(ChatColor.GOLD + "/goldgem give <player>" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem remove <player>"
                     + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem ritual set");
         }
-        if (!holder && !admin) s.sendMessage(ChatColor.GRAY + "Only the Gold Gem holder and admins use /goldgem.");
+        if (s.hasPermission(TESTER)) {
+            s.sendMessage(ChatColor.GOLD + "/goldgem socket <gem>" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem unsocket <gem>"
+                    + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem awaken" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem unawaken");
+            s.sendMessage(ChatColor.GOLD + "/goldgem testrepurpose [gem]" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/goldgem testsnap" + ChatColor.DARK_GRAY + " (tests)");
+        }
+        if (!holder && !admin && !s.hasPermission(TESTER)) s.sendMessage(ChatColor.GRAY + "Only the Gold Gem holder and admins use /goldgem.");
     }
 
     @Override
@@ -91,8 +114,11 @@ final class GoldCommand implements CommandExecutor, TabCompleter {
         if (a.length == 1) {
             if (holder) out.addAll(List.of("mark", "unmark", "marks", "switch"));
             if (admin) out.addAll(List.of("give", "remove", "ritual"));
+            if (s.hasPermission(TESTER)) out.addAll(TESTS);
         } else if (a.length == 2) {
             String sub = a[0].toLowerCase(Locale.ROOT);
+            if (s.hasPermission(TESTER) && (sub.equals("socket") || sub.equals("unsocket") || sub.equals("testrepurpose")))
+                for (GemType t : GemType.values()) if (!t.isMythic()) out.add(t.name().toLowerCase(Locale.ROOT));
             if ((admin && (sub.equals("give") || sub.equals("remove"))) || (holder && (sub.equals("mark") || sub.equals("unmark"))))
                 for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
             if (admin && sub.equals("ritual")) out.add("set");

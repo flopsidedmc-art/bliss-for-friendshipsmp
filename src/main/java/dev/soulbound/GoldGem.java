@@ -278,8 +278,12 @@ final class GoldGem implements Listener {
         try { y.save(file); } catch (IOException e) { plugin.getLogger().warning("Couldn't save gold.yml: " + e.getMessage()); }
     }
 
+    /** The owner of gems added by the admin test commands: nobody, so they never go "home" anywhere. */
+    static final UUID TEST_OWNER = new UUID(0L, 0L);
+
     /** A gem back to its owner: in their inventory now, or kept until they next join. */
     private void giveBack(UUID owner, String item) {
+        if (TEST_OWNER.equals(owner)) return; // a test gem: it just goes
         Player o = Bukkit.getPlayer(owner);
         tellTaken.remove(owner);
         if (o != null) {
@@ -334,6 +338,95 @@ final class GoldGem implements Listener {
         } else pending.computeIfAbsent(s.holder, k -> new ArrayList<>()).add(s.coreItem); // their Gold Gem is taken away when they join
         save();
         return null;
+    }
+
+    // ------------------------------------------------------------------ admin test commands (soulbound.admin)
+
+    /** /goldgem socket <gem>: a test gem straight into your Gold Gem (the normal rules: no duplicates, not the core). */
+    String testSocket(Player p, String gem) {
+        GoldMath.State s = stateOf(p);
+        if (s == null) return "You don't hold a Gold Gem.";
+        GemType t = GemType.match(gem);
+        if (t == null || t.isMythic()) return "No gem called " + gem + ".";
+        if (t.name().equals(s.coreType)) return t.shown() + " is your core.";
+        if (!s.canSocket(t.name())) return t.shown() + " is already socketed.";
+        s.take(t.name(), TEST_OWNER, "Test", encode(gems().createGem(t, 2, 10)));
+        sync(p);
+        save();
+        return null;
+    }
+
+    /** /goldgem unsocket <gem>: out of your Gold Gem (a real player's gem goes home to them). */
+    String testUnsocket(Player p, String gem) {
+        GoldMath.State s = stateOf(p);
+        if (s == null) return "You don't hold a Gold Gem.";
+        GemType t = GemType.match(gem);
+        if (t == null) return "No gem called " + gem + ".";
+        if (t.name().equals(s.coreType)) return "The core can't come out.";
+        GoldMath.Socket found = null;
+        for (GoldMath.Socket g : s.sockets) if (g.type().equals(t.name())) found = g;
+        if (found == null) return t.shown() + " isn't socketed.";
+        s.sockets.remove(found);
+        giveBack(found.owner(), found.item());
+        if (!s.cycle().contains(s.active)) s.active = s.coreType;
+        sync(p);
+        save();
+        return null;
+    }
+
+    /** /goldgem awaken | unawaken: the awakened state without the ritual. */
+    String testAwaken(Player p, boolean on) {
+        GoldMath.State s = stateOf(p);
+        if (s == null) return "You don't hold a Gold Gem.";
+        s.awakened = on;
+        if (!s.cycle().contains(s.active)) s.active = s.coreType;
+        sync(p);
+        save();
+        return null;
+    }
+
+    /** /goldgem testrepurpose [gem]: the whole repurpose on a Mannequin dummy holding that gem (no overlay: it has no screen). */
+    String testRepurpose(Player p, String gem) {
+        GoldMath.State s = stateOf(p);
+        if (s == null) return "You don't hold a Gold Gem.";
+        GemType t;
+        if (gem == null) {
+            List<GemType> open = new ArrayList<>();
+            for (String o : GoldMath.ORDER) if (s.canSocket(o)) open.add(type(o));
+            if (open.isEmpty()) for (String o : GoldMath.ORDER) open.add(type(o));
+            t = open.get(rnd.nextInt(open.size()));
+        } else {
+            t = GemType.match(gem);
+            if (t == null || t.isMythic()) return "No gem called " + gem + ".";
+        }
+        Location at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(3));
+        at.setYaw(p.getLocation().getYaw() + 180);
+        at.setPitch(0);
+        ItemStack held = gems().createGem(t, 2, 10);
+        org.bukkit.entity.LivingEntity dummy;
+        if (MannequinBody.available()) {
+            dummy = at.getWorld().spawn(at, org.bukkit.entity.Mannequin.class, m -> {
+                m.setImmovable(true);
+                m.setDescription(Component.empty());
+            });
+        } else dummy = at.getWorld().spawn(at, org.bukkit.entity.ArmorStand.class);
+        dummy.setPersistent(false);
+        dummy.setInvulnerable(true);
+        dummy.setSilent(true);
+        dummy.customName(Component.text("Dummy"));
+        dummy.setCustomNameVisible(true);
+        if (dummy.getEquipment() != null) dummy.getEquipment().setItemInMainHand(held.clone());
+        Scene sc = new Scene(dummy, s.holder, held);
+        sc.dummy = true;
+        scenes.put(dummy.getUniqueId(), sc);
+        if (dummy.getEquipment() != null) Bukkit.getScheduler().runTaskLater(plugin, () -> { if (dummy.isValid()) dummy.getEquipment().setItemInMainHand(null); }, 1L); // torn out
+        play(sc, dummy.getWorld());
+        return null;
+    }
+
+    /** /goldgem testsnap: Snap, with you as the only one it can hit (you see the flash and the gem disable). No cooldown. */
+    void testSnap(Player p) {
+        snapEffect(p, List.of(p.getUniqueId()), true);
     }
 
     // ------------------------------------------------------------------ marks
@@ -566,6 +659,7 @@ final class GoldGem implements Listener {
         final ItemStack gem;
         final GemType type;
         final Location base;
+        boolean dummy; // /goldgem testrepurpose: a Mannequin, not a player
         ItemDisplay display;
         final List<ItemDisplay> chains = new ArrayList<>();
         final Set<Integer> boltTicks = new HashSet<>();
@@ -573,7 +667,7 @@ final class GoldGem implements Listener {
         boolean holderDied;
         BukkitTask task;
 
-        Scene(Player v, UUID holder, ItemStack gem) {
+        Scene(org.bukkit.entity.LivingEntity v, UUID holder, ItemStack gem) {
             this.victim = v.getUniqueId();
             this.victimName = v.getName();
             this.holder = holder;
@@ -623,11 +717,17 @@ final class GoldGem implements Listener {
         v.setVelocity(new Vector());
         stun(v);
         if (sc.type != null && plugin.overlay() != null) plugin.overlay().show(v, cfg("repurpose.overlay." + sc.type.name().toLowerCase(), "blissgems:overlay/gold_0"));
+        play(sc, v.getWorld());
+    }
+
+    /** The scene itself (the gem rising, the chains, the lightning), for a real victim or the test dummy. */
+    private void play(Scene sc, World world) {
+        ItemStack gem = sc.gem;
         int seconds = (int) Math.max(1, cfgD("repurpose.seconds", 5)), bolts = (int) cfgD("repurpose.lightning", 4);
         for (int i = 0; i < bolts; i++) sc.boltTicks.add(10 + rnd.nextInt(seconds * 20 - 10));
         if (gem != null) {
             ItemStack shown = gem.clone();
-            sc.display = v.getWorld().spawn(sc.base.clone().add(0, 1.4, 0), ItemDisplay.class, d -> {
+            sc.display = world.spawn(sc.base.clone().add(0, 1.4, 0), ItemDisplay.class, d -> {
                 d.setItemStack(shown);
                 d.setPersistent(false);
                 d.setBrightness(new Display.Brightness(15, 15));
@@ -643,8 +743,8 @@ final class GoldGem implements Listener {
 
     private void tickScene(Scene sc, int total) {
         sc.age++;
-        Player v = Bukkit.getPlayer(sc.victim);
-        if (v == null) { finish(sc, true); return; }
+        org.bukkit.entity.Entity v = Bukkit.getEntity(sc.victim);
+        if (v == null || !v.isValid()) { finish(sc, true); return; }
         if (v.getLocation().distanceSquared(sc.base) > 0.04) v.teleport(sc.base); // frozen where they stand
         World w = sc.base.getWorld();
         if (sc.age == 20 && sc.display != null) { // the chains shoot out of the ground and latch on
@@ -695,6 +795,15 @@ final class GoldGem implements Listener {
             sc.display.remove();
         }
         GoldMath.State s = states.get(sc.holder);
+        if (sc.dummy) { // the test: socket it as a test gem, the dummy simply goes
+            if (sc.gem != null && s != null) s.take(sc.type.name(), TEST_OWNER, "Dummy", encode(sc.gem));
+            org.bukkit.entity.Entity d = Bukkit.getEntity(sc.victim);
+            if (d != null) { w.spawnParticle(Particle.CLOUD, d.getLocation().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02); d.remove(); }
+            Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize("§6" + cfg("repurpose.message", "{victim}'s soul was repurposed.").replace("{victim}", "Dummy")));
+            if (holder != null) sync(holder);
+            save();
+            return;
+        }
         if (sc.gem != null) {
             if (s != null && !sc.holderDied) {
                 s.take(sc.type.name(), sc.victim, sc.victimName, encode(sc.gem));
@@ -912,24 +1021,29 @@ final class GoldGem implements Listener {
         long now = System.currentTimeMillis();
         if (snapReady.getOrDefault(p.getUniqueId(), 0L) > now) return;
         snapReady.put(p.getUniqueId(), now + cap(p, (long) (cfgD("snap.cooldown-seconds", 175) * 1000)));
-        flashAll((int) cfgD("snap.flash-ticks", 4));
         List<UUID> online = new ArrayList<>();
         Set<UUID> excluded = new HashSet<>();
         for (Player o : Bukkit.getOnlinePlayers()) {
             online.add(o.getUniqueId());
             if (cfgB("snap.exclude-trusted", false) && plugin.listener() != null && plugin.listener().isTrusted(p, o)) excluded.add(o.getUniqueId());
-            GemSounds.playTo(plugin, "gold.snap", o);
         }
+        snapEffect(p, GoldMath.snapTargets(online, p.getUniqueId(), excluded, (int) cfgD("snap.targets", 3), rnd), false);
+    }
+
+    /** Snap's effect: the gold flash and the sound for everyone, then these players' gems fall silent. */
+    private void snapEffect(Player p, List<UUID> targets, boolean test) {
+        flashAll((int) cfgD("snap.flash-ticks", 4));
+        for (Player o : Bukkit.getOnlinePlayers()) GemSounds.playTo(plugin, "gold.snap", o);
         long ms = (long) (cfgD("snap.disable-minutes", 5) * 60_000);
         int n = 0;
-        for (UUID id : GoldMath.snapTargets(online, p.getUniqueId(), excluded, (int) cfgD("snap.targets", 3), rnd)) {
+        for (UUID id : targets) {
             Player v = Bukkit.getPlayer(id);
             if (v == null || plugin.listener() == null) continue;
             plugin.listener().disableGemFor(v, ms, "Snap");
             v.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem snapped: your gem falls silent for " + HudStatus.time(ms) + "."));
             n++;
         }
-        Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize("§6" + cfg("snap.message", "{holder} snapped. {count} gems fall silent.")
+        Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize((test ? "§7[test] " : "") + "§6" + cfg("snap.message", "{holder} snapped. {count} gems fall silent.")
                 .replace("{holder}", plugin.shownName(p)).replace("{count}", String.valueOf(n))));
     }
 

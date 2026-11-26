@@ -167,6 +167,22 @@ class GoldTest {
         assertTrue(GoldMath.snapTargets(List.of(HOLDER, MESSY), HOLDER, Set.of(MESSY), 3, r).isEmpty(), "exclude-trusted");
     }
 
+    // ------------------------------------------------------------------ the admin test commands
+
+    @Test void testCommandsOnlyForTesters() throws Exception {
+        String c = read("GoldCommand.java"), g = read("GoldGem.java");
+        assertEquals("soulbound.admin", GoldCommand.TESTER);
+        assertEquals(List.of("socket", "unsocket", "awaken", "unawaken", "testrepurpose", "testsnap"), GoldCommand.TESTS);
+        assertTrue(c.contains("if (!s.hasPermission(TESTER)) { s.sendMessage(ChatColor.RED + \"You lack permission.\"); return; }"));
+        assertTrue(c.contains("if (s.hasPermission(TESTER)) out.addAll(TESTS);"), "tab completion only for testers");
+        assertTrue(g.contains("if (TEST_OWNER.equals(owner)) return; // a test gem: it just goes"), "test gems never go \"home\" to anyone");
+        assertTrue(g.contains("if (!s.canSocket(t.name())) return t.shown() + \" is already socketed.\";"), "the normal socket rules");
+        assertTrue(g.contains("if (t.name().equals(s.coreType)) return t.shown() + \" is your core.\";"));
+        assertTrue(g.contains("snapEffect(p, List.of(p.getUniqueId()), true);"), "testsnap: you're the only target");
+        assertTrue(g.contains(".replace(\"{victim}\", \"Dummy\")"), "the dummy's message");
+        assertTrue(Files.readString(Path.of("src/main/resources/plugin.yml")).contains("soulbound.admin:\n    default: op"));
+    }
+
     // ------------------------------------------------------------------ the wiring
 
     @Test void itsWiredIn() throws Exception {

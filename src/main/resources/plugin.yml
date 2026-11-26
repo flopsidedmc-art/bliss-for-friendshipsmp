@@ -59,7 +59,7 @@ commands:
     usage: /gem nickname <name...> | /gem nickname clear
   goldgem:
     description: The Gold Gem - admins give, remove and set the ritual site; its holder marks, unmarks and switches.
-    usage: /goldgem <give <player>|remove <player>|ritual set|mark <player>|unmark <player>|marks|switch>
+    usage: /goldgem <give <player>|remove <player>|ritual set|mark <player>|unmark <player>|marks|switch|socket <gem>|unsocket <gem>|awaken|unawaken|testrepurpose [gem]|testsnap>
   rules:
     description: The combat rules - status, reload, turn a rule on or off, and the maces.
     usage: /rules <status|reload|toggle <rule>|mace <give <player>|list>>
@@ -67,6 +67,8 @@ commands:
     permission-message: You lack permission.
 permissions:
   soulbound.gold.admin:
+    default: op
+  soulbound.admin:
     default: op
   soulbound.rules.admin:
     default: op

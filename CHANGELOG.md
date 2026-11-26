@@ -1,3 +1,43 @@
+# Gold Gem test commands
+
+## What changed
+- **New admin test commands** for testing alone. They need `soulbound.admin` (ops by default), and only players with it see them in tab completion and `/goldgem` help. All of them work on your own Gold Gem, so give yourself one first with `/goldgem give <you>`.
+  - **`/goldgem socket <gem>`** and **`/goldgem unsocket <gem>`** (tab-completes the 8 gems):
+    - **Socket:** adds or removes a type directly, with the normal rules: no duplicates, not the core, at most 8. The item's look and lore update.
+    - **Test owner:** socketed test gems belong to no one, so they never "go home" to anybody when you die or lose the Gold Gem.
+    - **Unsocket a real player's gem:** it goes home to them.
+  - **`/goldgem awaken`** and **`/goldgem unawaken`:** set the awakened state without the ritual. Unawakening while GOLD is active switches you back to your core.
+  - **`/goldgem testrepurpose [gem]`:**
+    - **The dummy:** a Mannequin "Dummy" appears 3 blocks in front of you, holding that gem (random if you don't give one: a type you can still socket when there is one).
+    - **The scene:** the full repurpose runs on it: frozen, the gem rises, 4 gold chains, lightning and particles.
+    - **The end:** "Dummy's soul was repurposed.", the gem flies into your Gold Gem and is socketed (as a test gem), and the dummy is removed.
+    - **What's skipped:** the screen overlay, since a dummy has no screen.
+    - **If the type is already socketed (or is your core),** it's held, like a real duplicate.
+  - **`/goldgem testsnap`:**
+    - **What runs:** Snap's gold flash and sound for everyone online, with you as the only player it can hit, so you see the flash and your own gem disable. The broadcast is marked "[test]".
+    - **No cooldown, and it works without awakening.**
+    - **The disable lasts the full `snap.disable-minutes`** (5); lower it in config while testing if that's too long.
+- **Real Gold Gem behaviour is unchanged.** The repurpose scene is shared code: a real victim goes through exactly the same steps as before, and only the dummy takes the test path at the end.
+
+## Files
+- **Changed:**
+  - `GoldGem.java`: the test methods; the scene now runs for a player or the dummy; Snap's effect split out so the test can reuse it; test gems never go "home";
+  - `GoldCommand.java`: the six subcommands, their help and tab completion;
+  - `plugin.yml`: `soulbound.admin`, and the usage line;
+  - `GoldTest.java`: a test for them.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 278 unit tests pass (1 new). It covers: tester-only permission and tab completion; the normal socket rules; test gems never going home; testsnap only hitting you; the dummy's message.
+
+## Not tested
+- **Nothing was run in game:** the dummy Mannequin and its scene; the socket and awaken commands' effect on the item; testsnap's flash and disable.
+
+## In-game test plan
+1. **Give yourself one:** `/goldgem give <you>`.
+2. **Sockets:** `/goldgem socket fire`: the look changes and Fire joins the cycle (sneak + F). `/goldgem socket <your core>`: refused. `/goldgem unsocket fire`: it's gone.
+3. **The repurpose:** `/goldgem testrepurpose speed`: the dummy freezes, the gem rises in 4 gold chains with lightning, then "Dummy's soul was repurposed." and Speed is socketed. The dummy is gone.
+4. **Awakening:** `/goldgem awaken`: the awakened look, and GOLD in the cycle. Then `/goldgem testsnap`: the gold flash and your own gem disabled. `/goldgem unawaken`: back.
+
 # Trust lists and death-kept gems saved to disk
 
 ## What changed
