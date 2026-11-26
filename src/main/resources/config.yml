@@ -16,7 +16,7 @@ cooldowns-seconds:
   #   burst 10, drift 15 (flat), bounty 35.
   # Powers: cozy 180, chad 120, nullify 120, fireball 120, itemlock 120,
   #   richrush 300, amp 240, storm 120, dash 40, bash 60, daggers 90,
-  #   projection 20 (it uses the power fallback below), heartdrainer 120, circle 120, beam 8, void 120. (Kinetic Overdrive has a meter, not a cooldown: flux.overdrive.)
+  #   projection 60, heartdrainer 120, circle 120, beam 8, void 120. (Kinetic Overdrive has a meter, not a cooldown: flux.overdrive.)
   power: 20
   tier2-ability: 35
   # energy 3-4 makes cooldowns 1.5x longer (Cracked/Scratched)
@@ -95,7 +95,7 @@ sounds:
     projection: {event: BLOCK_RESPAWN_ANCHOR_CHARGE, volume: 1.0, pitch: 1.4, enabled: true}
     dimensional-drift: {event: BLOCK_END_PORTAL_FRAME_FILL, volume: 1.0, pitch: 1.2, enabled: true, layer: {event: ENTITY_ENDERMAN_TELEPORT, volume: 0.7, pitch: 1.5}}
     astral-void: {event: BLOCK_AMETHYST_BLOCK_HIT, volume: 1.0, pitch: 0.6, enabled: true}  # the cast; disabled players hear general.gem-disabled
-    daggers-summon: {event: BLOCK_AMETHYST_BLOCK_RESONATE, volume: 0.6, pitch: 1.2, enabled: true}  # the fan of 5 appears behind you
+    daggers-summon: {event: BLOCK_AMETHYST_BLOCK_CHIME, volume: 0.6, pitch: 1.2, enabled: true}  # the fan of 5 appears behind you
     projection-end: {event: ENTITY_ILLUSIONER_MIRROR_MOVE, volume: 0.9, pitch: 1.4, enabled: true}  # the snap back into your body
     unbounded-enter: {event: BLOCK_AMETHYST_CLUSTER_PLACE, volume: 0.8, pitch: 0.7, enabled: true}
     unbounded-exit: {event: BLOCK_AMETHYST_CLUSTER_BREAK, volume: 0.8, pitch: 1.3, enabled: true}
@@ -598,6 +598,7 @@ abilities:
     push: 1.8 # sideways, at point blank (40% of it at the edge)
     up: 0.35 # a little lift, so they're shoved back, not sent into the sky
     damage: 2.0 # before ability-damage.multiplier
+    hit-cooldown-seconds: 8 # the [hit] version (launch and slam) at most this often
     affect-trusted: false # true: your trusted players are pushed and hurt too
   blur: # Speed gem, Blur
     clone-damage: 1.0 # each clone's hit, x ability-damage.multiplier, pierces armour; at most one hit a second per clone
@@ -683,6 +684,7 @@ cooldowns:
   bash: 60
   dash: 40
   daggers: 90
+  projection: 60 # Astral Projection (its tags lock gems)
   chad: 120
   nullify: 120
   itemlock: 120

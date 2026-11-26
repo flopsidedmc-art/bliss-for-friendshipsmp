@@ -195,6 +195,7 @@ public class GemListener implements Listener {
             case "vortex", "bash" -> 60;
             case "dash" -> 40;
             case "daggers" -> 90;
+            case "projection" -> 60; // its tags lock gems
             case "chad", "nullify", "itemlock", "storm", "heartdrainer", "circle", "beam", "void" -> 120;
             case "fireball" -> 120;
             case "overdrive", "cozy" -> 180;
@@ -417,7 +418,6 @@ public class GemListener implements Listener {
                     proximityHint(p, energy); // a hunt shows its own time instead (BountyHunt)
             }
         }
-        tickAstraDaggers();
     }
 
     private void applyPassive(Player p, GemType type, int tier) {
@@ -581,10 +581,13 @@ public class GemListener implements Listener {
                     hudEntry(ability, cdRemain(p, "pockets"), pockets.containsKey(id)
                             && p.getOpenInventory() != null && p.getOpenInventory().getTopInventory().equals(pockets.get(id))),
                     hudEntry(icon(type, "right"), cdRemain(p, "richrush"), richRushUntil.getOrDefault(id, 0L) > now)));
-            case PUFF -> bar.addAll(HudStatus.gemBar(t2,
-                    hudEntry(icon(type, "left"), cdRemain(p, "bash"), false),
-                    hudEntry(ability, cdRemain(p, "doublejump"), false),
-                    hudEntry(icon(type, "right"), cdRemain(p, "dash"), false)));
+            case PUFF -> {
+                bar.addAll(HudStatus.gemBar(t2,
+                        hudEntry(icon(type, "left"), cdRemain(p, "bash"), false),
+                        hudEntry(ability, cdRemain(p, "doublejump"), false),
+                        hudEntry(icon(type, "right"), cdRemain(p, "dash"), false)));
+                if (t2 && cdRemain(p, "bash-hit") > 0) bar.add(hudEntry(icon(type, "left") + "⇣", cdRemain(p, "bash-hit"), false)); // the hit version (launch and slam)
+            }
             case ASTRA -> bar.addAll(HudStatus.gemBar(t2,
                     hudEntry(icon(type, "left"), cdRemain(p, "daggers"), volleys.containsKey(id)),
                     hudEntry(ability, cdRemain(p, "drift"), plugin.astral() != null && plugin.astral().unbounded(p)),
@@ -680,10 +683,59 @@ public class GemListener implements Listener {
                 plugin.getConfig().getString("actionbar.icons." + type.name() + ".ability-tier2", ""));
     }
 
-    /** Chad dots: 3 black dots ahead of the player; each crit turns one red. */
+    private final Map<UUID, Long> chadFlashUntil = new HashMap<>(); // Chad's 4th-hit crit: the dots are red until then
+    private static final org.bukkit.Color CHAD_RED = org.bukkit.Color.fromRGB(0xD01A1A), DARK_RED = org.bukkit.Color.fromRGB(0x8B0000),
+            NEAR_BLACK = org.bukkit.Color.fromRGB(0x111111), NULLIFY_RED = org.bukkit.Color.fromRGB(0xC81E1E);
+
+    /** Chad Strength's double-damage hit: the dots turn red (a little bigger) for a moment, with a red burst on the target. */
+    private void chadCritFlash(Player p, Entity target) {
+        chadFlashUntil.put(p.getUniqueId(), System.currentTimeMillis() + 400);
+        drawChadDots(p, System.currentTimeMillis()); // now, not at the next 10-tick redraw
+        Bukkit.getScheduler().runTaskLater(plugin, () -> { if (p.isOnline()) drawChadDots(p, System.currentTimeMillis()); }, 4L);
+        Location at = target.getLocation().add(0, target.getHeight() * 0.6, 0);
+        target.getWorld().spawnParticle(Particle.DUST, at, 24, 0.35, 0.45, 0.35, 0, new Particle.DustOptions(CHAD_RED, 1.4f));
+    }
+
+    /** Frailer: two thin intertwined lines, dark red and near-black, from you to them for about 6 ticks (like the hunt's thread). */
+    private void frailerLine(Player p, LivingEntity v) {
+        for (int t = 0; t < 6; t++) {
+            final long age = t;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!p.isOnline() || !v.isValid() || !v.getWorld().equals(p.getWorld())) return;
+                Vector from = p.getLocation().add(0, 1.1, 0).toVector(), to = v.getLocation().add(0, v.getHeight() * 0.55, 0).toVector();
+                double d = from.distance(to);
+                if (d < 0.6) return;
+                BountyMath.Trail tr = BountyMath.trail(from, to, 0.4, d, 0.25, age * 5);
+                World w = p.getWorld();
+                for (Vector a : tr.black()) w.spawnParticle(Particle.DUST, a.getX(), a.getY(), a.getZ(), 1, 0, 0, 0, 0, new Particle.DustOptions(NEAR_BLACK, 0.6f));
+                for (Vector a : tr.red()) w.spawnParticle(Particle.DUST, a.getX(), a.getY(), a.getZ(), 1, 0, 0, 0, 0, new Particle.DustOptions(DARK_RED, 0.6f));
+            }, t);
+        }
+    }
+
+    /** Nullify landing on someone: a red ring at their feet, widening a little and fading over about 10 ticks. */
+    private void nullifyRing(Player o) {
+        for (int t = 0; t < 10; t++) {
+            final int age = t;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!o.isOnline()) return;
+                Location feet = o.getLocation().add(0, 0.1, 0);
+                double r = 0.6 + age * 0.09;
+                float size = 1.2f - age * 0.08f;
+                for (int i = 0; i < 18; i++) {
+                    double a = Math.PI * 2 * i / 18;
+                    o.getWorld().spawnParticle(Particle.DUST, feet.clone().add(Math.cos(a) * r, 0, Math.sin(a) * r), 1, 0, 0, 0, 0,
+                            new Particle.DustOptions(NULLIFY_RED, Math.max(0.3f, size)));
+                }
+            }, t);
+        }
+    }
+
+    /** Chad dots: 3 black dots ahead of the player; each crit turns one red; the 4th-hit crit flashes them all red. */
     private void drawChadDots(Player p, long now) {
         Long until = chadUntil.get(p.getUniqueId());
         if (until == null || until < now) return;
+        boolean flash = chadFlashUntil.getOrDefault(p.getUniqueId(), 0L) > now;
         int n = critCount.getOrDefault(p.getUniqueId(), 0);
         int lit = n % 3;
         if (lit == 0 && n > 0) lit = 3;
@@ -695,9 +747,9 @@ public class GemListener implements Listener {
         for (int i = -1; i <= 1; i++) {
             Location dot = base.clone().add(right.clone().multiply(0.45 * i));
             boolean red = (i + 1) < lit;
-            org.bukkit.Color col = red ? org.bukkit.Color.RED : org.bukkit.Color.BLACK;
+            org.bukkit.Color col = flash ? CHAD_RED : red ? org.bukkit.Color.RED : org.bukkit.Color.BLACK;
             p.getWorld().spawnParticle(Particle.DUST, dot, 1,
-                    new Particle.DustOptions(col, 1.0f));
+                    new Particle.DustOptions(col, flash ? 1.3f : 1.0f));
         }
     }
 
@@ -1117,6 +1169,7 @@ public class GemListener implements Listener {
         for (Entity e : p.getNearbyEntities(radius, radius / 2, radius)) {
             if (!(e instanceof Player o)) continue;
             if (isTrusted(p, o)) continue;
+            nullifyRing(o);
             boolean stripped = false;
             for (PotionEffect fx : new java.util.ArrayList<>(o.getActivePotionEffects())) {
                 String typeName = fx.getType().getName();
@@ -1526,17 +1579,18 @@ public class GemListener implements Listener {
     }
 
     private static final float FAN_SCALE = 0.5f;
+    private long daggerTicks;
 
     /**
      * Every tick: a gem swap, a projection or daggers.linger-seconds without a throw ends the volley (the cooldown
      * starts as if all 5 were thrown). Every 2 ticks the waiting daggers glide after you (each move smoothed by the
      * client over 2 ticks) and turn with you (an interpolated pose), instead of snapping every tick.
      */
-    private void tickAstraDaggers() {
+    void tickAstraDaggers() { // its own every-tick task (SoulboundGemsPlugin): the gem tick only runs every 10 ticks
         if (volleys.isEmpty()) return;
         long now = System.currentTimeMillis();
         long linger = (long) (plugin.getConfig().getDouble("astra.daggers.linger-seconds", 8.0) * 1000);
-        boolean move = Bukkit.getCurrentTick() % 2 == 0;
+        boolean move = (++daggerTicks & 1) == 0; // every 2 ticks of this task, whatever the server's tick count
         for (UUID id : new ArrayList<>(volleys.keySet())) {
             Player p = Bukkit.getPlayer(id);
             Volley v = volleys.get(id);
@@ -2327,11 +2381,6 @@ public class GemListener implements Listener {
     }
 
     /** Coming out of Unbounded darkens your own gem for 30 s (as before). */
-    void unboundedExit(Player rider) {
-        disableGem(rider, 30_000L, GemNames.tx("Unbounded exit"));
-        rider.sendMessage(ChatColor.GRAY + "You slip out. Your gem goes dark for 30s.");
-    }
-
     public boolean isProjecting(Player p) {
         return plugin.astral() != null && plugin.astral().projecting(p);
     }
@@ -2964,7 +3013,9 @@ public class GemListener implements Listener {
             }
             // Breezy Bash [Hit] T2: launch up + slam down
             if (gems.getTier(gem) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(gem))
-                    && e.getEntity() instanceof LivingEntity le2) {
+                    && e.getEntity() instanceof LivingEntity le2 && cdRemain(p, "bash-hit") <= 0) {
+                cdStart(p, "bash-hit", (long) (Math.max(0, plugin.getConfig().getDouble("abilities.breezy-bash.hit-cooldown-seconds", 8))
+                        * EnergyStage.cooldownMultiplier(gems.getEnergy(gem)) * 1000));
                 useBreezyHit(p, le2);
             }
             return;
@@ -3006,6 +3057,7 @@ public class GemListener implements Listener {
         if (e.getEntity() instanceof LivingEntity le) {
             le.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 0));
             usedOn(p, GemNames.tx("Frailer"), le.getName());
+            frailerLine(p, le);
             if (le instanceof Player vp) {
                 frailUntil.put(vp.getUniqueId(), System.currentTimeMillis() + 8_000L);
             } else {
@@ -3020,6 +3072,7 @@ public class GemListener implements Listener {
                 e.setDamage(e.getDamage() * 2.0);
                 p.sendMessage(ChatColor.RED + GemNames.tx("CHAD STRENGTH x2! (hit 4)"));
                 GemSounds.play(plugin, "strength.chad-fourth-hit", p.getLocation());
+                chadCritFlash(p, e.getEntity()); // the dots flash red, and a red burst on them
                 n = 0;
             }
             hitCount.put(p.getUniqueId(), n);

@@ -312,7 +312,7 @@ final class AstralSpectate implements Listener {
             if (to != null) GemSounds.play(plugin, "astra.projection-end", to);
         } else {
             GemSounds.play(plugin, "astra.unbounded-exit", p.getLocation());
-            if (why != SpectatorSessions.End.DISABLE && plugin.listener() != null) plugin.listener().unboundedExit(p);
+            // no gem disable on the way out any more: the ride is only unbounded.seconds (its own cooldown still applies)
         }
     }
 

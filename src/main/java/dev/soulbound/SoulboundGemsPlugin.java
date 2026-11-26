@@ -223,6 +223,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         }, 20L, period);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> relay.tick(), 1L, 1L);
+        Bukkit.getScheduler().runTaskTimer(this, () -> listener.tickAstraDaggers(), 1L, 1L); // the waiting daggers follow you every 2 ticks
         Bukkit.getScheduler().runTaskTimer(this, () -> revenant.tick(), 1L, 1L);
         Bukkit.getScheduler().runTaskTimer(this, () -> auratus.tick(), 1L, 1L);
 
@@ -260,7 +261,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 7) return;
+        if (version >= 8) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -296,7 +297,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         }
         // Balance 7: the Energy Beam is charged now (Q), so its cooldown is short.
         if (version < 7 && c.getInt("cooldowns.beam", 120) == 120) { c.set("cooldowns.beam", 8); changed.add("Energy Beam cooldown 120 -> 8 s (charging is the cost now)"); }
-        c.set("balance-version", 7);
+        // Balance 8: Astral Projection cools down in 60 s (its tags lock gems); a /config override still at the old 20 moves too.
+        if (version < 8 && c.contains("cooldowns.projection", true) && c.getInt("cooldowns.projection") == 20) { c.set("cooldowns.projection", 60); changed.add("Projection cooldown 20 -> 60 s"); }
+        c.set("balance-version", 8);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 

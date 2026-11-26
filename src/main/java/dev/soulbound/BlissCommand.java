@@ -79,12 +79,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             plugin.progression().setProgression(n);
             return true;
         }
-        if (a.length == 0) {
-            s.sendMessage(ChatColor.YELLOW + "/bliss give <player> <gem> [tier] [energy]  (includes admin-test Mythics)");
-            s.sendMessage(ChatColor.YELLOW + "/bliss info | /bliss withdraw | /bliss setenergy <player> <0-10> | /bliss giveitem <...>");
-            s.sendMessage(ChatColor.YELLOW + GemNames.tx("/bliss track <player> (Bounty Hunter) | /bliss trust <add|remove|list> [player]"));
-            return true;
-        }
+        if (a.length == 0) { help(s); return true; }
         switch (a[0].toLowerCase()) {
             case "give" -> {
                 if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
@@ -159,25 +154,19 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             }
             case "giveitem" -> {
                 if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
-                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss giveitem <player> <upgrader|trader|repairkit|revive|revival|spiritdagger|fragment|totemtoken|energybottle|remote>"); return true; }
+                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss giveitem <player> <" + String.join("|", ITEMS) + ">"); return true; }
                 Player t = Bukkit.getPlayerExact(a[1]);
                 if (t == null) { s.sendMessage(ChatColor.RED + "Player not found."); return true; }
                 ItemStack it = switch (a[2].toLowerCase()) {
                     case "upgrader" -> gems.createUpgrader();
                     case "trader" -> gems.createTrader();
                     case "repairkit", "repair_kit", "repair" -> gems.createRepairKit();
-                    case "revive", "reviveitem" -> gems.createReviveItem();
-                    case "revival", "revivalitem" -> gems.createRevivalItem();
-                    case "spiritdagger", "dagger" -> gems.createSpiritDagger();
-                    case "fragment" -> gems.createFragment();
                     case "eobsidian", "obsidian", "enchantedobsidian" -> gems.createEnchantedObsidian();
-                    case "totemtoken", "token" -> gems.createTotemToken();
                     case "energybottle", "bottle", "energy" -> gems.createEnergyBottle();
-                    case "remote" -> gems.createRemote();
-                    default -> null;
+                    default -> null; // only items that do something (the revive, dagger, fragment, token and remote items don't yet)
                 };
                 if (it == null) {
-                    s.sendMessage(ChatColor.RED + "Unknown item.");
+                    s.sendMessage(ChatColor.RED + "Unknown item. Items: " + String.join(", ", ITEMS));
                     return true;
                 }
                 t.getInventory().addItem(it);
@@ -194,7 +183,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                 if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
                 if (!(s instanceof Player p)) { s.sendMessage("Players only."); return true; }
                 if (a.length < 2) {
-                    s.sendMessage(ChatColor.YELLOW + "Usage: /bliss build <create|save|paste|list|exit> [name] [size]");
+                    s.sendMessage(ChatColor.YELLOW + "Usage: /bliss build <create <name> [size]|save <name>|paste <name>|list|exit>");
                     return true;
                 }
                 if (a[1].equalsIgnoreCase("list")) {
@@ -205,7 +194,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                     plugin.builds().exit(p);
                     return true;
                 }
-                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss build <create|save|paste> <name> [size]"); return true; }
+                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss build <create <name> [size]|save <name>|paste <name>>"); return true; }
                 if (a[1].equalsIgnoreCase("create")) {
                     int size = 17;
                     if (a.length >= 4) {
@@ -220,7 +209,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                     plugin.builds().paste(p, a[2]);
                     return true;
                 }
-                s.sendMessage(ChatColor.RED + "Usage: /bliss build <create|save|paste|list|exit> [name] [size]");
+                s.sendMessage(ChatColor.RED + "Usage: /bliss build <create <name> [size]|save <name>|paste <name>|list|exit>");
                 return true;
             }
             case "config" -> {
@@ -313,21 +302,57 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             if (a.length <= 1) return filter(List.of("1", "2", "3", "4"), a.length == 0 ? "" : a[0]);
             return List.of();
         }
-        if (a.length == 1) return filter(List.of("give", "info", "setenergy", "withdraw", "giveitem", "track", "trust",
-                "menu", "pedestal", "build", "config"), a[0]);
-        if (a.length == 2 && (a[0].equalsIgnoreCase("give") || a[0].equalsIgnoreCase("setenergy") || a[0].equalsIgnoreCase("giveitem") || a[0].equalsIgnoreCase("track")))
-            return null; // player names
-        if (a.length == 2 && a[0].equalsIgnoreCase("pedestal"))
-            return filter(List.of("activate", "deactivate"), a[1]);
-        if (a.length == 2 && a[0].equalsIgnoreCase("build"))
-            return filter(List.of("create", "save", "paste", "list", "exit"), a[1]);
-        if (a.length == 2 && a[0].equalsIgnoreCase("trust"))
-            return filter(List.of("add", "remove", "list"), a[1]);
-        if (a.length == 3 && a[0].equalsIgnoreCase("give"))
-            return filter(Arrays.stream(GemType.values()).map(g -> g.name().toLowerCase()).collect(Collectors.toList()), a[2]);
-        if (a.length == 3 && a[0].equalsIgnoreCase("giveitem"))
-            return filter(List.of("upgrader", "trader", "repairkit", "revive", "revival", "spiritdagger", "fragment", "totemtoken", "energybottle", "remote"), a[2]);
-        return List.of();
+        boolean admin = s.hasPermission("bliss.admin");
+        if (a.length == 1) return filter(admin ? List.of("info", "withdraw", "track", "trust", "give", "setenergy", "giveitem", "menu", "config", "pedestal", "build")
+                : List.of("info", "withdraw", "track", "trust"), a[0]);
+        String sub = a[0].toLowerCase();
+        if (!admin && !List.of("info", "withdraw", "track", "trust").contains(sub)) return List.of();
+        int n = a.length;
+        String typed = a[n - 1];
+        return switch (sub) {
+            case "give" -> n == 2 ? players(typed) : n == 3 ? filter(Arrays.stream(GemType.values()).map(g -> g.name().toLowerCase()).collect(Collectors.toList()), typed)
+                    : n == 4 ? filter(List.of("1", "2"), typed) : n == 5 ? filter(numbers(0, 10), typed) : List.of();
+            case "setenergy" -> n == 2 ? players(typed) : n == 3 ? filter(numbers(0, 10), typed) : List.of();
+            case "giveitem" -> n == 2 ? players(typed) : n == 3 ? filter(ITEMS, typed) : List.of();
+            case "track" -> n == 2 ? players(typed) : List.of();
+            case "trust" -> n == 2 ? filter(List.of("add", "remove", "list"), typed)
+                    : n == 3 && (a[1].equalsIgnoreCase("add") || a[1].equalsIgnoreCase("remove")) ? players(typed) : List.of();
+            case "pedestal" -> n == 2 ? filter(List.of("activate", "deactivate"), typed) : List.of();
+            case "build" -> n == 2 ? filter(List.of("create", "save", "paste", "list", "exit"), typed)
+                    : n == 3 && (a[1].equalsIgnoreCase("save") || a[1].equalsIgnoreCase("paste")) ? filter(plugin.builds().buildList(), typed)
+                    : n == 4 && a[1].equalsIgnoreCase("create") ? filter(List.of("17", "33", "65"), typed) : List.of();
+            default -> List.of();
+        };
+    }
+
+    /** What /bliss giveitem hands out: only items that do something. */
+    static final List<String> ITEMS = List.of("upgrader", "trader", "repairkit", "energybottle", "eobsidian");
+
+    /** /bliss with nothing after it: every subcommand with its full arguments (admin ones only for admins). */
+    private void help(CommandSender s) {
+        s.sendMessage(ChatColor.GOLD + "/bliss info" + ChatColor.GRAY + " — your gem, tier and energy");
+        s.sendMessage(ChatColor.GOLD + "/bliss withdraw" + ChatColor.GRAY + " — 1 energy into an Energy Bottle");
+        s.sendMessage(ChatColor.GOLD + GemNames.tx("/bliss track <player>") + ChatColor.GRAY + GemNames.tx(" — Bounty Hunter's offering for them"));
+        s.sendMessage(ChatColor.GOLD + "/bliss trust <add <player>|remove <player>|list>");
+        if (!s.hasPermission("bliss.admin")) return;
+        s.sendMessage(ChatColor.GOLD + "/bliss give <player> <gem> [tier] [energy]");
+        s.sendMessage(ChatColor.GOLD + "/bliss setenergy <player> <0-10>");
+        s.sendMessage(ChatColor.GOLD + "/bliss giveitem <player> <" + String.join("|", ITEMS) + ">");
+        s.sendMessage(ChatColor.GOLD + "/bliss menu" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/bliss config");
+        s.sendMessage(ChatColor.GOLD + "/bliss pedestal <activate|deactivate>");
+        s.sendMessage(ChatColor.GOLD + "/bliss build <create <name> [size]|save <name>|paste <name>|list|exit>");
+    }
+
+    private List<String> players(String typed) {
+        List<String> out = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
+        return filter(out, typed);
+    }
+
+    private static List<String> numbers(int from, int to) {
+        List<String> out = new ArrayList<>();
+        for (int i = from; i <= to; i++) out.add(String.valueOf(i));
+        return out;
     }
 
     private List<String> filter(List<String> opts, String prefix) {

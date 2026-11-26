@@ -119,7 +119,7 @@ class AstraTest {
         assertEquals(8, c.getInt("astra.phasing.vanish-ticks"));
         assertEquals("ENTITY_VEX_CHARGE", c.getString("sounds.astra.tag-spook.event"));
         assertEquals("AMBIENT_CAVE", c.getString("sounds.astra.tag-spook.layer.event"));
-        assertEquals("BLOCK_AMETHYST_BLOCK_RESONATE", c.getString("sounds.astra.daggers-summon.event"));
+        assertEquals("BLOCK_AMETHYST_BLOCK_CHIME", c.getString("sounds.astra.daggers-summon.event"));
         assertEquals("ENTITY_ENDERMAN_TELEPORT", c.getString("sounds.astra.phasing.event"));
         for (String k : new String[] {"projection-end", "unbounded-enter", "unbounded-exit", "unbounded-whisper"})
             assertNotNull(c.getString("sounds.astra." + k + ".event"), k);

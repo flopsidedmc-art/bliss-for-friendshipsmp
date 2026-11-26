@@ -7,7 +7,7 @@ description: Original Bliss-inspired gem system with Mythics Auratus and Heretic
 commands:
   bliss:
     description: Bliss-like gem commands
-    usage: /bliss <give|info|setenergy|withdraw|giveitem|track|trust>
+    usage: /bliss <info|withdraw|track <player>|trust <add|remove|list> [player]|give <player> <gem> [tier] [energy]|setenergy <player> <0-10>|giveitem <player> <item>|menu|config|pedestal <activate|deactivate>|build ...>
     permission: bliss.player
     permission-message: You lack permission.
   progression:
@@ -27,7 +27,7 @@ commands:
     permission-message: You lack permission.
   blissop:
     description: Admin console — give the Prismatic Edge, set Pristine stages, reload, border growth.
-    usage: /blissop <reload|edge|energy|give|border> ...
+    usage: /blissop <give <gem> [1|2]|mythic <auratus|heretic|relay> [player]|progression <1-4>|border <blocks> <seconds>|stalker <player|stop>|pris [player]|mace [player]|reloadconfig>
     permission: bliss.admin
     permission-message: You lack permission.
   turmoil:

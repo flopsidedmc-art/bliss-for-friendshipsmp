@@ -24,16 +24,14 @@ import java.util.Locale;
  *
  *   /blissop help                     — this list
  *   /blissop give <gem> [tier]        — standard gem, e.g. give flux 2
- *   /blissop mythic <auratus|heretic|gold|relay> [player]
+ *   /blissop mythic <auratus|heretic|relay> [player]
  *   /blissop progression <1-4>        — same as /progression
- *   /blissop assessment <on|off>      — Progression 5 toggle
- *   /blissop energy <set|add> <player> <gem> <units>
  *   /blissop border <blocks> <seconds> — "Growing the world border to X blocks over N seconds"
  *   /blissop stalker <player|stop>     — Shadow Stalker hunt
  *   /blissop pris [player]            — grant the Prismatic Edge sword
  *   /blissop mace [player]            — grant the showcase [Mace]
- *   /blissop test <rising|sky|wire|wisp|mana|textfx>  — effect presets (admin preview)
  *   /blissop reloadconfig
+ * (assessment, energy and the test presets were taken out: unfinished or leftover.)
  *
  * Permission: bliss.admin. Register in plugin.yml:
  *
@@ -44,12 +42,9 @@ import java.util.Locale;
  */
 public class BlissOpCommand implements CommandExecutor, TabCompleter {
 
+    /** Only the finished ones (assessment, energy and the particle test presets are gone). */
     private static final List<String> SUBS = List.of(
-            "help", "give", "mythic", "progression", "assessment", "energy",
-            "border", "stalker", "pris", "mace", "test", "reloadconfig");
-
-    private static final List<String> TESTS = List.of(
-            "rising", "sky", "wire", "wisp", "mana", "textfx");
+            "help", "give", "mythic", "progression", "border", "stalker", "pris", "mace", "reloadconfig");
 
     private final SoulboundGemsPlugin plugin;
     private final PrismaticEdge edge;
@@ -76,16 +71,11 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
             case "mythic" -> mythic(sender, args);
             case "progression" -> {
                 if (args.length < 2) {
-                    sender.sendMessage(Component.text("/blissop progression <1-4>", NamedTextColor.RED));
+                    sender.sendMessage(Component.text("/blissop progression <1|2|3|4>", NamedTextColor.RED));
                     return true;
                 }
                 Bukkit.dispatchCommand(sender, "progression " + args[1]);
             }
-            case "assessment" -> {
-                String arg = args.length >= 2 ? args[1] : "on";
-                Bukkit.dispatchCommand(sender, "bliss assessment " + arg);
-            }
-            case "energy" -> energy(sender, args);
             case "border" -> border(sender, args);
             case "stalker" -> {
                 if (args.length < 2) {
@@ -113,7 +103,6 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
                     target.sendMessage(Component.text("You were granted a [Mace].", NamedTextColor.GOLD));
                 }
             }
-            case "test" -> test(sender, args);
             case "reloadconfig" -> {
                 plugin.reloadConfig();
                 sender.sendMessage(Component.text("config.yml reloaded.", NamedTextColor.GREEN));
@@ -126,14 +115,13 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
     private void help(CommandSender sender) {
         String[] lines = {
                 "blissop — admin console",
-                "/blissop give <gem> [tier]",
-                "/blissop mythic <auratus|heretic|gold|relay> [player]",
-                "/blissop progression <1-4> | assessment <on|off>",
-                "/blissop energy set|add <player> <gem> <units>",
+                "/blissop give <gem> [1|2]  (to you)",
+                "/blissop mythic <auratus|heretic|relay> [player]",
+                "/blissop progression <1|2|3|4>",
                 "/blissop border <blocks> <seconds>",
                 "/blissop stalker <player|stop>",
-                "/blissop pris | mace [player]",
-                "/blissop test <rising|sky|wire|wisp|mana|textfx>",
+                "/blissop pris [player]  (the Prismatic Edge)",
+                "/blissop mace [player]  (an Heirloom Mace)",
                 "/blissop reloadconfig"
         };
         for (String line : lines) {
@@ -143,7 +131,7 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
 
     private void give(CommandSender sender, String[] args) {
         if (args.length < 2 || !(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("/blissop give <gem> [tier]", NamedTextColor.RED));
+            sender.sendMessage(Component.text("/blissop give <gem> [1|2]", NamedTextColor.RED));
             return;
         }
         GemType type = GemType.match(args[1]);
@@ -158,7 +146,7 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
 
     private void mythic(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(Component.text("/blissop mythic <auratus|heretic|gold|relay> [player]",
+            sender.sendMessage(Component.text("/blissop mythic <auratus|heretic|relay> [player]",
                     NamedTextColor.RED));
             return;
         }
@@ -174,27 +162,6 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void energy(CommandSender sender, String[] args) {
-        if (args.length < 5) {
-            sender.sendMessage(Component.text("/blissop energy set|add <player> <gem> <units>", NamedTextColor.RED));
-            return;
-        }
-        Player target = Bukkit.getPlayerExact(args[2]);
-        GemType type = GemType.match(args[3]);
-        if (target == null || type == null) {
-            sender.sendMessage(Component.text("Unknown player or gem.", NamedTextColor.RED));
-            return;
-        }
-        int units = parseInt(args[4], 0);
-        if (args[1].equalsIgnoreCase("set")) {
-            plugin.energy.addEnergy(target, type, units - plugin.energy.stageOf(target, type) * 100);
-        } else {
-            plugin.energy.addEnergy(target, type, units);
-        }
-        sender.sendMessage(Component.text(target.getName() + " → " + type.shown()
-                + " " + EnergyManager.stageLabel(plugin.energy.stageOf(target, type)), NamedTextColor.GREEN));
-    }
-
     /** "Growing the world border to 160000.0 blocks over 15000 seconds" */
     private void border(CommandSender sender, String[] args) {
         if (args.length < 3) {
@@ -207,28 +174,6 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
         world.getWorldBorder().setSize(target, seconds);
         String msg = String.format("Growing the world border to %.1f blocks over %d seconds", target, seconds);
         Bukkit.getServer().sendMessage(Component.text(msg, NamedTextColor.GREEN));
-    }
-
-    private void test(CommandSender sender, String[] args) {
-        if (args.length < 2 || !(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("/blissop test <" + String.join("|", TESTS) + ">", NamedTextColor.RED));
-            return;
-        }
-        Location loc = player.getLocation();
-        switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "rising" -> MythicFx.fountain(loc, 4000);        // red spiral canopy
-            case "sky" -> MythicFx.chainSparks(loc.clone(), loc.clone().add(0, 12, 4));
-            case "wire" -> {
-                for (int i = 0; i < 12; i++) {
-                    loc.getWorld().spawnParticle(org.bukkit.Particle.CRIT, loc.clone().add(
-                            StrictMath.cos(i) * 1.5, 0.5 + (i % 4) * 0.4, StrictMath.sin(i) * 1.5), 1, 0, 0, 0, 0);
-                }
-            }
-            case "wisp" -> MythicFx.curls(player, true, true, 0.8);
-            case "mana" -> MythicFx.tripleSpin(loc);
-            case "textfx" -> player.sendActionBar(Component.text("~ text preview ~", NamedTextColor.LIGHT_PURPLE));
-            default -> sender.sendMessage(Component.text("Unknown preset.", NamedTextColor.RED));
-        }
     }
 
     private Player targetOrSelf(CommandSender sender, String[] args, int idx) {
@@ -250,28 +195,28 @@ public class BlissOpCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("bliss.admin")) return List.of();
-        if (args.length == 1) {
-            return SUBS.stream().filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT))).toList();
-        }
-        if (args.length == 2) {
-            return switch (args[0].toLowerCase(Locale.ROOT)) {
-                case "give" -> java.util.Arrays.stream(GemType.values())
-                        .filter(g -> !g.isMythic()).map(g -> g.name().toLowerCase(Locale.ROOT)).toList();
-                case "mythic" -> List.of("auratus", "heretic", "gold", "relay");
-                case "assessment" -> List.of("on", "off");
-                case "energy" -> List.of("set", "add");
-                case "stalker" -> Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
-                case "test" -> TESTS;
+        String typed = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
+        List<String> players = Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+        List<String> out = switch (args.length) {
+            case 1 -> SUBS;
+            case 2 -> switch (args[0].toLowerCase(Locale.ROOT)) {
+                case "give" -> java.util.Arrays.stream(GemType.values()).filter(g -> !g.isMythic()).map(g -> g.name().toLowerCase(Locale.ROOT)).toList();
+                case "mythic" -> List.of("auratus", "heretic", "relay");
+                case "progression" -> List.of("1", "2", "3", "4");
+                case "border" -> List.of("1000", "5000", "10000", "160000");
+                case "stalker" -> java.util.stream.Stream.concat(players.stream(), java.util.stream.Stream.of("stop")).toList();
+                case "pris", "mace" -> players;
                 default -> List.of();
             };
-        }
-        if (args.length == 3 && args[0].equalsIgnoreCase("energy")) {
-            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
-        }
-        if (args.length == 4 && args[0].equalsIgnoreCase("energy")) {
-            return java.util.Arrays.stream(GemType.values()).map(g -> g.name().toLowerCase(Locale.ROOT)).toList();
-        }
-        return List.of();
+            case 3 -> switch (args[0].toLowerCase(Locale.ROOT)) {
+                case "give" -> List.of("1", "2");
+                case "mythic" -> players;
+                case "border" -> List.of("60", "600", "3600", "15000");
+                default -> List.of();
+            };
+            default -> List.of();
+        };
+        return out.stream().filter(o -> o.toLowerCase(Locale.ROOT).startsWith(typed)).toList();
     }
 
     /** small shim so MaterialSafe compiles on all 1.21.x APIs */

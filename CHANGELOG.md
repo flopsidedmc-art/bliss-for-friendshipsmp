@@ -1,3 +1,100 @@
+# Fixes from testing, round 1 (and /bliss, /blissop)
+
+## What I found first
+- **Why the Astra daggers didn't follow you:** the follow code ran from the gem tick, which runs every **10** ticks (the action-bar rate), not every tick.
+  - **The parity check:** inside, "every 2 ticks" was worked out from the server's tick count. On a 10-tick schedule every call lands on the same parity.
+    - **Odd:** depending on when the plugin was enabled, it was odd every time and the daggers **never moved**.
+    - **Even:** otherwise they moved only every half second.
+  - **Nothing else was wrong:** the entity, the teleport and the interpolation were fine.
+- **The pink-and-black dagger:** on the plugin side, the dagger is built exactly like the custom items that render.
+  - **The item:** a NAUTILUS_SHELL with `setCustomModelData(12350)` (the same component the Auratus chain links use, 12345-12349), and no item_model override.
+  - **The display:** its item is set after the meta, in the spawn callback.
+  - **So the missing texture comes from the pack,** not the plugin. Things to check in your main pack:
+    1. **The item definition:** `assets/minecraft/items/nautilus_shell.json` (1.21.4+ needs it; old `models/item` overrides are ignored) has a `range_dispatch` on `custom_model_data` with 12350 → `blissgems:custom/astra_dagger`.
+    2. **The model file:** `assets/blissgems/models/custom/astra_dagger.json` exists at that exact path.
+    3. **The texture:** its texture path (e.g. `blissgems:custom/astra_dagger` → `assets/blissgems/textures/custom/astra_dagger.png`) matches a real file.
+    4. **The client log** (`logs/latest.log`) says which: look for "Missing textures in model blissgems:custom/astra_dagger" or "Unable to load model".
+  - **The repo's pack zip** doesn't contain the dagger, so I couldn't check the file itself. Send the pack and I'll look.
+- **Astral Projection** used the generic 20 s power cooldown (it had no entry of its own).
+- **Unbounded's exit** called a 30 s gem disable on you.
+- **The daggers' summon sound** was BLOCK_AMETHYST_BLOCK_RESONATE, shared with the Auratus Aegis by a test whitelist.
+- **BLOCK_AMETHYST_BLOCK_CHIME is already shared** by Relay and Life (Life's blessing). See the sound change below.
+- **Puff's Breezy Bash hit version** had no cooldown.
+- **`/bliss`:** `giveitem` offered six items that do nothing when used: revive, revival, spiritdagger, fragment, totemtoken, remote. The enchanted obsidian works but wasn't in tab completion.
+- **`/blissop`:**
+  - `assessment` ran a `/bliss assessment` that doesn't exist.
+  - `energy` edited an old "Pristine" energy system that nothing reads any more.
+  - `test` was particle previews.
+  - `mythic gold` isn't a gem.
+  - Its plugin.yml usage line was out of date.
+
+## What changed
+- **Astra:**
+  - **The daggers** follow from their own every-tick task, gliding every 2 ticks in the fan behind you and turning with you, as specified.
+  - **Astral Projection's cooldown** is 60 s (`cooldowns.projection: 60`; a /config override still at 20 moves to 60 once).
+  - **Leaving Unbounded** no longer disables your gem. Its own cooldown stays.
+  - **The daggers' summon sound** is BLOCK_AMETHYST_BLOCK_CHIME, and the RESONATE sharing whitelist is removed, so RESONATE is the Aegis' alone.
+  - **CHIME is now shared three ways:** it was already Relay's and Life's, so I added Astra to that entry. If you'd rather it stayed unique, pick another (BLOCK_AMETHYST_CLUSTER_STEP is unused) and I'll switch it.
+- **Strength visuals** (what the powers do is unchanged; everyone nearby sees them):
+  - **Chad Strength:** on the 4th-hit double damage, the three dots flash red (#D01A1A, slightly bigger) for a moment, with a red burst on the target, then back to normal.
+  - **Frailer:** on each hit it triggers, two thin intertwined lines, #8B0000 and #111111, from you to the target for about 6 ticks.
+  - **Nullify:** a red ring (#C81E1E) at the feet of everyone it lands on, widening a little and fading over about 10 ticks.
+- **Puff:** Breezy Bash's hit version (launch and slam) has a cooldown, `abilities.breezy-bash.hit-cooldown-seconds` (8, with the energy multiplier). It shows on the action bar as a second Breezy Bash icon with ⇣ while cooling down.
+- **`/bliss`:** only finished subcommands.
+  - **For players:** `info`, `withdraw`, `track <player>`, `trust <add <player>|remove <player>|list>`.
+  - **For admins:**
+    - `give <player> <gem> [tier] [energy]`
+    - `setenergy <player> <0-10>`
+    - `giveitem <player> <upgrader|trader|repairkit|energybottle|eobsidian>`
+    - `menu`, `config`
+    - `pedestal <activate|deactivate>`
+    - `build <create <name> [size]|save <name>|paste <name>|list|exit>`
+  - **The help** (`/bliss` alone) lists each with its full arguments; players see only theirs.
+  - **Tab completion** covers every argument: players, gems, tiers, energy 0-10, items, trust actions, build names and sizes.
+- **`/blissop`:** only finished subcommands, with full help and completion:
+  - `give <gem> [1|2]`
+  - `mythic <auratus|heretic|relay> [player]`
+  - `progression <1|2|3|4>`
+  - `border <blocks> <seconds>`
+  - `stalker <player|stop>`
+  - `pris [player]`, `mace [player]`
+  - `reloadconfig`
+- **Removed:** `assessment`, `energy`, `test` and `gold`. The plugin.yml usage lines are updated for both.
+
+## Files
+- **New:** `FixesRoundOneTest.java`.
+- **Changed:**
+  - `GemListener.java`: the dagger tick; the projection cooldown; the Unbounded exit disable removed; the Strength visuals; the Puff hit cooldown and its HUD entry;
+  - `SoulboundGemsPlugin.java`: the dagger task, and the balance 8 migration (projection 20 → 60);
+  - `AstralSpectate.java`: no gem disable on leaving Unbounded;
+  - `BlissCommand.java` and `BlissOpCommand.java`: finished subcommands only, full help and tab completion;
+  - `plugin.yml`: the two usage lines;
+  - `config.yml`: `cooldowns.projection`, the summon sound, `hit-cooldown-seconds`;
+  - `GemSoundsTest.java` and `AstraTest.java`: the sound change.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 262 unit tests pass (5 new). They cover:
+  - **The daggers:** they run on their own every-tick task, no longer from the 10-tick gem tick or the server-tick parity.
+  - **Astra:** projection 60 s, no Unbounded disable, the CHIME sound.
+  - **Strength visuals:** the colours and durations wired, and the powers' effects unchanged.
+  - **Puff:** the hit cooldown and its HUD entry.
+  - **The commands:** only finished ones (the item list and the removed `/blissop` subcommands).
+
+## Not tested
+- **Nothing was run in game:**
+  - the daggers following you;
+  - the dagger's texture (a pack matter, see above);
+  - the Strength particles;
+  - the Puff cooldown in play;
+  - the commands and tab completion in a client.
+
+## In-game test plan
+1. **Daggers:** summon the daggers and walk and turn: they follow in a fan behind you.
+2. **Astra:** the Projection cooldown is 60 s; leaving Unbounded doesn't disable your gem.
+3. **Strength:** Chad Strength: crit someone and the dots flash red. Frailer: a red and black line on the hit. Nullify: a red ring at their feet.
+4. **Puff:** hit with Puff repeatedly: the launch and slam only happens every 8 s.
+5. **Commands:** type `/bliss ` and `/blissop ` and tab through: only the commands above, with every argument suggested.
+
 # Puff revamp (and Flux: Q again at 100 W for Overcharge)
 
 ## Flux change first
