@@ -302,9 +302,12 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             if (a.length <= 1) return filter(List.of("1", "2", "3", "4"), a.length == 0 ? "" : a[0]);
             return List.of();
         }
-        // Everyone sees every subcommand and its arguments; the admin ones still need bliss.admin to run.
-        if (a.length == 1) return filter(List.of("info", "withdraw", "track", "trust", "give", "setenergy", "giveitem", "menu", "config", "pedestal", "build"), a[0]);
+        // Players without bliss.admin see only their own subcommands (every argument of them); the admin ones are hidden.
+        boolean admin = s.hasPermission("bliss.admin");
+        if (a.length == 1) return filter(admin ? List.of("info", "withdraw", "track", "trust", "give", "setenergy", "giveitem", "menu", "config", "pedestal", "build")
+                : PLAYER_SUBS, a[0]);
         String sub = a[0].toLowerCase();
+        if (!admin && !PLAYER_SUBS.contains(sub)) return List.of();
         int n = a.length;
         String typed = a[n - 1];
         return switch (sub) {
@@ -323,22 +326,25 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
         };
     }
 
+    /** The subcommands for everyone; the rest are for admins (bliss.admin) and hidden from everyone else. */
+    static final List<String> PLAYER_SUBS = List.of("info", "withdraw", "track", "trust");
+
     /** What /bliss giveitem hands out: only items that do something. */
     static final List<String> ITEMS = List.of("upgrader", "trader", "repairkit", "energybottle", "eobsidian");
 
-    /** /bliss with nothing after it: every subcommand with its full arguments, for everyone (admin ones marked). */
+    /** /bliss with nothing after it: every subcommand you can use, with its full arguments (the admin ones only for admins). */
     private void help(CommandSender s) {
         s.sendMessage(ChatColor.GOLD + "/bliss info" + ChatColor.GRAY + " — your gem, tier and energy");
         s.sendMessage(ChatColor.GOLD + "/bliss withdraw" + ChatColor.GRAY + " — 1 energy into an Energy Bottle");
         s.sendMessage(ChatColor.GOLD + GemNames.tx("/bliss track <player>") + ChatColor.GRAY + GemNames.tx(" — Bounty Hunter's offering for them"));
         s.sendMessage(ChatColor.GOLD + "/bliss trust <add <player>|remove <player>|list>");
-        String op = s.hasPermission("bliss.admin") ? "" : ChatColor.DARK_GRAY + " (admin)";
-        s.sendMessage(ChatColor.GOLD + "/bliss give <player> <gem> [tier] [energy]" + op);
-        s.sendMessage(ChatColor.GOLD + "/bliss setenergy <player> <0-10>" + op);
-        s.sendMessage(ChatColor.GOLD + "/bliss giveitem <player> <" + String.join("|", ITEMS) + ">" + op);
-        s.sendMessage(ChatColor.GOLD + "/bliss menu" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/bliss config" + op);
-        s.sendMessage(ChatColor.GOLD + "/bliss pedestal <activate|deactivate>" + op);
-        s.sendMessage(ChatColor.GOLD + "/bliss build <create <name> [size]|save <name>|paste <name>|list|exit>" + op);
+        if (!s.hasPermission("bliss.admin")) return; // admin commands stay hidden
+        s.sendMessage(ChatColor.GOLD + "/bliss give <player> <gem> [tier] [energy]");
+        s.sendMessage(ChatColor.GOLD + "/bliss setenergy <player> <0-10>");
+        s.sendMessage(ChatColor.GOLD + "/bliss giveitem <player> <" + String.join("|", ITEMS) + ">");
+        s.sendMessage(ChatColor.GOLD + "/bliss menu" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/bliss config");
+        s.sendMessage(ChatColor.GOLD + "/bliss pedestal <activate|deactivate>");
+        s.sendMessage(ChatColor.GOLD + "/bliss build <create <name> [size]|save <name>|paste <name>|list|exit>");
     }
 
     private List<String> players(String typed) {

@@ -49,8 +49,8 @@
     - `menu`, `config`
     - `pedestal <activate|deactivate>`
     - `build <create <name> [size]|save <name>|paste <name>|list|exit>`
-  - **The help** (`/bliss` alone) lists each with its full arguments, for everyone. The admin ones are marked "(admin)" for players who aren't ops, and still need `bliss.admin` to run.
-  - **Tab completion** covers every subcommand and argument for everyone, ops or not: players, gems, tiers, energy 0-10, items, trust actions, build names and sizes.
+  - **The help** (`/bliss` alone) lists each with its full arguments. Players without `bliss.admin` see only their four; the admin ones are hidden from them, in the help and in tab completion.
+  - **Tab completion** covers every argument: players, gems, tiers, energy 0-10, items, trust actions, build names and sizes. Admins get all of it; everyone else only their own subcommands.
 - **`/blissop`:** only finished subcommands, with full help and completion:
   - `give <gem> [1|2]`
   - `mythic <auratus|heretic|relay> [player]`
