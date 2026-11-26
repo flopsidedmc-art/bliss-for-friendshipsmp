@@ -33,17 +33,17 @@
   - **The cooldown** is now 8 s (`cooldowns.beam`; a server on the old 120 gets 8 once).
   - **No watts:** left-click with 0 W tells you to charge (Q) or feed ingots, and costs no cooldown.
 - **At 100 W: Ground or Overcharge.**
-  - **The hold:** the charge rests at 100 W for `overcharge.hold-seconds` (1 s) first. That gives you time to Ground, or to press Q to stay at 100. I added this; without it you could never be at exactly 100 while charging.
+  - **Charging holds at 100 W** for as long as you like, so you can Ground. **Press Q again at 100 W to switch Overcharge on.**
   - **Ground:** at exactly 100 W, left-click a player within beam range.
     - **The cost:** all 100 W.
     - **The stun:** `ground.stun-seconds` (1.5) of no moving or jumping.
     - **The shuffle:** their hotbar and main inventory (armour and off hand untouched), with an electric arc between you.
     - **Trusted players can't be grounded:** it tells you, and costs nothing.
     - **The old Ground on every melee hit is gone.** This replaces it, reusing the scramble.
-  - **Overcharge:** keep charging and the watts go on toward 200.
+  - **Overcharge** (Q again at 100 W): the watts go on toward 200.
     - **The cost:** 2 HP a second (`damage-per-second`), through armour; it can kill you.
     - **On the action bar:** the % ("173%"), fading from the gem's colour to white as it nears 200.
-    - **Stopping:** Q again drops you back to 100 and the damage stops.
+    - **Stopping:** Q once more drops you back to 100 and the damage stops.
     - **The beam:** it keeps scaling, to exactly `max-damage` (90) at 200 W. That's past the ability cap, before armour. At 200 the watts stop rising, but the damage goes on until you fire or stop.
 - **Wilder with watts (charging):** within 60 particles a tick.
   - **0-50 W:** a few blue dust particles and sparks above your head.
@@ -81,7 +81,7 @@
 ## Tested
 - Compiles against paper-api 1.21.11, and all 243 unit tests pass (12 new). They cover:
   - **Ingot watts:** copper 12, netherite 10, gold 8, iron 5; nothing else unless listed; feeding stops at 100.
-  - **The charge:** 12 a second on top of what you have, up to 100, the hold there, Overcharge up to 200, and stopping keeps the watts but not Overcharge.
+  - **The charge:** 12 a second on top of what you have, holding at 100, Overcharge (Q again at 100 W) up to 200, what each Q press does, and stopping keeps the watts but not Overcharge.
   - **Ground** only at exactly 100 W.
   - **The readout:** "64W" and "173%", and the colour.
   - **Beam power:** stronger, longer, thicker and glowing longer with watts; 100 W is much stronger than 30 W; exactly 90 at 200 W.
@@ -104,7 +104,7 @@
 1. **Feeding:** feed a copper ingot: +12 watts; iron: +5.
 2. **Charging and the beam:** press Q with Flux. The gem stays, the beam entry shows rising watts in the gem's colour, with blue particles above your head and a hum. Left-click at 30 W and at 100 W: the 100 W beam is much stronger, and the watts go to 0.
    - **Ground:** at 100 W, left-click a friend. They're stunned for 1.5 s and their hotbar and inventory are shuffled; your watts go to 0.
-   - **Overcharge:** at 100 W, keep charging. The watts climb toward 200 and you lose a heart every second; the particles get wilder (white, swirling sonic booms). Press Q: back to 100, and the damage stops. Charge to 200 and fire at a zombie with around 100 HP (or a dummy): about 90 damage, with the huge beam and boom.
+   - **Overcharge:** at 100 W, press Q again. The watts climb toward 200 and you lose a heart every second; the particles get wilder (white, swirling sonic booms). Press Q: back to 100, and the damage stops. Charge to 200 and fire at a zombie with around 100 HP (or a dummy): about 90 damage, with the huge beam and boom.
 3. **Overdrive:** fight near a friend, mine and run around. The Overdrive meter fills; when FULL, right-click activates it and the meter empties.
 4. **Shocking Chance:** shoot 20 arrows at a zombie: about 2 shocks, each with lightning, a little damage and a 1 s freeze, never twice within 3 s on the same target.
 

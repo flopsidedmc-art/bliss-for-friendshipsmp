@@ -45,20 +45,21 @@ class FluxTest {
     // ------------------------------------------------------------------ the charge
 
     @Test void chargingAt12APerSecondUpTo100() {
-        double[] c = {30, 1.0};
-        for (int i = 0; i < 20; i++) c = FluxMath.charge(c[0], 12, 0.05, c[1]); // one second
-        assertEquals(42, c[0], 1e-9, "on top of what you had");
-        c = new double[] {95, 1.0};
-        c = FluxMath.charge(c[0], 12, 1, c[1]);
-        assertEquals(100, c[0], 1e-9, "it arrives at 100 and waits there");
-        c = FluxMath.charge(c[0], 12, 0.5, c[1]);
-        assertEquals(100, c[0], 1e-9, "the short hold at 100 W, for Ground");
-        assertEquals(0.5, c[1], 1e-9);
-        c = FluxMath.charge(c[0], 12, 0.5, c[1]);
-        c = FluxMath.charge(c[0], 12, 1, c[1]);
-        assertEquals(112, c[0], 1e-9, "then on into Overcharge");
-        c = FluxMath.charge(195, 12, 1, 0);
-        assertEquals(200, c[0], 1e-9, "never past 200");
+        double w = 30;
+        for (int i = 0; i < 20; i++) w = FluxMath.charge(w, 12, 0.05, false); // one second
+        assertEquals(42, w, 1e-9, "on top of what you had");
+        assertEquals(100, FluxMath.charge(95, 12, 1, false), 1e-9, "it holds at 100");
+        assertEquals(100, FluxMath.charge(100, 12, 30, false), 1e-9, "for as long as you like, until Q switches Overcharge on");
+        assertEquals(112, FluxMath.charge(100, 12, 1, true), 1e-9, "Overcharge: on past 100");
+        assertEquals(200, FluxMath.charge(195, 12, 1, true), 1e-9, "never past 200");
+    }
+
+    @Test void whatQDoes() {
+        assertEquals(FluxMath.Press.START, FluxMath.press(false, 40, false), "Q starts charging");
+        assertEquals(FluxMath.Press.STOP, FluxMath.press(true, 40, false), "Q below 100 W stops");
+        assertEquals(FluxMath.Press.OVERCHARGE, FluxMath.press(true, 100, false), "Q again at 100 W: Overcharge");
+        assertEquals(FluxMath.Press.STOP, FluxMath.press(true, 150, true), "Q in Overcharge: back to 100");
+        assertEquals(FluxMath.Press.START, FluxMath.press(false, 100, false), "fed to 100 but not charging: Q starts (holding at 100)");
     }
 
     @Test void stoppingKeepsTheWattsButNotOvercharge() {

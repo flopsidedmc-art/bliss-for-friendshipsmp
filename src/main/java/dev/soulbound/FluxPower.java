@@ -60,7 +60,7 @@ final class FluxPower implements Listener {
 
     private final SoulboundGemsPlugin plugin;
     private final NamespacedKey stunKey;
-    private final Map<UUID, double[]> charging = new HashMap<>(); // charger -> {watts, plateau seconds left}
+    private final Map<UUID, double[]> charging = new HashMap<>(); // charger -> {watts, 1 if Overcharge is on}
     private final Map<UUID, FluxMath.Meter> meters = new HashMap<>();
     private final Map<UUID, Long> shockedAt = new HashMap<>();
     private final Map<UUID, Integer> stunned = new HashMap<>(); // entity -> the tick its stun ends
@@ -122,14 +122,26 @@ final class FluxPower implements Listener {
 
     // ------------------------------------------------------------------ charging (Q)
 
-    /** Q with the gem: start charging, or stop (Overcharge drops back to 100). Banked ore energy goes in when you start. */
+    /**
+     * Q with the gem: start charging (it holds at 100 W); Q again at 100 W switches Overcharge on; Q below 100 W or in
+     * Overcharge stops (Overcharge drops back to 100). Banked ore energy goes in when you start.
+     */
     void toggle(Player p) {
         UUID id = p.getUniqueId();
-        if (charging.containsKey(id)) { stop(id); return; }
-        int banked = gl().fluxOf(gl().fluxOre, id);
-        if (banked > 0) { gl().fluxOre.put(id, 0); setWatts(id, FluxMath.fed(watts(id), banked)); }
-        charging.put(id, new double[] {watts(id), Math.max(0, cfg("overcharge.hold-seconds", 1.0))});
-        GemSounds.playScaled(plugin, "flux.beam-charge", p.getLocation(), p, 0.6, 1.0);
+        double[] c = charging.get(id);
+        switch (FluxMath.press(c != null, watts(id), c != null && c[1] > 0)) {
+            case STOP -> stop(id);
+            case OVERCHARGE -> {
+                c[1] = 1;
+                GemSounds.playScaled(plugin, "flux.overcharge", p.getLocation(), null, 1.0, 1.0);
+            }
+            case START -> {
+                int banked = gl().fluxOf(gl().fluxOre, id);
+                if (banked > 0) { gl().fluxOre.put(id, 0); setWatts(id, FluxMath.fed(watts(id), banked)); }
+                charging.put(id, new double[] {watts(id), 0});
+                GemSounds.playScaled(plugin, "flux.beam-charge", p.getLocation(), p, 0.6, 1.0);
+            }
+        }
     }
 
     /** Charging stops; the watts stay, Overcharge drops back to 100. */
@@ -152,10 +164,8 @@ final class FluxPower implements Listener {
             Player p = Bukkit.getPlayer(en.getKey());
             if (p == null || p.isDead() || !holdsFlux(p)) { stop(en.getKey()); continue; } // switched away (or gone)
             double[] c = en.getValue();
-            double[] next = FluxMath.charge(c[0], cfg("beam.charge-per-second", 12), 0.05, c[1]);
-            c[1] = next[1];
-            setWatts(p.getUniqueId(), next[0]);
-            double w = next[0];
+            double w = FluxMath.charge(c[0], cfg("beam.charge-per-second", 12), 0.05, c[1] > 0);
+            setWatts(p.getUniqueId(), w);
             if (FluxMath.overcharged(w) && ticks % 20 == 0) overchargeHurt(p);
             if (ticks % 2 == 0) chargeVisuals(p, w);
             if (ticks % 20 == 0) GemSounds.playScaled(plugin, "flux.beam-charge", p.getLocation(), null, 0.4 + w / 200 * 0.8, 0.8 + w / 200 * 0.7);

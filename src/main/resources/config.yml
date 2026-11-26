@@ -893,8 +893,7 @@ flux:
     stop-on-damage: 0 # a hit this big (HP) stops the charge; 0 = off
   ground: # at exactly 100 W, left-click a player in range instead: all 100 W spent, they're stunned and their hotbar and inventory shuffled
     stun-seconds: 1.5 # no moving or jumping. Trusted players can't be grounded
-  overcharge: # keep charging at 100 W (after hold-seconds there) and the watts go on toward 200
-    hold-seconds: 1.0 # the charge rests at 100 W this long first, so you can Ground (or press Q to stop) before Overcharge
+  overcharge: # charging holds at 100 W; press Q again there and the watts go on toward 200 (Q once more: back to 100)
     damage-per-second: 2.0 # what it costs you above 100 W, through armour; it can kill you. Q again: back to 100, no more damage
     max-damage: 90.0 # the beam at exactly 200 W, HP before armour (it rises from damage-at-100)
     max-range: 48

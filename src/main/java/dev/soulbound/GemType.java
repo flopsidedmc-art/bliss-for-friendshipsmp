@@ -26,7 +26,7 @@ public enum GemType {
     FLUX("Flux", "§e", Material.COPPER_INGOT, "⚡", "◉",
             "Flow State speed/haste that builds as you move/mine. Immune Hunger/Slowness/Weakness. Hits taken charge Kinetic Burst. Shocking Chance: 10% of your arrows call lightning down (a sting and a 1s freeze).",
             "Kinetic Burst [offhand hold right-click]: unleash stored charge as AoE + knockback.",
-            "Powers T2: Q charges watts (or feed ingots: copper 12, netherite 10, gold 8, iron 5). Energy Beam [Left-click]: as strong as your watts, spends them all. Ground [Left-click a player at 100 W]: stun + shuffled inventory. Keep charging past 100 W: Overcharge, up to a 90-damage beam at 200 W, but it hurts you. Kinetic Overdrive [Right-click when its meter is FULL; fights, mining and movement nearby fill it]: every 3rd hit taken empowers your next hit."),
+            "Powers T2: Q charges watts (or feed ingots: copper 12, netherite 10, gold 8, iron 5). Energy Beam [Left-click]: as strong as your watts, spends them all. Ground [Left-click a player at 100 W]: stun + shuffled inventory. Q again at 100 W: Overcharge, on toward 200 W for up to a 90-damage beam, but it hurts you (Q once more: back to 100). Kinetic Overdrive [Right-click when its meter is FULL; fights, mining and movement nearby fill it]: every 3rd hit taken empowers your next hit."),
     ASTRA("Astra", "§d", Material.AMETHYST_SHARD, "✦", "❂",
             "Phasing: dodge hits (10% T1 / 15% T2), vanishing for a moment. Soul Healing on kills.",
             "Dimensional Drift [offhand right-click]: a ghost horse ride, 5s (both tiers).",

@@ -478,7 +478,7 @@ public class GemManager {
             if (tier >= 2) {
                 lore.add("§7— §e⚡ ENERGY BEAM §c🔥 §8[Q charges, left-click fires]");
                 lore.add("§7— §e◉ GROUND ◉ §8[Left-click a player at 100 W]");
-                lore.add("§7— §fOVERCHARGE §8[Charge past 100 W: up to 200]");
+                lore.add("§7— §fOVERCHARGE §8[Q again at 100 W: up to 200]");
                 lore.add("");
                 lore.add("§7— §b≫ KINETIC OVERDRIVE §a〰 §8[Right-click when FULL]");
             } else {

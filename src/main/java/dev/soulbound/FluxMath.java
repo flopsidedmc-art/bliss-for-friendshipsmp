@@ -28,15 +28,19 @@ final class FluxMath {
     /** Fed watts never go past 100 (only charging goes on into Overcharge). */
     static double fed(double watts, int gain) { return watts >= FULL ? watts : Math.min(FULL, watts + gain); }
 
-    /**
-     * One step of charging, {@code seconds} long at {@code perSecond}: up to 100, then (once {@code plateauLeft} seconds at
-     * 100 have passed) on toward 200. Returns {watts, plateau left}.
-     */
-    static double[] charge(double watts, double perSecond, double seconds, double plateauLeft) {
+    /** One step of charging, {@code seconds} long at {@code perSecond}: it holds at 100, unless Overcharge is on (then up to 200). */
+    static double charge(double watts, double perSecond, double seconds, boolean overcharge) {
         double w = watts + Math.max(0, perSecond) * seconds;
-        if (watts < FULL && w >= FULL) return new double[] {FULL, plateauLeft}; // arrives at 100: a short hold there
-        if (watts >= FULL && watts <= FULL && plateauLeft > 0) return new double[] {FULL, Math.max(0, plateauLeft - seconds)};
-        return new double[] {Math.min(OVER_MAX, w), plateauLeft};
+        return overcharge ? Math.min(OVER_MAX, w) : Math.min(FULL, w);
+    }
+
+    /** What Q does: start charging, stop it, or (charging and holding at 100 W) switch Overcharge on. */
+    enum Press { START, STOP, OVERCHARGE }
+
+    static Press press(boolean charging, double watts, boolean overcharge) {
+        if (!charging) return Press.START;
+        if (!overcharge && watts >= FULL) return Press.OVERCHARGE;
+        return Press.STOP; // below 100 W, or in Overcharge (back to 100)
     }
 
     /** Stopping (Q again, switching away, logging out): watts you built stay, but Overcharge drops back to 100. */
