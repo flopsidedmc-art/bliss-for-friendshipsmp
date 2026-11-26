@@ -855,3 +855,11 @@ bounty:
   trail-colors: ["#111111", "#8B0000"] # the two strands
   trail-size: 0.6 # particle size
   notify-target: false # true: the target is told "ʏᴏᴜ ꜰᴇᴇʟ ᴡᴀᴛᴄʜᴇᴅ" when a hunt on them begins
+
+# Wealth's Amplification (Tier 2, sneak + right-click with the gem; cooldowns.amp, 240 s): +1 to every enchantment level
+# for you and every TRUSTED player within the radius when it's cast. Untrusted players get nothing. Casting again only
+# refreshes the time. Every item goes back to normal when it ends, on death, logout, restart and plugin disable.
+wealth:
+  amplification:
+    radius: 8 # blocks
+    seconds: 30

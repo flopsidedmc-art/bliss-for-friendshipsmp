@@ -586,7 +586,8 @@ public class GemListener implements Listener {
 
     /** Your time on a running capture point, at the end of the bar (empty when you're not on one). */
     private String captureHud(Player p) {
-        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p));
+        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p))
+                + (plugin.amplification() == null ? "" : plugin.amplification().hudSuffix(p));
     }
 
     /** One ability on the action bar: icons and timers only, no words (HudStatus). */
@@ -876,8 +877,8 @@ public class GemListener implements Listener {
             return;
         }
 
-        // Wealth routing: Item Lock [Left-click] + Rich Rush [Right-click] (T2 powers).
-        // Pockets (ability) is offhand-only; Amplification is right-click on entity.
+        // Wealth routing: Item Lock [Left-click] + Rich Rush [Right-click] + Amplification [Sneak + Right-click] (T2 powers).
+        // Pockets (ability) is offhand-only.
         if (type == GemType.WEALTH) {
             if (tier < 2) {
                 // Silenced — no chat spam
@@ -890,11 +891,7 @@ public class GemListener implements Listener {
                 useItemLock(p, energy);
                 return;
             }
-            if (a == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null) {
-                if (targetedEntity(p, 5) != null) return;
-            } else if (targetedEntity(p, 5) != null) {
-                return;
-            }
+            if (p.isSneaking()) { castAmplification(p, energy); return; }
             long rem = cdRemain(p, "richrush");
             if (rem > 0) { /* Silenced */ return; }
             cdStart(p, "richrush", cooldownMs("richrush", energy));
@@ -1785,75 +1782,14 @@ public class GemListener implements Listener {
         used(p, GemNames.tx("Rich Rush"));
     }
 
-    /** Amplification [Right-click entity]: +1 to all enchants of self + trusted for 30s. */
-    private void useAmplification(Player caster, Player anchor, int energy) {
-        int radius = 15;
-        List<Player> targets = new ArrayList<>();
-        targets.add(caster);
-        for (Entity e : caster.getNearbyEntities(radius, radius / 2, radius)) {
-            if (e instanceof Player o && isTrusted(caster, o)) targets.add(o);
-        }
-        for (Player t : targets) {
-            boostEnchants(t);
-            if (!t.getUniqueId().equals(caster.getUniqueId())) {
-                t.sendMessage(ChatColor.GREEN + GemNames.tx("Amplification: enchants +1 for 30s!"));
-            }
-            GemSounds.play(plugin, "wealth.amplification", t.getLocation());
-        }
-        used(caster, GemNames.tx("Amplification"));
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            for (Player t : targets) revertEnchantBoost(t);
-        }, 30 * 20L);
-    }
-
-    private final Map<UUID, List<BoostRecord>> boostRecords = new HashMap<>();
-
-    private record BoostRecord(int slot, boolean armor, org.bukkit.enchantments.Enchantment ench, int original) {}
-
-    private void boostEnchants(Player p) {
-        List<BoostRecord> recs = new ArrayList<>();
-        ItemStack[] contents = p.getInventory().getContents();
-        for (int i = 0; i < contents.length; i++) {
-            ItemStack s = contents[i];
-            if (s == null || s.getType() == Material.AIR || gems.isGem(s)) continue;
-            for (var en : new java.util.HashMap<>(s.getEnchantments()).entrySet()) {
-                int orig = en.getValue();
-                int next = Math.min(10, orig + 1);
-                if (next == orig) continue;
-                s.addUnsafeEnchantment(en.getKey(), next);
-                recs.add(new BoostRecord(i, false, en.getKey(), orig));
-            }
-        }
-        ItemStack[] armor = p.getInventory().getArmorContents();
-        for (int i = 0; i < armor.length; i++) {
-            ItemStack s = armor[i];
-            if (s == null || s.getType() == Material.AIR) continue;
-            for (var en : new java.util.HashMap<>(s.getEnchantments()).entrySet()) {
-                int orig = en.getValue();
-                int next = Math.min(10, orig + 1);
-                if (next == orig) continue;
-                s.addUnsafeEnchantment(en.getKey(), next);
-                recs.add(new BoostRecord(i, true, en.getKey(), orig));
-            }
-        }
-        if (!recs.isEmpty()) boostRecords.put(p.getUniqueId(), recs);
-    }
-
-    private void revertEnchantBoost(Player p) {
-        List<BoostRecord> recs = boostRecords.remove(p.getUniqueId());
-        if (recs == null) return;
-        ItemStack[] contents = p.getInventory().getContents();
-        ItemStack[] armor = p.getInventory().getArmorContents();
-        for (BoostRecord r : recs) {
-            ItemStack s = r.armor ? (r.slot < armor.length ? armor[r.slot] : null)
-                    : (r.slot < contents.length ? contents[r.slot] : null);
-            if (s == null || s.getType() == Material.AIR) continue;
-            int cur = s.getEnchantmentLevel(r.ench);
-            if (cur == r.original + 1) {
-                if (r.original <= 0) s.removeEnchantment(r.ench);
-                else s.addUnsafeEnchantment(r.ench, r.original);
-            }
-        }
+    /** Amplification [Sneak + Right-click]: +1 to every enchantment for you and trusted players nearby (Amplification). */
+    private void castAmplification(Player p, int energy) {
+        long rem = remain(amplifyCooldown, p.getUniqueId());
+        if (rem > 0) { p.sendMessage(ChatColor.RED + GemNames.tx("Amplification on cooldown: ") + (rem / 1000) + "s"); return; }
+        if (plugin.amplification() == null) return;
+        amplifyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("amp", energy));
+        plugin.amplification().cast(p);
+        used(p, GemNames.tx("Amplification"));
     }
 
     private Player targetedEntity(Player p, double maxDist) {
@@ -3104,7 +3040,7 @@ public class GemListener implements Listener {
         }
     }
 
-    /** Amplification [Right-click on entity]: T2 Wealth main-hand on a player. */
+    /** Right-clicking an entity: Wealth's Amplification when sneaking; Astra's Unbounded / Astral Void. */
     @EventHandler
     public void onEntityInteract(PlayerInteractEntityEvent e) {
         if (e.getHand() != EquipmentSlot.HAND) return;
@@ -3112,12 +3048,9 @@ public class GemListener implements Listener {
         Player p = e.getPlayer();
         ItemStack inHand = p.getInventory().getItemInMainHand();
         if (!gems.isGem(inHand)) return;
-        if (gems.getType(inHand) == GemType.WEALTH && gems.getTier(inHand) >= 2
-                && EnergyStage.allowsPowers(gems.getEnergy(inHand)) && !isGemDisabled(p)) {
-            long rem = remain(amplifyCooldown, p.getUniqueId());
-            if (rem > 0) { p.sendMessage(ChatColor.RED + GemNames.tx("Amplification on cooldown: ") + (rem / 1000) + "s"); return; }
-            amplifyCooldown.put(p.getUniqueId(), System.currentTimeMillis() + cooldownMs("amp", gems.getEnergy(inHand)));
-            useAmplification(p, p, gems.getEnergy(inHand));
+        if (gems.getType(inHand) == GemType.WEALTH) {
+            if (p.isSneaking() && gems.getTier(inHand) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(inHand)) && !isGemDisabled(p))
+                castAmplification(p, gems.getEnergy(inHand)); // sneak + right-click on someone counts too
             return;
         }
         // Astra T2 right-click on someone (AstraMath.route): a player is Unbounded, anything else Astral Void; sneaking, Projection

@@ -830,7 +830,8 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
     }
 
     private String captureHud(Player p) {
-        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p));
+        return (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p))
+                + (plugin.amplification() == null ? "" : plugin.amplification().hudSuffix(p));
     }
 
     private void hudTick(Player h) {

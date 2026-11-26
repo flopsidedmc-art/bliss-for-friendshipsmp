@@ -29,7 +29,7 @@ public class GemManager {
     private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
     private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
-    private static final int LORE_VERSION = 9;
+    private static final int LORE_VERSION = 10; // 10: Amplification is sneak + right-click
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -325,7 +325,7 @@ public class GemManager {
                 lore.add("§7— §c⚿ ITEM LOCK ⚿");
                 lore.add("");
                 lore.add("§7— §a$ RICH RUSH $");
-                lore.add("§7— §a✚ AMPLIFICATION ✚");
+                lore.add("§7— §a✚ AMPLIFICATION ✚ §8(sneak + right-click)");
             } else {
                 lore.add("§8Unknown");
             }

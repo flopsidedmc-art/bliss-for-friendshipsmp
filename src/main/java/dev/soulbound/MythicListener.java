@@ -701,7 +701,8 @@ public final class MythicListener implements Listener {
             boolean revenantBar = plugin.revenant() != null && plugin.revenant().hudActive(p);
             if (type != null && !revenantBar) {
                 String capture = (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) // your time on a capture point
-                        + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p)); // and on a hunt
+                        + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p)) // and on a hunt
+                        + (plugin.amplification() == null ? "" : plugin.amplification().hudSuffix(p)); // and an Amplification
                 p.sendActionBar(capture.isEmpty() ? mythicActionBar(p, type, n)
                         : mythicActionBar(p, type, n).append(LegacyComponentSerializer.legacySection().deserialize(capture)));
                 mythicBarShown.add(p.getUniqueId());

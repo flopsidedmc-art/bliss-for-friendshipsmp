@@ -1,3 +1,82 @@
+# Wealth: Amplification change
+
+## What I found first
+- **Amplification** (Tier 2, 240 s cooldown) was right-clicking *any entity* (a cow would do) with the gem in the main hand.
+  - **Who got it:** you and every player you trust within a hard-coded **15** blocks.
+  - **The trust check:** it used your trust list (`isTrusted(you, them)`), the same as the other gems.
+- **The buff raised the real enchantment levels on items** (+1, at most 10). After 30 s it put them back by inventory slot. Several ways left items enchanted higher **for good**:
+  - **Moving an item** to another slot during the 30 s: the item in the old slot was checked instead.
+  - **Logging out, a restart, or a crash** in the 30 s: the timer never ran.
+  - **Dying:** the dropped items were never put back.
+  - **Casting twice:** the second cast recorded the already-raised levels as the "originals".
+  - **Armour got +2:** it was raised once as part of the inventory and once more as armour.
+- **Rich Rush** is a plain right-click, which did nothing when a player was in your crosshair (to leave room for Amplification).
+- **The other controls:**
+  - Item Lock is left-click.
+  - Pockets is off-hand right-click.
+  - Unfortunate is a melee hit.
+  - Nothing in Wealth used sneaking: sneak + right-click just did Rich Rush. **There's no clash.**
+- **The trust list** is per player (`/bliss trust`).
+
+## What changed
+- **Amplification is sneak + right-click** with the Tier 2 Wealth gem, at the air, a block or someone. A plain right-click is always Rich Rush now (aiming at a player no longer blocks it). Item Lock, Pockets and Unfortunate are unchanged.
+- **Who's buffed:** you and every trusted player within `wealth.amplification.radius` (8) when it's cast. Untrusted players get nothing. There's no sneaking requirement for them.
+- **The buff:** +1 to every enchantment level (at most 10) for `wealth.amplification.seconds` (30) on everything they carry: armour, off hand, every slot.
+  - **Never touched:** gems, mythics, the Revenant's mace and the Prismatic Edge.
+- **What each buffed player gets:**
+  - the message "ᴀᴍᴘʟɪꜰɪᴇᴅ ʙʏ <name>: +1 ᴇɴᴄʜᴀɴᴛᴍᴇɴᴛꜱ ꜰᴏʀ 30ꜱ";
+  - gold and green sparkles (HAPPY_VILLAGER and small gold dust) and the existing sound;
+  - a countdown on the action bar, at the end of the gem, mythic or Revenant bar, or on its own;
+  - "ᴀᴍᴘʟɪꜰɪᴇᴅ ꜰᴀᴅᴇᴅ" when it ends.
+- **Never stacks:** casting again refreshes the time, and an item that's already buffed isn't buffed again.
+- **Always removed:**
+  - **The record:** each buffed item carries its levels from before.
+  - **When it goes back:**
+    - when the time ends;
+    - on death (the drops too);
+    - on logout, before your inventory is saved;
+    - on plugin disable;
+    - after a crash or restart, on join.
+  - **Anywhere else it turns up:** dropped, put in a container (or found in one when it's opened), or picked up by someone who isn't buffed. No item can stay enchanted higher.
+  - **During the buff:** if something raised an enchantment further, only the +1 comes off. If something lowered it, it's left as it is.
+- **The cooldown** is the same (`cooldowns.amp`, 240 s).
+- **The guide text and gem lore** now say sneak + right-click and give the radius. The lore version is bumped, so existing gems update.
+
+## Files
+- **New:**
+  - `AmpMath.java`: who's buffed, the levels up and back, no stacking, the per-item record;
+  - `Amplification.java`: casting, the message, sparkles and countdown, and taking it off everywhere;
+  - `WealthTest.java`.
+- **Changed:**
+  - `GemListener.java`: the controls, and the old slot-based boost is removed. The countdown is on the gem bar.
+  - `MythicListener.java` and `RevenantMace.java`: the countdown on their bars;
+  - `SoulboundGemsPlugin.java`: wiring and shutdown;
+  - `GemType.java`: the guide;
+  - `GemManager.java`: the lore, and the lore version;
+  - `config.yml`: `wealth.amplification.radius` and `seconds`.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 229 unit tests pass (7 new). They cover:
+  - **Targeting:** you plus trusted players in the radius only; not untrusted players, not trusted players further away; exactly 8 counts; never twice.
+  - **The levels:** +1 and back (Sharpness V acts like VI, then V), the cap at 10, and changes made during the buff.
+  - **No stacking:** the time refreshes, and an already-buffed item isn't raised again.
+  - **The record** round trips, and a broken one is ignored.
+  - **The buff always comes off:** at the end, on death, logout, join after a crash, disable, drops, pickups and containers. The old slot-based boost is gone.
+  - **The controls:** sneak + right-click is Amplification, plain right-click is Rich Rush, left-click is Item Lock, and the cooldown is the same.
+  - **The message, sparkles, trust check, guide and config.**
+
+## Not tested
+- **Nothing was run in game:**
+  - the sneak + right-click (air, block, entity);
+  - the levels changing on real items (and Sharpness VI actually hitting harder);
+  - the message, sparkles and countdown;
+  - every way of putting the buff back on a real server.
+
+## In-game test plan
+1. **Who's buffed:** sneak + right-click with a trusted friend 5 blocks away and an untrusted player nearby. You and your friend get +1 enchantments for 30 s with sparkles; the untrusted player doesn't.
+2. **It always comes off:** a Sharpness V sword acts like Sharpness VI during it, and goes back afterwards. Log out mid-buff and rejoin: the sword is normal.
+3. **Rich Rush:** a plain right-click still does Rich Rush.
+
 # Speed: Blur clones rework
 
 ## What I found first

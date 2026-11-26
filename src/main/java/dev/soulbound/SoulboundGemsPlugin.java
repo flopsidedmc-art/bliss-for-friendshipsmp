@@ -63,6 +63,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     ItemProvenanceListener provenance() { return provenance; }
     private BountyHunt bounty;
     BountyHunt bounty() { return bounty; }
+    private Amplification amplification;
+    Amplification amplification() { return amplification; }
     private MaceRules maceRules;
 
     /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
@@ -117,6 +119,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         bounty = new BountyHunt(this); // Strength's Bounty Hunter: the board, offerings and hunts
         Bukkit.getPluginManager().registerEvents(bounty, this);
         bounty.start();
+        amplification = new Amplification(this); // Wealth's Amplification: the buff and getting every item back to normal
+        Bukkit.getPluginManager().registerEvents(amplification, this);
+        amplification.start();
         Bukkit.getPluginManager().registerEvents(energy, this);
         Bukkit.getPluginManager().registerEvents(edge, this);
         Bukkit.getPluginManager().registerEvents(stalker, this);
@@ -239,6 +244,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (prophet != null) prophet.save();
         if (combatRules != null) combatRules.shutdown(); // everyone hidden from the tab list is back on it
         if (bounty != null) bounty.shutdown(); // open offerings go back to their players, every hunt ends
+        if (amplification != null) amplification.shutdown(); // no item stays enchanted higher
     }
 
     /**

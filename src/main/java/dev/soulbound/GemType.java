@@ -22,7 +22,7 @@ public enum GemType {
     WEALTH("Wealth", "§a", Material.EMERALD, "☘", "$",
             "Luck + Hero of the Village while held. Tools auto-Looting/Fortune/Mending (offhand). Bonus ores, XP, double debris.",
             "Pockets [offhand right-click]: open a 9-slot extra inventory.",
-            "Powers T2: Unfortunate [Hit] 50% action cancel, Item Lock [Left-click] lock consumables, Rich Rush [Right-click] double ores, Amplification [Right-click entity] +1 enchants 30s."),
+            "Powers T2: Unfortunate [Hit] 50% action cancel, Item Lock [Left-click] lock consumables, Rich Rush [Right-click] double ores, Amplification [Sneak + Right-click] +1 enchants 30s for you and trusted players within 8 blocks."),
     FLUX("Flux", "§e", Material.COPPER_INGOT, "⚡", "◉",
             "Flow State speed/haste that builds as you move/mine. Immune Hunger/Slowness/Weakness. Hits taken charge it; arrows may stun.",
             "Kinetic Burst [offhand hold right-click]: unleash stored charge as AoE + knockback.",
