@@ -239,9 +239,15 @@ public class GemListener implements Listener {
         }
     }
 
-    /** The same scaled, capped ability damage for the Auratus' chains, Aegis and slam: armour still counts (tuned for it). */
+    /** The same scaled, capped ability damage, with armour counting. */
     void abilityHit(LivingEntity victim, double base, Player source) {
         abilityDamage(victim, base, source, false);
+    }
+
+    /** The Auratus' chains, Aegis and slam: raw HP (no multiplier), the ability-damage cap, armour counts (AuratusGem drops Protection). */
+    void rawAbilityHit(LivingEntity victim, double raw, Player source) {
+        abilityHits++;
+        try { victim.damage(Math.max(0, raw), source); } finally { abilityHits--; }
     }
 
     /** Raw damage (no multiplier or cap) that skips armour points when ability-damage.pierce-armor is on: the Heretic's saws and slams. */

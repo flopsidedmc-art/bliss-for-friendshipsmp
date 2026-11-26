@@ -1,5 +1,7 @@
 package dev.soulbound;
 
+import org.bukkit.configuration.file.YamlConfiguration;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,16 +51,45 @@ class AuratusMathTest {
         assertEquals(15_000, AuratusMath.aegisCooldownMs(true, 15, 20), "a parry never makes it longer");
     }
 
-    @Test void theLaunchComboKillsFullProt4Diamond() {
-        // Full Prot IV diamond: armor 20, toughness 8, EPF 16. Default config: ability damage x3.
-        double bite = AuratusMath.afterArmor(3.0 * 3, 20, 8, 16);       // the chain hook
-        double strike = AuratusMath.afterArmor(5.0 * 3, 20, 8, 16);     // the Aegis shield
-        double finisher = AuratusMath.afterArmor(72, 20, 8, 16);        // the launch (raw, no cap)
-        assertTrue(finisher >= 20, "the launch alone kills from full health: " + finisher);
-        assertTrue(bite + strike + finisher >= 24, "the whole combo gets through a golden apple's absorption too: " + (bite + strike + finisher));
-        assertTrue(AuratusMath.afterArmor(72, 0, 0, 0) == 72, "unarmored takes it all");
-        assertTrue(AuratusMath.afterArmor(9, 20, 8, 16) < 1.5, "a single chain hit stays small through diamond");
+    @Test void theLaunchIsTheComboThroughFullDiamond() {
+        YamlConfiguration c = YamlConfiguration.loadConfiguration(new java.io.File("src/main/resources/config.yml"));
+        double chain = c.getDouble("mythics.auratus.chain.hit-damage"), shield = c.getDouble("mythics.auratus.aegis.strike-damage");
+        double centre = c.getDouble("mythics.auratus.slam.damage-center");
+        assertEquals(5.0, AuratusMath.throughDiamond(chain), 0.001, "the chain hook: 2.5 hearts through full diamond");
+        assertEquals(8.0, AuratusMath.throughDiamond(shield), 0.001, "the Aegis shield: 4 hearts");
+        assertEquals(18.0, centre, 1e-9, "the slam's centre is unchanged (6 x 3)");
+        assertEquals(9.0, c.getDouble("mythics.auratus.slam.damage-edge"), 1e-9, "and its edge (3 x 3)");
+        double fin = AuratusMath.finisherRaw(chain, shield, centre);
+        double sum = AuratusMath.throughDiamond(chain) + AuratusMath.throughDiamond(shield) + AuratusMath.throughDiamond(centre);
+        assertEquals(sum, AuratusMath.throughDiamond(fin), 1e-6, "the launch deals exactly the three together through full diamond");
+        assertEquals(19.84, AuratusMath.throughDiamond(fin), 0.01);
+        assertEquals(35.65, fin, 0.01, "its raw value");
+        assertTrue(5 + 8 + AuratusMath.throughDiamond(fin) >= 24, "chain + shield + launch beats full health and a golden apple's absorption");
+        assertTrue(AuratusMath.finisherRaw(chain + 5, shield, centre) > fin, "retuning the chain moves the launch");
+        assertFalse(c.contains("mythics.auratus.flagpole.finisher-damage"), "no separate launch setting");
         assertEquals(30, RevenantMath.apexHeight(RevenantMath.leapSpeedFor(30)), 0.3, "thrown about 30 blocks up");
+    }
+
+    @Test void armourCountsButProtectionDoesNot() throws Exception {
+        double chain = 14.495;
+        assertTrue(AuratusMath.throughDiamond(chain) < chain * 0.4, "armour points cut it");
+        assertEquals(AuratusMath.afterArmor(chain, 20, 8, 0), AuratusMath.throughDiamond(chain), 1e-12, "with no Protection in it");
+        assertTrue(AuratusMath.afterArmor(chain, 20, 8, 16) < AuratusMath.throughDiamond(chain), "Prot IV would have cut it more");
+        String g = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/dev/soulbound/AuratusGem.java"));
+        assertTrue(g.contains("e.setDamage(org.bukkit.event.entity.EntityDamageEvent.DamageModifier.MAGIC, 0)"), "Protection's share comes off");
+        assertFalse(g.contains("DamageModifier.ARMOR"), "armour's share is left as it is");
+        for (String s : new String[] {"hit(v, cfgD(\"chain.hit-damage\"", "hit(v, cfgD(\"aegis.strike-damage\"", "hit(v, dmg, p);",
+                "protectionIgnored.add(v.getUniqueId());\n        try { v.damage(finisherRaw(), p); }", "protectionIgnored.add(attacker.getUniqueId());"})
+            assertTrue(g.contains(s), "every Auratus hit ignores Protection: " + s);
+        assertFalse(g.contains("plugin.listener().abilityHit("), "none goes through the x3 multiplier any more");
+    }
+
+    @Test void theTableInTheDocs() {
+        assertEquals(10.0, AuratusMath.afterArmor(14.495, 15, 0, 0), 0.01, "chain through full iron");
+        assertEquals(4.58, AuratusMath.afterArmor(14.495, 20, 12, 0), 0.01, "chain through full netherite");
+        assertEquals(16.0, AuratusMath.afterArmor(20, 15, 0, 0), 0.01, "shield through iron");
+        assertEquals(7.2, AuratusMath.afterArmor(20, 20, 12, 0), 0.01, "shield through netherite");
+        assertEquals(14.495, AuratusMath.rawFor(5, 20, 8), 0.001, "the exact raw value: 10 x sqrt(6) - 10");
     }
 
     @Test void armorMathMatchesVanilla() {

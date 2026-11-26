@@ -72,6 +72,32 @@ final class AuratusMath {
         return afterArmor * (1 - Math.min(20, Math.max(0, protectionEpf)) * 0.04);
     }
 
+    /** Full unenchanted diamond: 20 armour, 8 toughness. The Auratus' hits are tuned against it (Protection never counts). */
+    static final double DIAMOND_ARMOR = 20, DIAMOND_TOUGHNESS = 8;
+
+    /** What {@code raw} deals through full diamond, Protection ignored. */
+    static double throughDiamond(double raw) { return afterArmor(raw, DIAMOND_ARMOR, DIAMOND_TOUGHNESS, 0); }
+
+    /** The raw damage that deals {@code wanted} after this armour (no Protection): the inverse of the armour formula. */
+    static double rawFor(double wanted, double armor, double toughness) {
+        if (wanted <= 0) return 0;
+        double lo = 0, hi = Math.max(1, wanted * 10);
+        while (afterArmor(hi, armor, toughness, 0) < wanted) hi *= 2;
+        for (int i = 0; i < 100; i++) {
+            double mid = (lo + hi) / 2;
+            if (afterArmor(mid, armor, toughness, 0) < wanted) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+    }
+
+    /**
+     * The launch finisher is the combo: through full diamond it deals exactly what the chain, the Aegis shield and the
+     * slam's centre deal through full diamond together. Worked out from their raw values, so changing any of them moves it.
+     */
+    static double finisherRaw(double chainRaw, double shieldRaw, double slamCentreRaw) {
+        return rawFor(throughDiamond(chainRaw) + throughDiamond(shieldRaw) + throughDiamond(slamCentreRaw), DIAMOND_ARMOR, DIAMOND_TOUGHNESS);
+    }
+
     /** Aegis cooldown: a parry that caught a hit comes back sooner than a missed one. */
     static long aegisCooldownMs(boolean parried, double cooldownSeconds, double successCooldownSeconds) {
         double s = parried ? Math.min(successCooldownSeconds, cooldownSeconds) : cooldownSeconds;

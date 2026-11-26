@@ -29,7 +29,7 @@ public class GemManager {
     private final NamespacedKey keyNickname = new NamespacedKey("soulbound-gems", "nickname");
     private final NamespacedKey keyNickOwner = new NamespacedKey("soulbound-gems", "nickname_owner");
     /** Bump when gem lore text changes, so existing gems rebuild their lore once (9: Life's two Circles of Life). */
-    private static final int LORE_VERSION = 10; // 10: Amplification is sneak + right-click
+    private static final int LORE_VERSION = 11; // 10: Amplification is sneak + right-click; 11: Auratus damage lines
 
     public GemManager(Plugin plugin) {
         this.plugin = plugin;
@@ -616,6 +616,9 @@ public class GemManager {
             lore.add("§6♦ §bPOWERS");
             lore.add("§7— §6⛓ VENERATED PERFORATORS §8[Left-click]");
             lore.add("§7— §e✧ ECHOING AEGIS §8[Right-click]");
+            lore.add("");
+            lore.add("§8Through full diamond: chain 2.5❤, shield 4❤, launch 9.9❤");
+            lore.add("§8Armour counts, Protection doesn't");
             lore.add("");
             lore.add("§8Mythic item • ignores the normal energy system");
         } else if (type == GemType.RELAY) {

@@ -118,6 +118,7 @@ final class AuratusGem implements Listener {
     private final Set<UUID> reachApplied = new HashSet<>();
     private final Set<UUID> purifying = new HashSet<>();
     private final Set<UUID> reflecting = new HashSet<>();
+    private final Set<UUID> protectionIgnored = new HashSet<>(); // whoever is taking an Auratus hit right now
     private final Set<BukkitTask> sparkTasks = new HashSet<>(); // the slam's delayed sparks (each ends itself in 10 ticks)
     private static final Color ICE = Color.fromRGB(0xDDE6FF); // the slam sphere's cold fade
     private long tick;
@@ -415,7 +416,7 @@ final class AuratusGem implements Listener {
             tip = v.getLocation().add(0, v.getHeight() * 0.6, 0);
             if (isEnemy(p, v)) {
                 hooks.put(id, new Hook(v.getUniqueId(), now()));
-                plugin.listener().abilityHit(v, cfgD("chain.hit-damage", 3.0), p);
+                hit(v, cfgD("chain.hit-damage", 14.495), p);
                 grasp(v, cfgD("passives.angels-grasp-chain-seconds", 2));
                 GemSounds.play(plugin, "auratus.chain-hook-enemy", tip); // the heavy clink, at them
                 w.spawnParticle(Particle.ENCHANTED_HIT, tip, 16, 0.3, 0.4, 0.3, 0.3);
@@ -969,7 +970,7 @@ final class AuratusGem implements Listener {
         double r = Math.max(0.5, cfgD("aegis.strike-radius", 1.3));
         for (Entity e : a.at.getWorld().getNearbyEntities(a.at, r, r, r)) {
             if (!(e instanceof LivingEntity v) || !isEnemy(p, v) || !a.struck.add(v.getUniqueId())) continue;
-            plugin.listener().abilityHit(v, cfgD("aegis.strike-damage", 5.0), p);
+            hit(v, cfgD("aegis.strike-damage", 20.0), p);
             World w = v.getWorld();
             Location at = v.getLocation().add(0, v.getHeight() * 0.6, 0);
             w.spawnParticle(Particle.ENCHANTED_HIT, at, 14, 0.3, 0.4, 0.3, 0.3);
@@ -1019,7 +1020,8 @@ final class AuratusGem implements Listener {
         double back = e.getDamage() * Math.max(0, cfgD("aegis.reflect", 0.5));
         if (back > 0 && attacker.isValid() && !attacker.isDead()) {
             reflecting.add(attacker.getUniqueId());
-            try { attacker.damage(back, p); } finally { reflecting.remove(attacker.getUniqueId()); }
+            protectionIgnored.add(attacker.getUniqueId());
+            try { attacker.damage(back, p); } finally { reflecting.remove(attacker.getUniqueId()); protectionIgnored.remove(attacker.getUniqueId()); }
         }
         Vector away = attacker.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
         if (away.lengthSquared() > 1e-4) attacker.setVelocity(away.normalize().multiply(0.7).setY(0.25));
@@ -1156,14 +1158,14 @@ final class AuratusGem implements Listener {
         Location at = p.getLocation();
         World w = p.getWorld();
         double radius = Math.max(1, cfgD("slam.radius", 5.0));
-        double centre = cfgD("slam.damage-center", 6.0), edge = cfgD("slam.damage-edge", 3.0), launch = cfgD("slam.launch", 0.45);
+        double centre = cfgD("slam.damage-center", 18.0), edge = cfgD("slam.damage-edge", 9.0), launch = cfgD("slam.launch", 0.45);
         for (Entity e : p.getNearbyEntities(radius, 3, radius)) {
             if (!(e instanceof LivingEntity v) || !isEnemy(p, v)) continue;
             Vector out = v.getLocation().toVector().subtract(at.toVector()).setY(0);
             double dist = out.length();
             double dmg = AuratusMath.slamDamage(centre, edge, dist, radius);
             if (dmg <= 0) continue;
-            plugin.listener().abilityHit(v, dmg, p);
+            hit(v, dmg, p);
             if (out.lengthSquared() < 1e-4) out = new Vector(1, 0, 0);
             v.setVelocity(out.normalize().multiply(0.4).setY(launch));
             grasp(v);
@@ -1311,9 +1313,9 @@ final class AuratusGem implements Listener {
 
     /**
      * Chain again while the Aegis holds them: no Flagpole. A chain lashes out and throws them straight up, with one
-     * hit built for full Prot IV diamond: flagpole.finisher-damage (72) is about 22 HP through it, a kill from full
-     * health on its own, and the fall from ~30 blocks comes after. It goes straight through as player damage, past
-     * the ability-damage cap, so it can one-shot.
+     * hit that is the combo: through full diamond it deals what the chain, the shield and the slam's centre deal there
+     * together (finisherRaw, from their settings), and the fall from ~30 blocks comes after. Raw player damage, past
+     * the ability-damage cap; armour counts, Protection doesn't.
      */
     private void finisher(Player p, Combo c) {
         UUID id = p.getUniqueId();
@@ -1330,7 +1332,8 @@ final class AuratusGem implements Listener {
         int points = (int) Math.max(2, Math.min(40, step.length() * 3));
         for (int i = 0; i <= points; i++) w.spawnParticle(Particle.DUST, from.clone().add(step.clone().multiply(i / (double) points)), 1, 0, 0, 0, 0,
                 new Particle.DustOptions(i % 2 == 0 ? GOLD : PALE, 1.2f));
-        v.damage(Math.max(0, cfgD("flagpole.finisher-damage", 72)), p);
+        protectionIgnored.add(v.getUniqueId());
+        try { v.damage(finisherRaw(), p); } finally { protectionIgnored.remove(v.getUniqueId()); }
         double up = RevenantMath.leapSpeedFor(Math.max(1, cfgD("flagpole.finisher-launch-height", 30)));
         if (v.isValid() && !v.isDead()) {
             v.setVelocity(new Vector(0, up, 0));
@@ -1391,6 +1394,29 @@ final class AuratusGem implements Listener {
     }
 
     // ------------------------------------------------------------------ passives
+
+    /** An Auratus hit (chain, shield, slam): raw HP, capped like any ability hit; armour counts, Protection doesn't. */
+    private void hit(LivingEntity v, double raw, Player p) {
+        protectionIgnored.add(v.getUniqueId());
+        try { plugin.listener().rawAbilityHit(v, raw, p); } finally { protectionIgnored.remove(v.getUniqueId()); }
+    }
+
+    /** The launch's raw damage: the chain + shield + slam centre through full diamond (AuratusMath.finisherRaw). */
+    double finisherRaw() {
+        return AuratusMath.finisherRaw(cfgD("chain.hit-damage", 14.495), cfgD("aegis.strike-damage", 20.0), cfgD("slam.damage-center", 18.0));
+    }
+
+    /**
+     * Protection is ignored by every Auratus hit (and the Aegis reflect): Protection, Blast and Projectile Protection
+     * come off; armour points and toughness still count, and so do Resistance and totems. Last, after any other change.
+     */
+    @SuppressWarnings("deprecation") // the damage modifiers are the only way to take out just the enchantment reduction
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onAuratusHit(org.bukkit.event.entity.EntityDamageEvent e) {
+        if (protectionIgnored.isEmpty() || !protectionIgnored.contains(e.getEntity().getUniqueId())) return;
+        if (e.isApplicable(org.bukkit.event.entity.EntityDamageEvent.DamageModifier.MAGIC))
+            e.setDamage(org.bukkit.event.entity.EntityDamageEvent.DamageModifier.MAGIC, 0);
+    }
 
     /** Feathered Fall (unchanged): 90% less fall damage while holding the gem. A slam landing is free. */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

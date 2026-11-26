@@ -46,7 +46,7 @@ public enum GemType {
     AURATUS("Auratus", "§6", Material.REPEATING_COMMAND_BLOCK, "⛓", "✧",
             "Mythic: 90% less fall damage, +1 reach and full-strength hits that pull the target in, chain and slam victims can't pearl or wind-charge away, and debuffs last half as long.",
             "Venerated Perforators [Left-click; off hand: right-click]: a chain hooks what it hits and stays; right-click goes there, swap hands hauls a creature in (or lets go). Sneak + chain in the air: Gilded Slam.",
-            "Echoing Aegis [Right-click; off hand: sneak + right-click]: a 1s parry and a shield 3 blocks ahead that hits whoever's there. Pull someone in and catch them: Flagpole, or chain again to launch them."),
+            "Echoing Aegis [Right-click; off hand: sneak + right-click]: a 1s parry and a shield 3 blocks ahead that hits whoever's there. Pull someone in and catch them: Flagpole, or chain again to launch them. Hits ignore Protection (armour counts): through full diamond the chain deals 2.5 hearts, the shield 4, the launch the three together."),
     RELAY("Relay", "§x§B§8§9§3§5§8", Material.REPEATING_COMMAND_BLOCK, "⌛", "⟲",
             "Mythic: ignores the energy system. Tuned In: your hits tag players for 30s (+5% damage from you) and fill the Tuned In bar; every Relay power needs it full. Quickened: swings 1.2x faster. Clean Signal: immune to gem disables.",
             "Rewind [Left-click]: snap back to where you were ~5s ago, restoring lost health and clearing debuffs. Two charges. Time Dilate [Right-click]: an 8s bubble where everything else moves at a tenth of the speed and gems are disabled.",

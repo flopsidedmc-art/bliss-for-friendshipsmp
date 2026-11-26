@@ -29,7 +29,7 @@ The same powers (chains, Aegis, slam, Flagpole and the passives), rebuilt undern
 | Sequence | Result |
 |---|---|
 | Hook an enemy → **F** (pull them in) → **Aegis** → nothing else | **Flagpole**: they're hoisted 5 blocks and held 2.5 s |
-| Hook an enemy → **F** → **Aegis** → **chain again** within 0.75 s | **The launch**: thrown straight up about 30 blocks with a hit that kills a full-health player in full Prot IV diamond |
+| Hook an enemy → **F** → **Aegis** → **chain again** within 0.75 s | **The launch**: thrown straight up about 30 blocks with a hit equal to the chain, shield and slam together (19.8 HP through full diamond); with the chain and shield first, the combo kills from full health |
 
 The Aegis "catches" them when its shield (3 blocks ahead, where you look) touches an enemy you hooked or pulled in the last 5 seconds. Pulling with F is the easy way to get them there: the haul stops them about 2.5 blocks in front of you. Flagpole and the launch share one 25-second cooldown (not shown on the action bar, which only has the chain and Aegis).
 
@@ -45,7 +45,7 @@ Notes on the controls:
 1. **Venerated Perforators.** Throw a chain up to 40 blocks.
    - **2 charges**, each recharging on its own 8-second timer.
    - **It hooks whatever it hits and stays:** an enemy, any other creature, a block or the Echo Anchor.
-     - **An enemy takes the hit straight away:** 9 HP (4.5 hearts unarmored, about half a heart through Prot IV diamond) and 2 s of Angels Grasp, once per hook.
+     - **An enemy takes the hit straight away:** 5 HP (2.5 hearts) through full diamond, 14.5 unarmoured, and 2 s of Angels Grasp, once per hook.
      - **Other creatures** (friends, animals, villagers) are never hurt.
    - **While the hook is in:**
      - **Right-click** reels you there on a straight line, ramping up to about 22 blocks a second. You keep some momentum when you arrive, and landing ends it. Arriving at an enemy tugs them toward you.
@@ -57,7 +57,7 @@ Notes on the controls:
    - **Re-throwing:** throwing a new chain while one is in replaces it.
    - **Time Dilate:** a field slows the reel and the haul.
 2. **Echoing Aegis.** For **1 second** you parry, and a golden shield (the pack's parry halo) stands **3 blocks ahead where you look**, facing you. It appears closer if a wall is nearer.
-   - **The shield hits** any enemy at it in its first few ticks: 15 HP, 7.5 hearts unarmored, about 1 heart through Prot IV diamond. Once each.
+   - **The shield hits** any enemy at it in its first few ticks: 8 HP (4 hearts) through full diamond, 20 unarmoured. Once each.
    - **The parry:**
      - any melee hit or projectile on you in that second is blocked;
      - the attacker takes half of it back, is pushed away with Slowness II for 1.5 s, and loses 30 durability on their weapon.
@@ -74,24 +74,26 @@ Notes on the controls:
    - Then they're hoisted 5 blocks up (less under a ceiling) and held there for 2.5 s inside a spiral of gold. Hits still push them, but they can't run off or pearl away.
 5. **The launch** (combo). Same as Flagpole, but chain again during that 0.75 s.
    - No Flagpole. Instead a chain lashes out and throws them **straight up about 30 blocks**.
-   - It deals **one 72-damage hit**. That hit is raw player damage, straight through: not scaled, not capped.
+   - It deals **one hit that is the whole combo**: through full diamond, exactly what the chain, the shield and the slam's centre deal there together (19.8 HP; 35.7 raw). It's worked out from those three settings, so retuning any of them moves it. It isn't capped.
    - It needs no chain charge.
 
-## The launch against diamond armor
+## Damage against armour
 
-You asked for this one to be able to one-shot players in diamond armor. Against **full diamond with Protection IV on every piece** (armor 20, toughness 8, Protection 16), using vanilla 1.21's armor formula:
+Every Auratus hit (the chain hook, the Aegis shield, Gilded Slam, the launch and the Aegis reflect) is cut by **armour points and toughness as normal** (vanilla's formula), but **Protection never counts**, nor Blast or Projectile Protection. Resistance and totems still work.
 
-| Hit | Through Prot IV diamond |
-|---|---|
-| Chain hook | 0.9 HP |
-| Aegis shield | 1.9 HP |
-| **Launch** | **21.8 HP**: kills from full health (20) on its own |
-| **Whole combo** | **24.6 HP**: also gets through a golden apple's 4 absorption hearts |
-| Then the fall from ~30 blocks | about 9.7 more (5.4 with Feather Falling IV) |
+The numbers are raw HP in config (not multiplied by `ability-damage.multiplier`), set against **full unenchanted diamond** (20 armour, 8 toughness), with vanilla 1.21's formula: damage x (1 - clamp(armour - damage / (2 + toughness / 4), armour / 5, 20) / 25).
 
-- **What it doesn't beat:** a totem still saves them, and Resistance cuts it. Full Prot IV netherite takes about 20.1 from the launch: a kill from full health, just, with no golden-apple margin.
-- **Unarmored:** it's overkill.
-- **The unit test:** `AuratusMathTest.theLaunchComboKillsFullProt4Diamond` checks these numbers, so retuning can't quietly break the one-shot. The test caught that 70 was 0.002 HP short of beating a golden apple, which is why it's 72.
+| Hit | Unarmoured | Full iron | Full diamond | Full netherite |
+|---|---|---|---|---|
+| Chain hook (14.495) | 14.5 HP | 10.0 HP | **5.0 HP** (2.5 hearts) | 4.6 HP |
+| Aegis shield (20) | 20.0 HP | 16.0 HP | **8.0 HP** (4 hearts) | 7.2 HP |
+| Slam centre (18, as before) | 18.0 HP | 13.7 HP | 6.8 HP | 6.2 HP |
+| Slam edge (9, as before) | 9.0 HP | 5.2 HP | 2.6 HP | 2.5 HP |
+| **Launch** (35.7, worked out) | 35.7 HP | 31.4 HP | **19.8 HP** = chain + shield + slam centre | 17.3 HP |
+| Aegis reflect | half the parried hit, through their armour | | | |
+
+- **The whole launch combo through full diamond:** chain 5 + shield 8 + launch 19.8 = **32.8 HP**, then the fall from ~30 blocks. The launch on its own no longer quite kills from full health (19.8 of 20); the combo does, with room for a golden apple's absorption.
+- **The unit tests** (`AuratusMathTest`) check these numbers.
 
 ## Passives (gem in either hand)
 
@@ -113,15 +115,7 @@ Just the main pack's chain and Aegis icons (`⊵ ⊴`), no names:
 
 ## Damage overview
 
-Chains, the Aegis shield and the slam use the same `ability-damage` scaling as the standard gems (x3, capped at 40 HP per hit). The launch is the one exception.
-
-| Hit | Unarmored | Full Prot IV diamond |
-|---|---|---|
-| Chain hook | 4.5 hearts | 0.5 hearts |
-| Aegis shield | 7.5 hearts | 0.9 hearts |
-| Slam centre / edge | 9 / 4.5 hearts | 1.2 / 0.5 hearts |
-| Launch | 36 hearts | 10.9 hearts (a kill) |
-| Aegis reflect | half the parried hit | half the parried hit |
+See "Damage against armour" above: raw HP, armour counts, Protection doesn't. The chain, shield and slam still have the `ability-damage` cap (40 HP a hit); the launch doesn't.
 
 ## Settings
 
@@ -130,10 +124,10 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 | Section | Keys (defaults) |
 |---|---|
 | `passives` | `feathered-fall-damage-multiplier` 0.10, `hauling-strike-extra-reach` 1.0, `hauling-strike-pull` 0.3, `hauling-strike-shield-ticks` 100, `angels-grasp-seconds` 4, `angels-grasp-chain-seconds` 2, `divine-purity-multiplier` 0.5 |
-| `chain` | `charges` 2, `recharge-seconds` 8, `range` 40, `min-entity-distance` 3.5, `reel-speed` 1.1, `ramp-ticks` 4, `max-reel-ticks` 40, `arrival-momentum` 0.45, `hit-damage` 3.0, `hook-seconds` 6, `haul-speed` 1.0, `haul-max-ticks` 30, `show-models` true, `link-scale` 1.0 |
-| `aegis` | `cooldown-seconds` 15, `success-cooldown-seconds` 10, `window-ms` 1000, `distance` 3.0, `strike-radius` 1.3, `strike-damage` 5.0, `strike-ticks` 6, `reflect` 0.5, `attacker-slow-seconds` 1.5, `weapon-durability-loss` 30, `heal-hp` 5.0, `speed-seconds` 3, `anchor-height` 8, `anchor-seconds` 5, `anchor-cone-degrees` 35 |
-| `slam` | `cooldown-seconds` 0, `min-height` 4, `range` 24, `dive-speed` 1.6, `radius` 5, `damage-center` 6.0, `damage-edge` 3.0, `launch` 0.45 |
-| `flagpole` | `cooldown-seconds` 25 (Flagpole and the launch), `hook-memory-seconds` 5, `window-ms` 750, `finisher-damage` 72 (raw), `finisher-launch-height` 30, `height` 5, `hold-seconds` 2.5, `ceiling-cap` false (true: stop below a ceiling) |
+| `chain` | `charges` 2, `recharge-seconds` 8, `range` 40, `min-entity-distance` 3.5, `reel-speed` 1.1, `ramp-ticks` 4, `max-reel-ticks` 40, `arrival-momentum` 0.45, `hit-damage` 14.495 (raw HP), `hook-seconds` 6, `haul-speed` 1.0, `haul-max-ticks` 30, `show-models` true, `link-scale` 1.0 |
+| `aegis` | `cooldown-seconds` 15, `success-cooldown-seconds` 10, `window-ms` 1000, `distance` 3.0, `strike-radius` 1.3, `strike-damage` 20.0 (raw HP), `strike-ticks` 6, `reflect` 0.5, `attacker-slow-seconds` 1.5, `weapon-durability-loss` 30, `heal-hp` 5.0, `speed-seconds` 3, `anchor-height` 8, `anchor-seconds` 5, `anchor-cone-degrees` 35 |
+| `slam` | `cooldown-seconds` 0, `min-height` 4, `range` 24, `dive-speed` 1.6, `radius` 5, `damage-center` 18.0, `damage-edge` 9.0 (raw HP), `launch` 0.45 |
+| `flagpole` | `cooldown-seconds` 25 (Flagpole and the launch), `hook-memory-seconds` 5, `window-ms` 750, `finisher-launch-height` 30, `height` 5, `hold-seconds` 2.5, `ceiling-cap` false (true: stop below a ceiling) |
 | `visuals` | `slam-burst` true (white sphere), `slam-sparks` true, `slam-spark-count` 30, `launch-burst` true (gold sphere), `flagpole-burst` true (gold sphere) , `chain-travel` true, `chain-travel-ticks` 5, `chain-reel-in` true, `chain-reel-ticks` 4 |
 | `release` | `refund-before-hit` true |
 
@@ -159,14 +153,14 @@ All under `mythics.auratus` in config.yml, and in `/mythicconfig` (Auratus page)
 
 ## In-game test plan
 
-You need a second player (or a friend) in full Prot IV diamond, the new JAR and the merged pack.
+You need a second player (or a friend) in full diamond (Protection makes no difference now), the new JAR and the merged pack.
 
 1. `/blissop mythic auratus`. The action bar shows the chain and Aegis icons, each with "Ready!".
 2. Left-click a far wall: a chain hooks it and stays. Right-click: you fly there. Hook it again and do nothing: it slides out after 6 s. Hook it and walk behind a pillar: it snaps.
-3. Left-click the other player from 10 blocks: the hook bites (about half a heart through their armor; no pearls for 2 s) and stays. Right-click: you fly to them.
+3. Left-click the other player from 10 blocks: the hook bites (2.5 hearts through full diamond; no pearls for 2 s) and stays. Right-click: you fly to them.
 4. Hook them again and press F: they're hauled to about 2.5 blocks in front of you. Your hotbar doesn't swap.
-5. Right-click right after: the gold shield appears 3 blocks ahead, hits them (about 1 heart through armor) and pins them. Do nothing: after 0.75 s they're hoisted for 2.5 s.
-6. After the cooldown, hook → F → right-click → left-click quickly: they're launched about 30 blocks up and **die from full health in full Prot IV diamond**. Try again after they eat a golden apple: they still die.
+5. Right-click right after: the gold shield appears 3 blocks ahead, hits them (4 hearts through full diamond) and pins them. Do nothing: after 0.75 s they're hoisted for 2.5 s.
+6. After the cooldown, hook → F → right-click → left-click quickly: they're launched about 30 blocks up and **die from full health in full diamond** (chain + shield + launch is 32.8 HP). Try again after they eat a golden apple: they still die.
 7. Right-click with nobody near: you get a fizzle and a 15 s cooldown. Right-click as they hit you: the hit is blocked and you heal. A gold ring appears above you; throw a chain at it, then right-click to fly up to it.
 8. Chain up 6+ blocks, sneak + left-click: you slam with no fall damage. 2 blocks up: just a chain.
 9. Full-strength hits pull the target in. Hit a raised shield: it drops for 5 s. Drink Slowness while holding the gem: it lasts half as long.
@@ -178,7 +172,7 @@ You need a second player (or a friend) in full Prot IV diamond, the new JAR and 
 
 - The plugin compiles against Paper 1.21.11.
 - 47 unit tests pass. They include:
-  - the launch combo against full Prot IV diamond, golden apple included;
+  - the combo against full diamond, golden apple included;
   - vanilla's armor formula;
   - the launch height;
   - slam falloff, the reel ramp, the anchor cone, Flagpole's hover, Divine Purity, the Aegis cooldown and chain charges;

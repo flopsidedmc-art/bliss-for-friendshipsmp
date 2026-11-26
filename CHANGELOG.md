@@ -1,3 +1,82 @@
+# Auratus damage rebalance
+
+## What I found first
+- **How Auratus hits were dealt:** the chain hook, the Aegis shield and Gilded Slam went through `abilityHit`: the config value × `ability-damage.multiplier` (3.0), capped at `ability-damage.cap` (40). They landed as normal player damage, so **armour and Protection both reduced them**. They didn't use `pierce-armor`.
+- **The values (key: config value, then raw HP):**
+
+  | Hit | Key | Config value | Raw HP (×3) |
+  |---|---|---|---|
+  | Chain hook | `chain.hit-damage` | 3.0 | 9 |
+  | Aegis shield | `aegis.strike-damage` | 5.0 | 15 |
+  | Slam centre | `slam.damage-center` | 6.0 | 18 |
+  | Slam edge | `slam.damage-edge` | 3.0 | 9 |
+  | The launch | `flagpole.finisher-damage` | 72, raw (no multiplier, no cap) | 72 |
+  | Aegis reflect | `aegis.reflect` | 0.5: half the parried hit sent back raw | — |
+
+  The launch went through armour and Protection as normal; it was tuned to kill full Prot IV diamond.
+
+## What changed
+- **Protection is ignored** by every Auratus hit: the chain hook, the Aegis shield, Gilded Slam, the launch and the Aegis reflect.
+  - **What still reduces them:** armour points and toughness, by vanilla's formula, plus Resistance and totems.
+  - **What no longer does:** Protection, Blast Protection and Projectile Protection.
+  - **How:** a last-step change to just the enchantment part of the damage, only for the player being hit by Auratus at that moment, never anyone else.
+- **The config values are now raw HP** (not × the multiplier), tuned against full unenchanted diamond (20 armour, 8 toughness):
+  - chain hook **14.495**, which deals exactly 5 HP (2.5 hearts) through full diamond. It's 10√6 − 10, solved from the formula.
+  - Aegis shield **20.0**: exactly 8 HP (4 hearts);
+  - slam centre **18.0** and edge **9.0**, the same raw damage as before;
+  - the chain, shield and slam keep the 40 HP ability cap.
+- **The launch is the combo:** it has no setting now.
+  - **How it's worked out:** whenever it lands, from the chain, shield and slam-centre settings, so that through full diamond it deals exactly their sum: 5 + 8 + 6.84 = **19.84 HP** (35.65 raw). Changing any of the three moves it.
+  - **Unchanged:** the 30-block throw, the fall, the cooldown, the gold burst and Angels Grasp.
+  - **One consequence:** on its own the launch no longer quite one-shots full diamond from full health (19.8 of 20). The whole combo (chain + shield + launch) is 32.8 HP, which kills, with a golden apple's absorption too.
+- **What each hit deals** (Protection ignored):
+
+  | Hit | Unarmoured | Full iron | Full diamond | Full netherite |
+  |---|---|---|---|---|
+  | Chain hook | 14.5 | 10.0 | 5.0 | 4.6 |
+  | Aegis shield | 20.0 | 16.0 | 8.0 | 7.2 |
+  | Slam centre | 18.0 | 13.7 | 6.8 | 6.2 |
+  | Slam edge | 9.0 | 5.2 | 2.6 | 2.5 |
+  | Launch | 35.7 | 31.4 | 19.8 | 17.3 |
+
+- **Upgrading:** a server with the old Auratus section (it had `finisher-damage`) is converted once (balance 6).
+  - **Old defaults** get the new numbers.
+  - **Numbers you'd changed** keep their raw damage (× your multiplier).
+  - **`finisher-damage` is removed.**
+  - The server log lists each change.
+- **Docs:** the table is in AURATUS.md, the config comments, the gem's lore (the through-diamond hearts) and the guide text. The `/mythicconfig` labels say "raw HP", and the launch's entry is gone.
+
+## Files
+- **Changed:**
+  - `AuratusGem.java`: hits go through a new helper that ignores Protection; the launch is worked out; the reflect ignores Protection;
+  - `AuratusMath.java`: `throughDiamond`, `rawFor` (the formula inverted), `finisherRaw`;
+  - `GemListener.java`: `rawAbilityHit` (raw HP, capped, armour counts);
+  - `SoulboundGemsPlugin.java`: the balance 6 migration;
+  - `MythicListener.java`: the tuner entries;
+  - `GemManager.java` and `GemType.java`: lore (version bumped) and guide;
+  - `config.yml`: the values and the table;
+  - `AURATUS.md`;
+  - `AuratusMathTest.java`: the old Prot IV one-shot test is replaced with the new ones.
+
+## Tested
+- Compiles against paper-api 1.21.11, and all 231 unit tests pass. They cover:
+  - **Through full diamond:** the chain deals 5 HP and the shield 8; the slam is unchanged.
+  - **The launch:** exactly the sum through full diamond (19.84, 35.65 raw); it moves when the chain is retuned; there's no separate setting.
+  - **Armour counts, Protection doesn't:** armour cuts the hits; Prot IV would have cut them more; only the enchantment part is removed, on every Auratus hit; nothing goes through the ×3 multiplier.
+  - **The docs table** (iron, netherite) and the exact raw value.
+
+## Not tested
+- **Nothing was run in game:**
+  - the real damage numbers on a server;
+  - the Protection removal through Paper's damage modifiers (deprecated but working API);
+  - the migration on a real old config.
+
+## In-game test plan
+1. **Chain hook:** a friend in full diamond, with and without Protection IV. Hook them: 2.5 hearts either way.
+2. **Aegis shield:** catch them with the Aegis: 4 hearts.
+3. **The launch:** chain + shield + launch: they're thrown 30 blocks and die from full health, even after a golden apple.
+4. **Unarmoured:** the chain deals 7 hearts, the shield 10.
+
 # Wealth: Amplification change
 
 ## What I found first

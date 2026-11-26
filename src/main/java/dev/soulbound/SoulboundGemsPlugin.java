@@ -254,7 +254,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 5) return;
+        if (version >= 6) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -271,8 +271,24 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             c.set(link + "dive-follows-look", null); // steering was taken out again
         }
         // Balance 5: the fireball cools down in 120 s (was 180).
-        if (c.getInt("cooldowns.fireball", 180) == 180) { c.set("cooldowns.fireball", 120); changed.add("Fireball cooldown 180 -> 120 s"); }
-        c.set("balance-version", 5);
+        if (version < 5 && c.getInt("cooldowns.fireball", 180) == 180) { c.set("cooldowns.fireball", 120); changed.add("Fireball cooldown 180 -> 120 s"); }
+        // Balance 6: Auratus damage is raw HP set against full diamond, and Protection no longer counts. Only a config
+        // with the old Auratus section (it had flagpole.finisher-damage) is converted; old defaults get the new numbers,
+        // numbers someone changed keep the same raw damage (x the ability multiplier they were scaled by).
+        String aur = "mythics.auratus.";
+        if (c.contains(aur + "flagpole.finisher-damage", true)) {
+            double mult = c.getDouble("ability-damage.multiplier", 3.0);
+            String[][] keys = {{"chain.hit-damage", "3.0", "14.495"}, {"aegis.strike-damage", "5.0", "20.0"},
+                    {"slam.damage-center", "6.0", "18.0"}, {"slam.damage-edge", "3.0", "9.0"}};
+            for (String[] k : keys) {
+                if (!c.contains(aur + k[0], true)) continue;
+                double old = c.getDouble(aur + k[0]), now = old == Double.parseDouble(k[1]) ? Double.parseDouble(k[2]) : old * mult;
+                c.set(aur + k[0], now);
+                changed.add("Auratus " + k[0] + " " + old + " -> " + now + " (raw HP)");
+            }
+            c.set(aur + "flagpole.finisher-damage", null); // the launch is worked out from the three now
+        }
+        c.set("balance-version", 6);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 
