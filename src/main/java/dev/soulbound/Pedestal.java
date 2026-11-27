@@ -83,6 +83,9 @@ public class Pedestal implements Listener {
     }
 
     public boolean exists() { return center != null; }
+
+    /** The heart's block (null if there's no Pedestal). */
+    Location center() { return center == null ? null : center.clone(); }
     public boolean isOpen() { return exists() && open; }
 
     public boolean nearGem(Player p, double radius) {

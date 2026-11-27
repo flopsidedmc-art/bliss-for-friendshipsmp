@@ -103,7 +103,7 @@ public class GemManager {
         refreshVisuals(item);
     }
 
-    /** Tier-only overload: gem item at full energy (real energy is tracked per player in EnergyManager). */
+    /** Tier-only overload: gem item at full energy (the 0-10 energy lives on the item). */
     public ItemStack createGem(GemType type, int tier) {
         return createGem(type, tier, EnergyStage.clamp(10));
     }
@@ -545,8 +545,13 @@ public class GemManager {
         ItemMeta m = item.getItemMeta();
         int cmd = BlissPackVisuals.modelDataFor(type, tier, energy);
         m.setCustomModelData(cmd < 0 ? null : cmd);
+        // Pristine +5 (energy 10) shimmers: looks only, no enchantment. Below that the override is cleared (as before).
+        m.setEnchantmentGlintOverride(glintAt(energy, plugin.getConfig().getBoolean("energy.glint-at-max", true)) ? Boolean.TRUE : null);
         item.setItemMeta(m);
     }
+
+    /** The glint shows at the maximum energy (10) only. */
+    static boolean glintAt(int energy, boolean enabled) { return enabled && energy >= 10; }
 
     static final String RIFT_LORE = "§7— §x§B§8§9§3§5§8✦ RIFT §8[Sneak + left-click gem]";
 

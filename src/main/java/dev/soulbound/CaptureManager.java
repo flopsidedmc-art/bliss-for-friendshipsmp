@@ -377,6 +377,7 @@ public final class CaptureManager implements Listener {
         updateBarViewers(w, pt);
         for (Player p : on) {
             if (hasOwnHud(p)) { pt.ownBar.remove(p.getUniqueId()); continue; } // that HUD shows hudSuffix
+            if (plugin.hudHeld(p)) continue; // a one-off message or a Pantheon event's own HUD has the bar
             p.sendActionBar(ownBar(pt, p));
             pt.ownBar.add(p.getUniqueId());
         }

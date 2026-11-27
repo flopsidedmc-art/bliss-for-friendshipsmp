@@ -22,7 +22,7 @@ class SavedDataTest {
 
     @Test void theRespawnGemIsSavedUntilItsBack() throws Exception {
         String g = gl();
-        assertTrue(g.contains("pendingRespawnGem.put(victim.getUniqueId(), toKeep.get(0));\n                saveRespawnGems();"), "saved at death");
+        assertTrue(g.contains("pendingRespawnGem.put(victim.getUniqueId(), toKeep);\n                saveRespawnGems();"), "saved at death");
         int r = g.indexOf("public void onRespawn(PlayerRespawnEvent e) {");
         String respawn = g.substring(r, r + 800);
         assertTrue(respawn.indexOf("if (!p.isOnline()) return;") < respawn.indexOf("pendingRespawnGem.remove("), "kept saved if they leave before it's given");

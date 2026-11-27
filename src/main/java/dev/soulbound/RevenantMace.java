@@ -154,6 +154,16 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
 
     private Player holderOnline() { return holder == null ? null : Bukkit.getPlayer(holder); }
 
+    /** The boss fight is running and {@code p} is the holder or within revenant.boss-radius of them (Pantheon: no kill points). */
+    boolean inBossFight(Player p) {
+        if (state != State.RUNNING || p == null) return false;
+        Player h = holderOnline();
+        if (h == null) return false;
+        if (h.equals(p)) return true;
+        double r = plugin.getConfig().getDouble("mythics.revenant.boss-radius", 64);
+        return h.getWorld().equals(p.getWorld()) && h.getLocation().distanceSquared(p.getLocation()) <= r * r;
+    }
+
     boolean isLiveItem(ItemStack it) {
         if (it == null || it.getType() != Material.MACE || itemId == null || !it.hasItemMeta()) return false;
         return itemId.toString().equals(it.getItemMeta().getPersistentDataContainer().get(idKey, PersistentDataType.STRING));
@@ -323,6 +333,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
 
     private void plunge(Player p) {
         if (busy(p)) return;
+        if (plugin.eventRefuses(p, "revenant-plunge")) return; // a Pantheon event: no charge spent
         long n = now();
         plunge.resize(cfgI("plunge.charges", 2));
         if (plunge.ready(n) == 0) return;
@@ -417,7 +428,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
             double d = v.getLocation().distance(at);
             double dmg = RevenantMath.plungeDamage(base, fall, d, radius, cap());
             if (dmg <= 0) continue;
-            v.damage(dmg, p);
+            plugin.listener().asAbility(true, () -> v.damage(dmg, p)); // Plunge's landing
             Vector away = v.getLocation().toVector().subtract(at.toVector()).setY(0);
             if (away.lengthSquared() < 1e-4) away = new Vector(1, 0, 0);
             v.setVelocity(away.normalize().multiply(knock)); // outward, never upward (Abyssal Weight)
@@ -439,6 +450,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
 
     private void rising(Player p) {
         if (busy(p)) return;
+        if (plugin.eventRefuses(p, "revenant-rising")) return;
         long n = now();
         if (risingReady > n) return;
         if (plugin.relay().timeScale(p.getLocation(), p.getUniqueId()) < 1) {
@@ -513,6 +525,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         if (busy(p)) return;
         long n = now();
         if (undertowReady > n) return;
+        if (plugin.eventRefuses(p, "revenant-undertow")) return;
         undertowReady = n + (long) (cfgD("undertow.cooldown-seconds", 30) * 1000);
         double radius = Math.max(1, cfgD("undertow.radius", 8));
         double strength = Math.max(0.1, cfgD("undertow.strength", 1.4));
@@ -855,7 +868,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         String us = HudStatus.entry(ug, undertowReady - n, false);
         String msg = ps + "  " + rs + "  " + us;
         if (suspension != null) msg = "§6\u231B §e" + HudStatus.time(suspension.remaining * 50L) + "  " + msg; // suspended: an hourglass and its timer
-        h.sendActionBar(LEGACY.deserialize(msg + captureHud(h)));
+        if (!plugin.hudHeld(h)) h.sendActionBar(LEGACY.deserialize(msg + captureHud(h))); // a one-off message or a Pantheon event's HUD
     }
 
 
@@ -949,6 +962,8 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         e.getDrops().removeIf(this::isRevenantItem); // never drops, for anyone
         weighted.remove(p.getUniqueId());
         if (!isHolder(p)) return;
+        // A Pantheon event death (it keeps the inventory): no shatter, the mace stays with them.
+        if (plugin.inPantheonEvent(p)) return;
         endActions(p, false);
         removeRevenantItems(p); // with keepInventory it would otherwise stay in the inventory
         if (state == State.RUNNING) {

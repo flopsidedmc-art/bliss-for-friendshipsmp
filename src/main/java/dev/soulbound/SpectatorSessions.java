@@ -17,7 +17,9 @@ final class SpectatorSessions {
     enum Kind { PROJECTION, UNBOUNDED }
 
     /** Every way a session can end. */
-    enum End { TIME_UP, SNEAK, BODY_HIT, TARGET_GONE, LOGOUT, DEATH, WORLD_CHANGE, DISABLE, MODE_CHANGED }
+    enum End { TIME_UP, SNEAK, BODY_HIT, TARGET_GONE, LOGOUT, DEATH, WORLD_CHANGE, DISABLE, MODE_CHANGED,
+        /** They were pulled into a Pantheon event: they stay where the event put them. */ EVENT,
+        /** The player they ride (Unbounded) is in a Pantheon event: back where they started, never into the arena. */ HOST_EVENT }
 
     /** {@code home}: the body's exact spot and facing (projection) or where the rider stood (Unbounded). */
     record Session(Kind kind, GameMode mode, Location home, long endsAt) {}
@@ -51,7 +53,8 @@ final class SpectatorSessions {
      * started if neither is known. Death: nowhere (they respawn), but the game mode still comes back.
      */
     static Location where(Session s, End why, Location behindTarget, Location targetLast) {
-        if (why == End.DEATH) return null;
+        if (why == End.DEATH || why == End.EVENT) return null;
+        if (why == End.HOST_EVENT) return s.home();
         if (s.kind() == Kind.PROJECTION) return s.home();
         if (why == End.TARGET_GONE && targetLast != null) return targetLast;
         if (behindTarget != null) return behindTarget;

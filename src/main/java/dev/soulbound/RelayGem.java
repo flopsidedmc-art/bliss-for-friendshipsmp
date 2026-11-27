@@ -137,6 +137,7 @@ public final class RelayGem implements Listener {
         UUID id = p.getUniqueId(); long n = now();
         int required = abilityCost("divinity");
         if (divinityReady.getOrDefault(id, 0L) > n || domain.contains(id) || !chargedFor(p, "divinity")) return;
+        if (plugin.eventRefuses(p, "temporal-divinity")) return;
         if (!domain.start(p)) return; // transaction: journal + all teleports must succeed first
         spend(id, required);
         divinityReady.put(id, n + Math.max(0, cfgL("temporal.divinity.cooldown-seconds", 90)) * 1000);
@@ -228,6 +229,8 @@ public final class RelayGem implements Listener {
     public void useRewind(Player p) { useRewind(p, false); }
     /** @param deliberate a click into the air: only then does an empty Tuned In bar get a message, not every punch. */
     public void useRewind(Player p, boolean deliberate) {
+        // A Pantheon event: no Rewind (the swing path stays silent, a click says why). Nothing is spent.
+        if (deliberate ? plugin.eventRefuses(p, "rewind") : plugin.eventBlocks(p, "rewind")) return;
         if (!mainHandIsRelay(p) || p.isSneaking() || p.isDead() || domain.contains(p.getUniqueId())) return;
         UUID id = p.getUniqueId();
         long now = now();

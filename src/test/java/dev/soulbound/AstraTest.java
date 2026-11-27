@@ -72,6 +72,7 @@ class AstraTest {
             assertFalse(s.any(id), "nothing left");
             Location to = SpectatorSessions.where(out, why, new Location(null, 1, 64, 1), new Location(null, 2, 64, 2));
             if (why == SpectatorSessions.End.DEATH) assertNull(to, "death: they respawn");
+            else if (why == SpectatorSessions.End.EVENT) assertNull(to, "pulled into a Pantheon event: they stay where the event put them");
             else if (kind == SpectatorSessions.Kind.PROJECTION) {
                 assertEquals(home, to, "projection: always back to the body's exact spot");
                 assertEquals(90f, to.getYaw(), "and facing");
@@ -89,6 +90,8 @@ class AstraTest {
         assertEquals(behind, SpectatorSessions.where(u, SpectatorSessions.End.TIME_UP, behind, last));
         assertEquals(behind, SpectatorSessions.where(u, SpectatorSessions.End.SNEAK, behind, last));
         assertEquals(last, SpectatorSessions.where(u, SpectatorSessions.End.TARGET_GONE, null, last), "they died or left: where they were");
+        assertEquals(u.home(), SpectatorSessions.where(u, SpectatorSessions.End.HOST_EVENT, behind, last),
+                "their host is in a Pantheon event: back where they started, never into the arena");
         assertEquals(u.home(), SpectatorSessions.where(u, SpectatorSessions.End.DISABLE, null, null), "nothing known: where you started");
     }
 

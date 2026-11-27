@@ -80,7 +80,10 @@ final class CombatRules implements Listener {
     private void tick() {
         for (UUID id : core.fights.expired(System.currentTimeMillis())) {
             Player p = Bukkit.getPlayer(id);
-            if (p != null) p.sendActionBar(Component.text(SmallCaps.of("Out of combat"), NamedTextColor.GREEN));
+            if (p != null) {
+                p.sendActionBar(Component.text(SmallCaps.of("Out of combat"), NamedTextColor.GREEN));
+                plugin.holdActionBar(p, 1500L); // readable over the gem HUD
+            }
         }
         boolean on = core.on("invisibility"), tab = plugin.getConfig().getBoolean("rules.invisibility.tab", false);
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -138,7 +141,10 @@ final class CombatRules implements Listener {
         if (!core.on("combat", victim.getWorld())) return;
         long tag = (long) (core.num("combat", "tag-seconds", 15) * 1000);
         for (Player p : new Player[] {victim, by}) {
-            if (core.fights.hit(p.getUniqueId(), now, tag)) p.sendActionBar(Component.text(SmallCaps.of("In combat"), NamedTextColor.RED));
+            if (core.fights.hit(p.getUniqueId(), now, tag)) {
+                p.sendActionBar(Component.text(SmallCaps.of("In combat"), NamedTextColor.RED));
+                plugin.holdActionBar(p, 1500L); // readable over the gem HUD
+            }
         }
     }
 

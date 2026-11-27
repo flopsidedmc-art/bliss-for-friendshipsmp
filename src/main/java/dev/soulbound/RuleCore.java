@@ -59,6 +59,7 @@ final class RuleCore {
         if (last != null && now - last < 2000) return;
         said.put(k, now);
         p.sendActionBar(Component.text(SmallCaps.of(text), NamedTextColor.RED));
+        plugin.holdActionBar(p, 1500L); // readable over the gem HUD
     }
 
     void forget(UUID id) { said.keySet().removeIf(k -> k.startsWith(id + ":")); }

@@ -185,7 +185,7 @@ final class Amplification implements Listener {
                 p.sendActionBar(Component.text(SmallCaps.of("Amplification faded"), NamedTextColor.GRAY));
                 continue;
             }
-            if (!hasOwnHud(p)) p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(status(left)));
+            if (!hasOwnHud(p) && !plugin.hudHeld(p)) p.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(status(left)));
         }
     }
 

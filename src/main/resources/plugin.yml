@@ -45,9 +45,9 @@ commands:
     permission: soulbound.capture
     permission-message: You lack permission.
   stalker:
-    description: Shadow Stalker — begin the hunt toward a tracked player.
+    description: Shadow Stalker — begin the hunt toward a tracked player (admins only for now).
     usage: /stalker <player>
-    permission: bliss.player
+    permission: bliss.admin
     permission-message: You lack permission.
   gems:
     description: Rename gems, abilities and tiers, recolour gems, and see a player's gems.

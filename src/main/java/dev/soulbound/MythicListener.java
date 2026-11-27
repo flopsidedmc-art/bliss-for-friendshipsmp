@@ -425,6 +425,7 @@ public final class MythicListener implements Listener {
             // Silenced — no chat spam
             return;
         }
+        if (plugin.eventRefuses(p, "bloodlinking")) return; // a Pantheon event (Motion): no cooldown spent
         long cd = secondsToMs("mythics.heretic.bloodlinking.cooldown-seconds", 100_000L);
         hereticBloodlinkCooldown.put(p.getUniqueId(), now() + cd);
         p.setVelocity(new Vector(0, plugin.getConfig().getDouble("mythics.heretic.bloodlinking.launch-y", 1.9), 0));
@@ -631,7 +632,7 @@ public final class MythicListener implements Listener {
                 if (other == null || !other.isOnline()) continue;
                 bloodlinkTransferTargets.add(otherId);
                 try {
-                    other.damage(damage, Bukkit.getPlayer(entry.getKey()));
+                    plugin.listener().asAbility(true, () -> other.damage(damage, Bukkit.getPlayer(entry.getKey()))); // Bloodlinking's mirror
                 } finally {
                     bloodlinkTransferTargets.remove(otherId);
                 }
@@ -706,6 +707,7 @@ public final class MythicListener implements Listener {
             // mythic is put away). Sending an empty bar to everyone else wiped the normal gem HUD
             // that GemListener.tick() sends on the very same tick.
             boolean revenantBar = plugin.revenant() != null && plugin.revenant().hudActive(p);
+            if (plugin.hudHeld(p)) continue; // a one-off message or a Pantheon event's own HUD has the bar
             if (type != null && !revenantBar) {
                 String capture = (plugin.captures() == null ? "" : plugin.captures().hudSuffix(p)) // your time on a capture point
                         + (plugin.bounty() == null ? "" : plugin.bounty().hudSuffix(p)) // and on a hunt

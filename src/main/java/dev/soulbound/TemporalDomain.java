@@ -161,6 +161,7 @@ final class TemporalDomain implements Listener {
         owner.getNearbyEntities(radius,radius,radius).stream().filter(e->e instanceof Player).map(e->(Player)e)
             .filter(p->p.getLocation().distanceSquared(owner.getLocation())<=radius*radius && !p.isDead() && !contains(p.getUniqueId())
                 && !p.isInsideVehicle() && !plugin.listener().isTrusted(owner,p) && !plugin.listener().isTrusted(p,owner)
+                && !plugin.inPantheonEvent(p) // never taken out of a Pantheon event
                 && (p.getGameMode()==GameMode.SURVIVAL||p.getGameMode()==GameMode.ADVENTURE))
             .sorted(Comparator.comparingDouble(p->p.getLocation().distanceSquared(owner.getLocation())))
             .limit(Math.max(1,Math.min(16,(int)cfg("max-opponents",8)))).forEach(caught::add);

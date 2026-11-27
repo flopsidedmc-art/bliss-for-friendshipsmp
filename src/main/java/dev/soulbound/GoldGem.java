@@ -696,8 +696,10 @@ final class GoldGem implements Listener {
         if (states.isEmpty() || e.getFinalDamage() < v.getHealth() + v.getAbsorptionAmount()) return;
         Player direct = e instanceof EntityDamageByEntityEvent ed ? CombatRules.attacker(ed.getDamager()) : null;
         Object[] last = lastHolderHit.get(v.getUniqueId());
+        if (plugin.eventBlocks(v, "repurpose")) return; // an event death is never a repurpose (the event handles it)
         for (GoldMath.State s : states.values()) {
             if (!s.marks.containsKey(v.getUniqueId())) continue;
+            if (plugin.eventBlocks(Bukkit.getPlayer(s.holder), "repurpose")) continue; // the holder is in an event
             long lastAt = last != null && s.holder.equals(last[0]) ? (Long) last[1] : 0;
             if (!GoldMath.credited(direct != null && direct.getUniqueId().equals(s.holder), lastAt, System.currentTimeMillis(), 10_000)) continue;
             e.setCancelled(true);
@@ -879,6 +881,7 @@ final class GoldGem implements Listener {
         Player p = e.getEntity();
         GoldMath.State s = stateOf(p);
         if (s == null) return;
+        if (plugin.inPantheonEvent(p)) return; // a Pantheon event death (the event keeps the inventory): nothing released, marks stay
         Ritual r = rituals.remove(p.getUniqueId());
         if (r != null) r.task.cancel();
         for (Scene sc : scenes.values()) if (sc.holder.equals(p.getUniqueId())) sc.holderDied = true;
@@ -1047,13 +1050,20 @@ final class GoldGem implements Listener {
                 .replace("{holder}", plugin.shownName(p)).replace("{count}", String.valueOf(n))));
     }
 
+    private final Map<UUID, Long> drillingUntil = new HashMap<>();
+
+    /** The Golden Drill is spinning: a hit by them now is the drill's. */
+    boolean drilling(Player p) { return p != null && drillingUntil.getOrDefault(p.getUniqueId(), 0L) > System.currentTimeMillis(); }
+
     private void drill(Player p) {
         long now = System.currentTimeMillis();
         if (drillReady.getOrDefault(p.getUniqueId(), 0L) > now) return;
+        if (plugin.eventRefuses(p, "golden-drill")) return; // a Pantheon event: no cooldown spent
         drillReady.put(p.getUniqueId(), now + cap(p, (long) (cfgD("drill.cooldown-seconds", 30) * 1000)));
         double mult = Math.max(0, plugin.getConfig().getDouble("ability-damage.multiplier", 3.0));
         Vector dir = p.getLocation().getDirection().normalize();
         p.setVelocity(dir.clone().multiply(cfgD("drill.speed", 3.0)));
+        drillingUntil.put(p.getUniqueId(), now + 1500); // its riptide hit is ability damage (Broken victims, D11)
         p.startRiptideAttack(20, (float) (cfgD("drill.damage", 8.0) * mult), null); // the spin: the first one you hit takes it, with knockback
         noFallUntil.put(p.getUniqueId(), now + 3000); // the launch, then 2 s
         GemSounds.play(plugin, "gold.drill", p.getLocation());

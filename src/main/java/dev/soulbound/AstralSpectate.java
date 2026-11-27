@@ -259,6 +259,8 @@ final class AstralSpectate implements Listener {
             SpectatorSessions.Session s = sessions.get(id);
             if (p == null || s == null) continue; // a logout is handled by onQuit
             if (p.getGameMode() != GameMode.SPECTATOR) { end(p, SpectatorSessions.End.MODE_CHANGED); continue; }
+            // Pulled into a Pantheon event: out at once, in their own game mode, where the event put them.
+            if (plugin.inPantheonEvent(p)) { end(p, SpectatorSessions.End.EVENT); continue; }
             if (s.kind() == SpectatorSessions.Kind.PROJECTION) {
                 LivingEntity body = bodies.get(id);
                 if (body == null || !body.isValid()) { end(p, SpectatorSessions.End.BODY_HIT); continue; }
@@ -275,6 +277,8 @@ final class AstralSpectate implements Listener {
                     end(p, SpectatorSessions.End.TARGET_GONE);
                     continue;
                 }
+                // Their host is in a Pantheon event: back where they started, never into the arena.
+                if (plugin.inPantheonEvent(host)) { end(p, SpectatorSessions.End.HOST_EVENT); continue; }
                 hostLast.put(id, host.getLocation());
                 if (now >= s.endsAt()) { end(p, SpectatorSessions.End.TIME_UP); continue; }
                 if (!host.equals(p.getSpectatorTarget())) p.setSpectatorTarget(host);

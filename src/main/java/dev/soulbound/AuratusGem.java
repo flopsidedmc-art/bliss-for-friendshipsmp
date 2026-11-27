@@ -349,6 +349,7 @@ final class AuratusGem implements Listener {
 
     private void chain(Player p) {
         UUID id = p.getUniqueId();
+        if (plugin.eventRefuses(p, "auratus-chains")) return; // a Pantheon event (Motion): no charge spent
         if (dives.containsKey(id) || hoists.containsKey(id)) return;
         Combo cb = combos.get(id);
         if (cb != null) { finisher(p, cb); return; } // chain again after the Aegis caught them: the launch, not Flagpole
@@ -403,6 +404,8 @@ final class AuratusGem implements Listener {
      * to you, or leave it: it slides out after chain.hook-seconds, and snaps if a wall gets between you.
      */
     private Tether hook(Player p, Target t, boolean throwSound) {
+        // A player in a Pantheon event is never hooked or pulled: the chain catches the spot where they stand instead.
+        if (t.entity() instanceof Player vp && plugin.inPantheonEvent(vp)) t = new Target(vp.getLocation().add(0, vp.getHeight() * 0.6, 0), null, false);
         UUID id = p.getUniqueId();
         stopReel(id);
         stopTether(id);
@@ -696,6 +699,7 @@ final class AuratusGem implements Listener {
     /** Right-click while a hook is in: you're reeled there (no extra charge). */
     private void flyToHook(Player p, Tether t) {
         UUID id = p.getUniqueId();
+        if (plugin.eventRefuses(p, "auratus-chains")) return; // the hook stays in
         tethers.remove(id);
         Reel r = new Reel();
         r.chain.take(t.chain); // the same chain goes on being drawn while you fly
@@ -1056,7 +1060,7 @@ final class AuratusGem implements Listener {
         if (back > 0 && attacker.isValid() && !attacker.isDead()) {
             reflecting.add(attacker.getUniqueId());
             protectionIgnored.add(attacker.getUniqueId());
-            try { attacker.damage(back, p); } finally { reflecting.remove(attacker.getUniqueId()); protectionIgnored.remove(attacker.getUniqueId()); }
+            try { plugin.listener().asAbility(true, () -> attacker.damage(back, p)); } finally { reflecting.remove(attacker.getUniqueId()); protectionIgnored.remove(attacker.getUniqueId()); }
         }
         Vector away = attacker.getLocation().toVector().subtract(p.getLocation().toVector()).setY(0);
         if (away.lengthSquared() > 1e-4) attacker.setVelocity(away.normalize().multiply(0.7).setY(0.25));
@@ -1319,6 +1323,7 @@ final class AuratusGem implements Listener {
     private void hoist(Player p, LivingEntity v) {
         UUID id = p.getUniqueId();
         if (hoists.containsKey(v.getUniqueId())) return;
+        if (plugin.eventRefuses(p, "flagpole") || v instanceof Player vp && plugin.inPantheonEvent(vp)) return; // nobody in an event is hoisted
         flagReady.put(id, now() + ms("flagpole.cooldown-seconds", 25));
         stopTether(id);
         dropFlight(id, false);
@@ -1368,7 +1373,7 @@ final class AuratusGem implements Listener {
         for (int i = 0; i <= points; i++) w.spawnParticle(Particle.DUST, from.clone().add(step.clone().multiply(i / (double) points)), 1, 0, 0, 0, 0,
                 new Particle.DustOptions(i % 2 == 0 ? GOLD : PALE, 1.2f));
         protectionIgnored.add(v.getUniqueId());
-        try { v.damage(finisherRaw(), p); } finally { protectionIgnored.remove(v.getUniqueId()); }
+        try { plugin.listener().asAbility(true, () -> v.damage(finisherRaw(), p)); } finally { protectionIgnored.remove(v.getUniqueId()); }
         double up = RevenantMath.leapSpeedFor(Math.max(1, cfgD("flagpole.finisher-launch-height", 30)));
         if (v.isValid() && !v.isDead()) {
             v.setVelocity(new Vector(0, up, 0));

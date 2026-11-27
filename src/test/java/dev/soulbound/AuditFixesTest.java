@@ -25,18 +25,24 @@ class AuditFixesTest {
         return src.substring(a, b < 0 ? src.length() : b);
     }
 
-    @Test void deathCostsEnergyOnTheGemThatComesBack() throws Exception {
-        String g = section(read("GemListener.java"), "public void onDeath(PlayerDeathEvent e) {", "public void onDeathKeptInventory(");
-        int keep = g.indexOf("pendingRespawnGem.put(victim.getUniqueId(), toKeep.get(0));");
-        int loss = g.indexOf("gems.setEnergy(kept, gems.getEnergy(kept) - loss);");
-        assertTrue(keep > 0 && loss > keep, "the kept copy is taken first, then it loses the energy too");
+    @Test void deathCostsEnergyWhereverTheGemIs() throws Exception {
+        String g = read("GemListener.java");
+        String loss = section(g, "private void deathEnergyLoss(PlayerDeathEvent e) {", "/** Every gem kept through a death");
+        assertTrue(loss.contains("if (kept != null) for (ItemStack g : kept) if (standardGem(g)) losing.add(g);"), "the copies that come back");
+        assertTrue(loss.contains("for (ItemStack it : victim.getInventory().getContents()) if (standardGem(it)) losing.add(it);"),
+                "keepInventory: every slot (hands, hotbar, inventory, armour)");
+        assertTrue(loss.contains("for (ItemStack d : e.getDrops()) if (standardGem(d)) losing.add(d);"), "keep-on-death off: the drops");
+        assertTrue(loss.contains("\" energy → \" + after + \"/10\""), "the player is told");
+        String death = section(g, "public void onDeath(PlayerDeathEvent e) {", "public void onDeathKeptInventory(");
+        assertFalse(death.contains("findGem(victim)"), "no longer only the held gem");
+        assertTrue(section(g, "public void onDeathKeptInventory(", "private void deathEnergyLoss(").contains("if (!inEvent) deathEnergyLoss(e);"),
+                "once keepInventory is final, and never in a Pantheon event");
     }
 
     @Test void keepInventoryNeverGivesASecondGem() throws Exception {
         String g = read("GemListener.java");
-        String h = section(g, "@EventHandler(priority = EventPriority.MONITOR)\n    public void onDeathKeptInventory(", "/** Logged out on the death screen");
-        assertTrue(h.contains("if (!e.getKeepInventory()) return;"));
-        assertTrue(h.contains("if (pendingRespawnGem.remove(id) != null) saveRespawnGems();"), "the gem stayed in the inventory: no copy on respawn");
+        String h = section(g, "public void onDeathKeptInventory(", "private void deathEnergyLoss(");
+        assertTrue(h.contains("if (e.getKeepInventory() && pendingRespawnGem.remove(id) != null) saveRespawnGems();"), "no copy on respawn");
         assertTrue(h.contains("inv.setItemInMainHand(mythic)") && h.contains("inv.setItemInOffHand(mythic)"), "a held mythic isn't lost either");
     }
 
@@ -76,10 +82,12 @@ class AuditFixesTest {
         assertTrue(read("SoulboundGemsPlugin.java").contains("if (mythics != null) mythics.shutdown();"));
     }
 
-    @Test void pristineStagesTickOnceAMinute() throws Exception {
-        String m = read("EnergyManager.java");
-        assertTrue(m.contains("if (now - lastPassive < 60_000L) return;"));
-        assertTrue(m.contains("units != null && units > 0 ? units : null"), "0 is cleared on disk");
+    @Test void pristineStagesAreGone() throws Exception {
+        assertFalse(Files.exists(Path.of("src/main/java/dev/soulbound/EnergyManager.java")), "removed (D8): the real 0-10 energy is untouched");
+        String plugin = read("SoulboundGemsPlugin.java");
+        assertFalse(plugin.contains("EnergyManager") || plugin.contains("energy.passiveTick()") || plugin.contains("energy.save()"));
+        assertFalse(new YamlConfiguration().contains("energy.stage-cooldown-factor"));
+        assertFalse(YamlConfiguration.loadConfiguration(new File("src/main/resources/config.yml")).contains("energy.stage-cooldown-factor"));
     }
 
     @Test void invisibleKillerScrambled() throws Exception {
@@ -107,7 +115,7 @@ class AuditFixesTest {
             }
         }
         assertEquals(List.of(), missing);
-        assertEquals(0.9, c.getDouble("energy.stage-cooldown-factor"));
+        assertTrue(c.getBoolean("energy.glint-at-max"));
         assertEquals(6.5, c.getDouble("prismatic-edge.reach"));
         assertEquals(30, c.getInt("shadow-stalker.base-seconds"));
     }

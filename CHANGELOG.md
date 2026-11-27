@@ -1,3 +1,122 @@
+# Audit decisions: the Pantheon link, event rules, deaths, Broken gems, starter gems
+
+Soulbound Gems together with Pantheon 2.2.0. Every decision from section 4 of AUDIT.md, with the five defaults: 24-block Pantheon arena radius, keep the 4-track eligibility, a Broken ceiling of 40, protect players in events from being pulled, and each gem loses 1 at death.
+
+## Question 0: death energy loss
+- **Before:** only a gem held in the main hand or off hand lost energy, because `findGem` only looks at the hands. A gem anywhere else lost nothing.
+- **Now:** every standard gem the player carries loses `energy.death-loss` (1), in any slot: main hand, off hand, hotbar, main inventory or armour slots. Pockets can't hold gems since the audit.
+- **How:** it applies to the copies that come back on respawn, to the inventory itself when keep-inventory is on, and to the drops when `protection.keep-on-death` is off. It runs at MONITOR, once keep-inventory is final.
+- **The player is told:** "-1 energy → n/10" (with the gem name if they carry more than one).
+- **No loss** for deaths inside a Pantheon event (D3).
+
+## The link (both plugins)
+- **Pantheon** gets a public API that Soulbound reads by reflection: `inEvent`, `eventName`, `eventHud`, `arenaPoints`, `seasonLeaders`, `seasonScore`, `seasonEligible`.
+- **Soulbound** gets `holdActionBar(Player, ms)` and `isInSoulboundEvent(Player)`.
+- **Soft on both sides:** each side checks the other on every call, with no dependency. A missing plugin means "no event, no hold", with at most one log line.
+
+## Decisions
+- **D1, powers in Pantheon events:**
+  - **Config:** `event-blocked-powers` (`all` plus one list per event; groups or single powers).
+    - Defaults: teleport, astral and repurpose in every event, and movement in Motion.
+  - **Refusal:** "ɴᴏᴛ ɪɴ ᴀɴ ᴇᴠᴇɴᴛ", at most every 2 s, and no cooldown or charge is spent.
+  - **Nobody in an event can be:** ridden with Unbounded, caught by Temporal Divinity, pulled by a Rift, or hooked or hoisted by the Auratus.
+  - **Already active when pulled in:**
+    - Projection and Unbounded end through `end()` and leave the player where the event put them.
+    - A rider whose host enters an event goes back to where they started.
+    - The Drift horse is removed.
+  - **Passive effects:** Speed's passive Speed, Flux's flow Speed and Puff's double-jump flight stop in Motion.
+- **D2, land keep-out:** Crisp and Vitality Vortex never change blocks in:
+  - `land.protected` boxes, made with `/bliss landprotect pos1|pos2|add <name>|remove <name>|list`;
+  - 48 blocks around every world spawn;
+  - 8 blocks around the ritual site and the pedestal;
+  - 24 blocks around every Pantheon arena point (Pantheon has points, not boxes).
+- **D3, event deaths:** no energy loss or gain, no Gold Gem socket release, no Revenant shatter, hunts go on, no repurpose. The held mythic stays put.
+- **D4, name scramble:** Pantheon's Teams "eliminated" feed now scrambles invisible players. The Finale and Revenant holder announcements are unchanged.
+- **D5, kill points in Soulbound events:** none during the Finale battle (inside its area) or the Revenant boss fight (the holder, or within `mythics.revenant.boss-radius`, 64). These are logged as "Soulbound event". Capture points still score.
+- **D6, the season leader:**
+  - **Who it is:** the Finale's `auto` leader is now the Solstice season leader through the link: the best season score among players who entered 4 tracks.
+  - **Matching views:** `/standings`, the board (`*`), the weekly post and `/solstice standings winner` mark players who aren't eligible and show the same leader.
+  - **Wording:** `/pantheon board` stays Pantheon-only; its "decides the Relay Gem" line now points to `/standings`.
+- **D7, action-bar hold:**
+  - **What it does:** the gem, mythic, Revenant, Gold Gem, capture, bounty and Amplification bars skip drawing while a hold runs.
+  - **1.5 s holds:** Solstice kill points, combat tag start and end, rule refusals, Motion's countdown and GO, and event refusals.
+  - **Event HUDs:** during a Motion run or a Teams match, the event's own bar wins and the gem HUD stays off.
+- **D8, Pristine stages removed:** `EnergyManager`, its listener, tick, save and messages are gone, along with `energy.stage-cooldown-factor`. `energy.yml` is left on disk, unused.
+  - **New glint:** a gem at 10 shimmers, set in `refreshVisuals` (`energy.glint-at-max: true`). It's looks only.
+- **D9:** `/stalker` is admin-only (`bliss.admin`).
+- **D10:** every standard gem is kept through a death. The old `respawn-gems.yml` format still loads.
+- **D11, Broken (energy 0, every carried standard gem at 0):**
+  - **HUD:** "ʙʀᴏᴋᴇɴ" in bold red, refreshed with the gem HUD tick.
+  - **Damage:** gem abilities do ×2 (`energy.broken.ability-damage-multiplier`), mythics' abilities too (`include-mythics`). It's applied after the ability multiplier and cap, up to `energy.broken.max-damage` 40.
+  - **Every ability path is now marked:**
+    - **newly marked:** Fireball blast, Meteor Shower, Siphon, Heretic saws/slams/mirror, Auratus finisher and Aegis reflect, Revenant Plunge, Golden Drill;
+    - **already marked:** the capped abilities, Beam/Overcharge, and the Auratus chain/Aegis/slam.
+  - **Not doubled:** melee and arrows, and on-hit bonuses that only raise a melee hit (Chad, Overdrive, Ground, the Relay's +5%).
+  - **Biggest hit on a Broken player:** 90 HP before armour, from Overcharge at 200 W. It's already over the ceiling, so it isn't raised. Everything else doubles up to 40.
+  - **One rule change:** a Bottle of Energy now works on a Broken gem (0 → 1). It used to refuse ("Broken gems need a Restoration"). Your test plan uses the bottle to leave Broken.
+
+## Also
+- **Same-IP check:** a warning is logged once per boot, when 4 or more players are online and over half share one IP. It suggests Proxy Protocol (playit.gg tunnel settings plus `proxies.proxy-protocol: true` in paper-global.yml), or `same-ip-check: false`.
+- **Gold Gem previous team:** this was already saved in `gold.yml` (per mark, `prev-team`) and restored. The audit was wrong about that, so there's no change.
+- **Starter gems:**
+  - **The gem:** standard only; `starter-gem.type` (random or a gem), `exclude`, `tier` (1), `energy` (5).
+  - **Where it goes:** off hand if empty, else the inventory, else held in `starter-gems.yml` and retried every 30 s and on join. It's never dropped.
+  - **The message:** a title plus a chat line ("Check #gem-guide").
+  - **Once per player** (by UUID), never re-given.
+  - **Admin:** `/bliss starter give <player>` (refused if they carry a gem or theirs is in the Gold Gem) and `/bliss starter reset <player|all>`.
+
+## Files
+- **Soulbound Gems, new:** `PantheonLink`, `EventBlock`, `ActionBarHold`, `BrokenMath`, `LandKeepOut`, `AuditDecisionsTest`.
+- **Soulbound Gems, deleted:** `EnergyManager`.
+- **Soulbound Gems, changed:**
+  - `SoulboundGemsPlugin` (API, link, hold, event checks, starter);
+  - `GemListener` (deaths, event blocks, HUD hold, Broken, ability marks, Drift, bottle);
+  - `GemManager` (glint);
+  - `AstralSpectate`, `SpectatorSessions` (EVENT and HOST_EVENT ends);
+  - `LandWorks` (keep-out), `Pedestal` (`center()`);
+  - `RelayGem`, `RelayRift`, `TemporalDomain`, `RevenantMace`, `GoldGem`, `AuratusGem`, `MythicListener` (event blocks, ability marks, D3);
+  - `Finale` (season leader, `inBattle`), `BountyHunt`, `Amplification`, `CaptureManager`, `CombatRules`, `RuleCore` (hold);
+  - `ShadowStalkerListener`, `StarterGem` (rewritten), `BlissCommand` (landprotect, starter);
+  - `config.yml`, `plugin.yml`;
+  - tests: `AuditFixesTest`, `AstraTest`, `StarterGemTest`, `SavedDataTest`, `AuratusMathTest`. Those that checked exact lines I changed on purpose were updated to the new lines.
+- **Pantheon 2.2.0:**
+  - `PantheonPlugin` (API), `SoulboundLink` (rewritten), `Arenas` (`all()`), `Solstice`, `SolsticeMath`, `SolsticeCmd`, `SolsticeBoard`, `TeamsPantheon`, `MotionPantheon`, `PantheonCmd`;
+  - `pom.xml`, `plugin.yml`, `README.md`, and the new `LinkTest`.
+
+## Tested
+- Both compile against paper-api 1.21.11. **Soulbound Gems: 304 tests pass. Pantheon: 22 tests pass.**
+- **Covered by tests:**
+  - the event block (blocked in events, allowed outside, groups, Motion only);
+  - land keep-out boxes and the spawn radius;
+  - no death effects in events;
+  - no kill points in the Finale or boss fight;
+  - the season leader (eligible, ties);
+  - the action-bar hold;
+  - every gem kept on death;
+  - energy loss wherever the gem is carried;
+  - the Broken maths and ceiling;
+  - the glint rule;
+  - `/stalker`'s permission;
+  - the starter gem rules (placement, type, exclude);
+  - the shared-IP rule.
+
+## Not tested
+- **Nothing was tested in game,** and neither was the reflection link between the two jars on a server.
+
+## In-game test plan
+1. In a Pantheon Motion run, try Dash, Double Jump, Rewind and Projection: each is refused with the message and no cooldown. Outside the run they work.
+2. Die in a Motion run: energy unchanged. Outside, die once each with the gem in the main hand, off hand, hotbar and main inventory: −1 each time, with the chat line.
+3. Use Crisp at spawn and inside a `/bliss landprotect` box: nothing changes. Outside them: it works.
+4. Kill someone: "+N kill points" stays visible for 1.5 s.
+5. `/turmoil finale auto`: it picks the `/standings` leader (the top eligible player).
+6. `/stalker` as a normal player: no permission.
+7. `/bliss setenergy <me> 10`: the gem shimmers. At 9 it stops.
+8. `/bliss setenergy <me> 0`: red "ʙʀᴏᴋᴇɴ" on the action bar.
+   - A friend hits you with a gem power: double damage (up to 40).
+   - A sword hit: normal damage.
+   - Drink a Bottle of Energy: back to normal.
+9. A new player (or `/bliss starter reset <them>`) joins: a gem lands in the off hand with a title. With a full inventory and off hand, it arrives once there's room.
+
 # Pre-launch audit fixes
 
 The full audit of Soulbound Gems and Pantheon (system map, checklist, decisions, permissions, test plan) is in **AUDIT.md**. This entry lists only what changed in Soulbound Gems; Pantheon is unchanged.

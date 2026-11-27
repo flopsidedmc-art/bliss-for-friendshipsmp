@@ -67,7 +67,7 @@ import java.util.UUID;
  *     gem is locked there and cannot be picked back up. (finale.pedestal.timeout-seconds forces it after a wait.)
  *  1. MERGE: once both are placed, the gems rise, orbit faster and collide, a brown spider web closes over
  *     them, and it bursts as the Relay Gem forms (the optional screen flash fires at that exact moment).
- *  2. FLIGHT: the new Relay Gem streaks to the chosen player (the Pantheon leader).
+ *  2. FLIGHT: the new Relay Gem streaks to the chosen player (the Solstice season leader, through Pantheon).
  *  3. BATTLE: that player fights in their own gear, temporarily maxed (Protection IV, Sharpness V, Efficiency V,
  *     Unbreaking III, Mending). The originals are saved to disk and handed back afterwards.
  *     Everyone fights for the gem. A boss bar "Relay Gem Attunement: N%" fills only while somebody holds the gem,
@@ -162,6 +162,11 @@ public final class Finale implements Listener {
     }
 
     /** Inside the running finale's arena (its starting border around the centre). Crisp leaves the land there alone. */
+    /** The battle phase is running and {@code p} is inside the finale area (Pantheon: no kill points there). */
+    boolean inBattle(Player p) {
+        return phase == Phase.BATTLE && p != null && inArea(p.getLocation());
+    }
+
     boolean inArea(Location l) {
         if (phase == Phase.IDLE || l == null || l.getWorld() == null) return false;
         Location c = center();
@@ -261,7 +266,7 @@ public final class Finale implements Listener {
 
         UUID tid;
         if (targetArg.equalsIgnoreCase("auto")) {
-            Object r = pantheonLeader();
+            Object r = seasonLeader();
             if (r instanceof String err) return err;
             tid = (UUID) r;
         } else {
@@ -296,52 +301,20 @@ public final class Finale implements Listener {
         return null;
     }
 
-    /** Reads the Pantheon plugin's points.yml and returns the top eligible player (UUID) or an error String. */
-    private Object pantheonLeader() {
-        File dir = new File(plugin.getDataFolder().getParentFile(), "Pantheon");
-        File pts = new File(dir, "points.yml");
-        if (!pts.exists()) return "Pantheon's points.yml was not found. Use /turmoil finale <player> instead.";
-        File cfgFile = new File(dir, "config.yml");
-        YamlConfiguration pc = cfgFile.exists() ? YamlConfiguration.loadConfiguration(cfgFile) : new YamlConfiguration();
-        int bestOf = pc.getInt("scoring.best-of", 4);
-        int minTracks = pc.getInt("scoring.min-tracks", 4);
-
-        ConfigurationSection root = YamlConfiguration.loadConfiguration(pts).getConfigurationSection("players");
-        if (root == null) return "Pantheon has no scores yet.";
-        int best = -1;
-        List<UUID> leaders = new ArrayList<>();
-        for (String key : root.getKeys(false)) {
-            UUID id;
-            try {
-                id = UUID.fromString(key);
-            } catch (IllegalArgumentException ex) {
-                continue;
-            }
-            ConfigurationSection s = root.getConfigurationSection(key);
-            if (s == null) continue;
-            int entered = 0;
-            List<Integer> values = new ArrayList<>();
-            for (String track : new String[] {"DUELS", "TEAMS", "COMMAND", "MOTION", "SIGNAL"}) {
-                if (s.getBoolean("entered." + track, false)) entered++;
-                values.add(s.getInt("points." + track, 0));
-            }
-            if (entered < minTracks) continue;
-            values.sort(java.util.Comparator.reverseOrder());
-            int total = 0;
-            for (int i = 0; i < Math.min(bestOf, values.size()); i++) total += values.get(i);
-            if (total > best) {
-                best = total;
-                leaders.clear();
-                leaders.add(id);
-            } else if (total == best) {
-                leaders.add(id);
-            }
-        }
-        if (leaders.isEmpty()) return "No eligible player in Pantheon yet (needs " + minTracks + " tracks entered).";
+    /**
+     * The Solstice season leader through the Pantheon link: the best season score (Pantheon points + kill points, as
+     * /standings shows) among players who entered enough Pantheon tracks. Returns their UUID or an error String.
+     */
+    private Object seasonLeader() {
+        PantheonLink link = plugin.pantheon();
+        List<UUID> leaders = link == null ? null : link.seasonLeaders();
+        if (leaders == null) return "Pantheon isn't running, so there's no season leader. Use /turmoil finale <player> instead.";
+        if (leaders.isEmpty()) return "No eligible player in the season standings yet (they need enough Pantheon tracks entered).";
         if (leaders.size() > 1) {
             List<String> names = new ArrayList<>();
             for (UUID id : leaders) names.add(nameOf(id));
-            return "Tied for first: " + String.join(", ", names) + ". Settle it, then run /turmoil finale <player>.";
+            return "Tied for first in the season (" + link.seasonScore(leaders.get(0)) + "): " + String.join(", ", names)
+                    + ". Settle it, then run /turmoil finale <player>.";
         }
         return leaders.get(0);
     }

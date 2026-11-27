@@ -170,9 +170,45 @@ final class LandWorks implements Listener {
 
     // ------------------------------------------------------------------ which blocks
 
-    /** Off limits: a running capture point, a Rift blocked area, the finale's arena. */
+    private LandKeepOut keepOut;
+    private long keepOutAt;
+
+    /**
+     * The keep-out areas (LandKeepOut), rebuilt at most every 5 s: land.protected boxes, land.spawn-radius around every
+     * world's spawn, land.site-radius around the Gold Gem ritual site and the pedestal, land.pantheon-radius around every
+     * Pantheon arena point.
+     */
+    LandKeepOut keepOut() {
+        long now = System.currentTimeMillis();
+        if (keepOut != null && now - keepOutAt < 5000) return keepOut;
+        LandKeepOut k = new LandKeepOut();
+        var c = plugin.getConfig();
+        ConfigurationSection boxes = c.getConfigurationSection("land.protected");
+        if (boxes != null) for (String name : boxes.getKeys(false)) {
+            ConfigurationSection b = boxes.getConfigurationSection(name);
+            if (b == null) continue;
+            k.box(LandKeepOut.Box.of(b.getString("world", "world"), b.getInt("x1"), b.getInt("y1"), b.getInt("z1"), b.getInt("x2"), b.getInt("y2"), b.getInt("z2")));
+        }
+        double spawn = c.getDouble("land.spawn-radius", 48), site = c.getDouble("land.site-radius", 8), arena = c.getDouble("land.pantheon-radius", 24);
+        for (World w : Bukkit.getWorlds()) k.circle(w.getName(), w.getSpawnLocation().getX(), w.getSpawnLocation().getZ(), spawn);
+        Location ritual = plugin.gold() == null ? null : plugin.gold().ritualSite();
+        if (ritual != null && ritual.getWorld() != null) k.circle(ritual.getWorld().getName(), ritual.getBlockX() + 0.5, ritual.getBlockZ() + 0.5, site);
+        Location ped = plugin.pedestal() == null ? null : plugin.pedestal().center();
+        if (ped != null && ped.getWorld() != null) k.circle(ped.getWorld().getName(), ped.getBlockX() + 0.5, ped.getBlockZ() + 0.5, site);
+        if (plugin.pantheon() != null) for (Location p : plugin.pantheon().arenaPoints())
+            if (p.getWorld() != null) k.circle(p.getWorld().getName(), p.getX(), p.getZ(), arena);
+        keepOut = k;
+        keepOutAt = now;
+        return k;
+    }
+
+    /** A box was added or removed (/bliss landprotect): rebuild now. */
+    void keepOutChanged() { keepOut = null; }
+
+    /** Off limits: a running capture point, a Rift blocked area, the finale's arena, and every keep-out area (keepOut). */
     boolean protectedSpot(Block b) {
         Location l = b.getLocation();
+        if (keepOut().contains(b.getWorld().getName(), b.getX(), b.getY(), b.getZ())) return true;
         if (plugin.captures() != null && plugin.captures().riftBlocked(l) != null) return true;
         if (plugin.relay() != null && plugin.relay().rift() != null && plugin.relay().rift().configuredBlock(l) != null) return true;
         return plugin.finale() != null && plugin.finale().inArea(l);

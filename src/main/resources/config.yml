@@ -9,7 +9,11 @@ energy:
   death-loss: 1
   # if killer is at max (10), victim drops a bottle instead of killer gaining
   drop-bottle-at-max: true
-  stage-cooldown-factor: 0.9 # Pristine-stage cooldowns (EnergyManager): each stage multiplies cooldowns by this
+  glint-at-max: true # a gem at 10 (Pristine +5) shimmers with an enchantment glint (looks only: no enchantment, no power)
+  broken: # a player whose gem is Broken (0): "ʙʀᴏᴋᴇɴ" on the action bar, and gem abilities hurt them more
+    ability-damage-multiplier: 2.0 # every gem ability's damage on them, after the ability multiplier and cap; melee and arrows stay 1x
+    include-mythics: true # also the mythics' abilities (Auratus, Heretic, Revenant, the Gold Gem's Golden Drill)
+    max-damage: 40.0 # the most one doubled hit can reach, in HP before armour (0 = no ceiling); a hit already above it stays as it was
 
 cooldowns-seconds:
   # Fallbacks only — real values are per-ability in GemListener#cooldownMs.
@@ -453,6 +457,7 @@ mythics:
   # The Revenant: the final boss weapon (a mace, not a gem). Only from /revenant give; see REVENANT.md.
   revenant:
     enabled: true
+    boss-radius: 64 # during the boss fight, kills within this many blocks of the holder give no Solstice kill points (Pantheon)
     plunge: # [Right-click] leap up, then slam down where you look
       charges: 2
       recharge-seconds: 12 # each charge on its own timer
@@ -945,8 +950,12 @@ puff:
 
 # Starter gems: a player joining for the first time gets a random Tier 1 standard gem (never a mythic), with
 # energy.start energy. Once per player (starter-gems.yml remembers who), so losing a gem later never hands out another.
-starter-gem:
+starter-gem: # a player's first join: one standard gem, once per player (starter-gems.yml; /bliss starter reset wipes it)
   enabled: true
+  tier: 1
+  energy: 5
+  type: random # random, or one gem: astra, fire, flux, life, puff, speed, strength, wealth
+  exclude: [] # gems a random starter is never, e.g. [astra]
 
 # The Gold Gem (/goldgem, see the changelog): admins turn a player's gem into one; that gem is its core. It sockets the
 # gems of marked players it repurposes (one of each type, 8 in all) and works like whichever is active (sneak + F, or
@@ -1021,3 +1030,26 @@ shadow-stalker:
   trail-interval-ticks: 20
   trail-height: 25.0
   trail-cube-spacing: 2.5
+
+# Powers that don't work for a player in a running Pantheon event (needs the Pantheon plugin). "all" applies in every
+# event, then one list per event type. Each entry is a group or a single power:
+#   teleport: rewind, rift, thunderstep, temporal-divinity, revenant-plunge, revenant-rising, revenant-undertow
+#   astral: projection, unbounded (also: nobody can Unbounded INTO a player who's in an event)
+#   repurpose: the Gold Gem repurpose (an event death is never a repurpose)
+#   movement: dash, double-jump, drift, golden-drill, bloodlinking, auratus-chains, flagpole, overdrive-speed,
+#             thunderstep, blur, speedy-storm, speed-passive (Speed's passive Speed), flow-speed (Flux's passive Speed)
+# A refusal costs no cooldown and shows "Not in an event" (at most every 2 s). Powers never pull or teleport a player
+# who's in an event (Temporal Divinity, the Rift), and projecting / Unbounded players pulled into one come out safely.
+event-blocked-powers:
+  all: [teleport, astral, repurpose]
+  duels: []
+  teams: []
+  command: []
+  motion: [movement]
+
+# Where Crisp and Vitality Vortex never change a block (capture points keep their own protection while running).
+land:
+  spawn-radius: 48 # around every world's spawn, every height
+  site-radius: 8 # around the Gold Gem ritual site and the pedestal
+  pantheon-radius: 24 # around every point Pantheon's events use (spawns, lobbies, zones, course points, checkpoints)
+  protected: {} # boxes, made with /bliss landprotect pos1, pos2, add <name>; e.g. hub: {world: world, x1: 0, y1: 60, z1: 0, x2: 40, y2: 120, z2: 40}

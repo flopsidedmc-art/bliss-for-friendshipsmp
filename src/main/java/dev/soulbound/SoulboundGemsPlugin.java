@@ -27,9 +27,6 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private CameraOverlay overlay;
     private AuratusGem auratus;
 
-    /** Pristine-stage energy per player per gem (showcase parity). Public by design. */
-    public EnergyManager energy;
-
     public GemManager gems() { return gemManager; }
     public GemListener listener() { return listener; }
     public MythicListener mythics() { return mythics; }
@@ -52,6 +49,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private AstralSpectate astral;
     AstralSpectate astral() { return astral; }
     private LandWorks land;
+    private StarterGem starter;
+    StarterGem starter() { return starter; }
+    LandWorks land() { return land; }
     private CrispLand crisp;
     CrispLand crisp() { return crisp; }
     private VortexDrain vortex;
@@ -70,6 +70,41 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private GoldGem gold;
     GoldGem gold() { return gold; }
     private MaceRules maceRules;
+    private PantheonLink pantheon;
+    PantheonLink pantheon() { return pantheon; }
+    private EventBlock eventBlock;
+    EventBlock eventBlock() { return eventBlock; }
+
+    /** In a Pantheon event where this power is blocked: says so (at most every 2 s) and returns true. */
+    boolean eventRefuses(Player p, String power) { return eventBlock != null && eventBlock.refuse(p, power); }
+
+    /** The same without a message (passives, and players a power would move). */
+    boolean eventBlocks(Player p, String power) { return eventBlock != null && eventBlock.blockedFor(p, power); }
+
+    /** In any running Pantheon event. */
+    boolean inPantheonEvent(Player p) { return pantheon != null && pantheon.inEvent(p); }
+    private final ActionBarHold actionBarHold = new ActionBarHold();
+
+    // ------------------------------------------------------------------ public API (Pantheon reads it by reflection)
+
+    /** The gem, mythic, Revenant and Gold Gem HUDs leave this player's action bar alone for {@code ms} (a one-off message). */
+    public void holdActionBar(Player p, long ms) {
+        if (p != null) actionBarHold.hold(p.getUniqueId(), ms, System.currentTimeMillis());
+    }
+
+    /** In a Soulbound event: the Finale battle (inside its area) or the Revenant boss fight. Capture points don't count. */
+    public boolean isInSoulboundEvent(Player p) {
+        if (p == null) return false;
+        return finale != null && finale.inBattle(p) || revenant != null && revenant.inBossFight(p);
+    }
+
+    /** Our HUDs skip a draw: a one-off message holds the bar, or the player's Pantheon event draws its own HUD. */
+    boolean hudHeld(Player p) {
+        if (actionBarHold.held(p.getUniqueId(), System.currentTimeMillis())) return true;
+        return pantheon != null && pantheon.eventHud(p);
+    }
+
+    void forgetHold(java.util.UUID id) { actionBarHold.forget(id); }
 
     /** How a message names this player: a scramble while they're invisible (rules.invisibility), else their name. */
     String shownName(Player p) { return combatRules == null ? p.getName() : combatRules.shownName(p); }
@@ -90,7 +125,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         migrateBalance();
         saveConfig();
         GemNames.use(GemNames.load(new java.io.File(getDataFolder(), "names.yml"))); // before any gem item is made
-        energy = new EnergyManager(this);
+        pantheon = new PantheonLink(this); // soft link: events, arenas and the season leader (nothing if Pantheon isn't there)
+        eventBlock = new EventBlock(this); // powers blocked in Pantheon events (event-blocked-powers)
         gemManager = new GemManager(this);
         overlay = new CameraOverlay(this);
         mythics = new MythicListener(this);
@@ -126,7 +162,9 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         amplification = new Amplification(this); // Wealth's Amplification: the buff and getting every item back to normal
         Bukkit.getPluginManager().registerEvents(amplification, this);
         amplification.start();
-        Bukkit.getPluginManager().registerEvents(new StarterGem(this), this); // a random Tier 1 gem on a player's first join
+        starter = new StarterGem(this); // a starter gem on a player's first join (starter-gem: in config.yml)
+        Bukkit.getPluginManager().registerEvents(starter, this);
+        starter.start();
         gold = new GoldGem(this); // the Gold Gem: sockets, marks, repurposing, the ritual, Snap and Golden Drill
         Bukkit.getPluginManager().registerEvents(gold, this);
         GoldCommand goldCommand = new GoldCommand(this);
@@ -137,7 +175,6 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         flux = new FluxPower(this); // Flux: the charged beam, Ground, Overcharge, Overdrive's meter, Shocking Chance
         Bukkit.getPluginManager().registerEvents(flux, this);
         flux.start();
-        Bukkit.getPluginManager().registerEvents(energy, this);
         Bukkit.getPluginManager().registerEvents(edge, this);
         Bukkit.getPluginManager().registerEvents(stalker, this);
         Bukkit.getPluginManager().registerEvents(turmoil, this);
@@ -240,7 +277,6 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             mythics.tick();
             progression.tick();
             pedestal.tick();
-            energy.passiveTick();
         }, 20L, period);
 
         Bukkit.getScheduler().runTaskTimer(this, () -> relay.tick(), 1L, 1L);
@@ -266,7 +302,6 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (finale != null) finale.shutdown();
         if (turmoil != null && turmoil.isActive()) turmoil.stop();
         if (stalker != null) stalker.shutdown();
-        if (energy != null) energy.save();
         if (overlay != null) overlay.clearAll(); // everyone's real helmet back
         if (loose != null) loose.shutdown();
         if (prophet != null) prophet.save();

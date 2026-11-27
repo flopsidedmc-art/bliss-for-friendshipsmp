@@ -79,7 +79,7 @@ class AuratusMathTest {
         assertTrue(g.contains("e.setDamage(org.bukkit.event.entity.EntityDamageEvent.DamageModifier.MAGIC, 0)"), "Protection's share comes off");
         assertFalse(g.contains("DamageModifier.ARMOR"), "armour's share is left as it is");
         for (String s : new String[] {"hit(v, cfgD(\"chain.hit-damage\"", "hit(v, cfgD(\"aegis.strike-damage\"", "hit(v, dmg, p);",
-                "protectionIgnored.add(v.getUniqueId());\n        try { v.damage(finisherRaw(), p); }", "protectionIgnored.add(attacker.getUniqueId());"})
+                "protectionIgnored.add(v.getUniqueId());\n        try { plugin.listener().asAbility(true, () -> v.damage(finisherRaw(), p)); }", "protectionIgnored.add(attacker.getUniqueId());"})
             assertTrue(g.contains(s), "every Auratus hit ignores Protection: " + s);
         assertFalse(g.contains("plugin.listener().abilityHit("), "none goes through the x3 multiplier any more");
     }

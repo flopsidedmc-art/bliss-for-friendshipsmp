@@ -73,7 +73,8 @@ public class GemListener implements Listener {
     private final Map<UUID, Long> fluxBurstCooldown = new HashMap<>();
     private final Map<UUID, Integer> hitCount = new HashMap<>();
     private final Map<UUID, Boolean> chadArmed = new HashMap<>();
-    private final Map<UUID, ItemStack> pendingRespawnGem = new HashMap<>();
+    private final Map<UUID, List<ItemStack>> pendingRespawnGem = new HashMap<>(); // every standard gem kept through a death
+    private final Map<UUID, Boolean> deathInEvent = new HashMap<>(); // this death happened inside a Pantheon event (D3)
     /** A held mythic taken out of the hand at death, until the death is over (MONITOR puts it back under keepInventory). */
     private final Map<UUID, ItemStack> mythicTakenAtDeath = new HashMap<>();
     private final Map<UUID, Boolean> mythicTakenFromOffhand = new HashMap<>();
@@ -186,7 +187,12 @@ public class GemListener implements Listener {
         }
         var r = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(dataFile("respawn-gems.yml"));
         for (String id : r.getKeys(false)) {
-            try { pendingRespawnGem.put(UUID.fromString(id), GoldGem.decode(r.getString(id))); }
+            try {
+                List<ItemStack> kept = new ArrayList<>();
+                if (r.isList(id)) for (String enc : r.getStringList(id)) kept.add(GoldGem.decode(enc));
+                else kept.add(GoldGem.decode(r.getString(id))); // the old one-gem format
+                if (!kept.isEmpty()) pendingRespawnGem.put(UUID.fromString(id), kept);
+            }
             catch (RuntimeException e) { plugin.getLogger().warning("respawn-gems.yml: skipping " + id + " (" + e.getMessage() + ")"); }
         }
     }
@@ -200,7 +206,7 @@ public class GemListener implements Listener {
     /** A gem kept through a death waits here until its owner respawns, so a restart (or a logout on the death screen) can't lose it. */
     private void saveRespawnGems() {
         var y = new org.bukkit.configuration.file.YamlConfiguration();
-        for (var e : pendingRespawnGem.entrySet()) y.set(e.getKey().toString(), GoldGem.encode(e.getValue()));
+        for (var e : pendingRespawnGem.entrySet()) y.set(e.getKey().toString(), e.getValue().stream().map(GoldGem::encode).toList());
         try { y.save(dataFile("respawn-gems.yml")); } catch (java.io.IOException e) { plugin.getLogger().warning("Couldn't save respawn-gems.yml: " + e.getMessage()); }
     }
 
@@ -250,6 +256,16 @@ public class GemListener implements Listener {
     /** Above zero only while abilityDamage is dealing its hit, so the cap applies to that hit alone. */
     private int abilityHits;
     private int uncappedHits; // the Energy Beam: an ability hit past the cap (Overcharge reaches flux.overcharge.max-damage)
+    /** Above zero while gem (standard) or mythic ability damage is being dealt: a Broken victim takes it doubled (D11). */
+    private int gemAbilityHits, mythicAbilityHits;
+    private static final Component BROKEN_BAR = LegacyComponentSerializer.legacySection().deserialize("§c§l" + SmallCaps.of("Broken"));
+    static final org.bukkit.NamespacedKey ABILITY_PROJECTILE = new org.bukkit.NamespacedKey("soulboundgems", "ability_projectile");
+
+    /** Runs {@code hit}, marking the damage it deals as ability damage (standard gem or mythic) for Broken victims. */
+    void asAbility(boolean mythic, Runnable hit) {
+        if (mythic) mythicAbilityHits++; else gemAbilityHits++;
+        try { hit.run(); } finally { if (mythic) mythicAbilityHits--; else gemAbilityHits--; }
+    }
 
     /**
      * Flat damage from a standard-gem ability (Crisp, Breezy Bash, Dash, Kinetic Burst, Energy Beam).
@@ -269,11 +285,13 @@ public class GemListener implements Listener {
     private void abilityDamage(LivingEntity victim, double base, Player source, boolean pierce) {
         double scaled = base * Math.max(0.0, plugin.getConfig().getDouble("ability-damage.multiplier", 3.0));
         abilityHits++;
+        gemAbilityHits++;
         try {
             if (pierce && plugin.getConfig().getBoolean("ability-damage.pierce-armor", true)) victim.damage(scaled, piercing(source));
             else victim.damage(scaled, source);
         } finally {
             abilityHits--;
+            gemAbilityHits--;
         }
     }
 
@@ -286,7 +304,8 @@ public class GemListener implements Listener {
     void beamHit(LivingEntity victim, double raw, Player source) {
         abilityHits++;
         uncappedHits++;
-        try { victim.damage(Math.max(0, raw), source); } finally { uncappedHits--; abilityHits--; }
+        gemAbilityHits++;
+        try { victim.damage(Math.max(0, raw), source); } finally { uncappedHits--; abilityHits--; gemAbilityHits--; }
     }
 
     void beamUsed(Player p) { used(p, GemNames.tx("Energy Beam")); }
@@ -300,19 +319,51 @@ public class GemListener implements Listener {
     /** The Auratus' chains, Aegis and slam: raw HP (no multiplier), the ability-damage cap, armour counts (AuratusGem drops Protection). */
     void rawAbilityHit(LivingEntity victim, double raw, Player source) {
         abilityHits++;
-        try { victim.damage(Math.max(0, raw), source); } finally { abilityHits--; }
+        mythicAbilityHits++; // the Auratus
+        try { victim.damage(Math.max(0, raw), source); } finally { abilityHits--; mythicAbilityHits--; }
     }
 
     /** Raw damage (no multiplier or cap) that skips armour points when ability-damage.pierce-armor is on: the Heretic's saws and slams. */
     void pierceHit(LivingEntity victim, double amount, Player source) {
-        if (source == null) { victim.damage(amount); return; }
-        if (plugin.getConfig().getBoolean("ability-damage.pierce-armor", true)) victim.damage(amount, piercing(source));
-        else victim.damage(amount, source);
+        asAbility(true, () -> { // the Heretic's saws and slams
+            if (source == null) victim.damage(amount);
+            else if (plugin.getConfig().getBoolean("ability-damage.pierce-armor", true)) victim.damage(amount, piercing(source));
+            else victim.damage(amount, source);
+        });
     }
 
     /** Magic from the caster: armour points don't reduce it, Protection does. Shields don't block it. */
     private static DamageSource piercing(Player source) {
         return DamageSource.builder(DamageType.INDIRECT_MAGIC).withCausingEntity(source).withDirectEntity(source).build();
+    }
+
+    /** Broken (D11): they carry a standard gem and every standard gem they carry is at 0. */
+    boolean isBroken(Player p) {
+        List<Integer> energies = new ArrayList<>();
+        for (ItemStack it : p.getInventory().getContents()) if (standardGem(it)) energies.add(gems.getEnergy(it));
+        return BrokenMath.broken(energies);
+    }
+
+    /**
+     * A Broken player takes energy.broken.ability-damage-multiplier (2x) from every gem ability, and from the mythics'
+     * abilities with energy.broken.include-mythics, from any player. After the ability multiplier and cap (HIGH), so it
+     * doubles hits past the cap too, up to energy.broken.max-damage (never below the hit as it was). Melee and arrows
+     * stay as they are.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBrokenVictim(EntityDamageEvent e) {
+        if (!(e.getEntity() instanceof Player v)) return;
+        boolean std = gemAbilityHits > 0, mythic = mythicAbilityHits > 0;
+        if (e instanceof EntityDamageByEntityEvent by) {
+            if (by.getDamager().getPersistentDataContainer().has(ABILITY_PROJECTILE, org.bukkit.persistence.PersistentDataType.BYTE)) std = true;
+            if (by.getDamager() instanceof Player a && plugin.gold() != null && plugin.gold().drilling(a)) mythic = true;
+            if (by.getDamager().equals(v)) return; // never your own power
+        }
+        if (mythic && !plugin.getConfig().getBoolean("energy.broken.include-mythics", true)) mythic = false;
+        if (!std && !mythic) return;
+        if (!isBroken(v)) return;
+        e.setDamage(BrokenMath.damage(e.getDamage(), plugin.getConfig().getDouble("energy.broken.ability-damage-multiplier", 2.0),
+                plugin.getConfig().getDouble("energy.broken.max-damage", 40.0)));
     }
 
     /** Runs after onHit (NORMAL) has applied the holder's bonuses. */
@@ -399,6 +450,11 @@ public class GemListener implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             drawChadDots(p, now);
             ItemStack gem = findGem(p);
+            // Broken (D11): nothing on the gem works, so its HUD is the word itself, always (held or not).
+            if ((gem == null || standardGem(gem) && gems.getEnergy(gem) <= 0) && isBroken(p)) {
+                if (!plugin.hudHeld(p)) p.sendActionBar(BROKEN_BAR);
+                continue;
+            }
             if (gem == null) continue;
             gems.styleLore(gem); // gems made before small-caps lore switch over when held
             GemType type = gems.getType(gem);
@@ -422,7 +478,7 @@ public class GemListener implements Listener {
             // Disabled gems show dark status and grant nothing
             if (isGemDisabled(p)) {
                 ItemStack heldD = heldGem(p);
-                if (heldD != null && gems.getType(heldD) == type) {
+                if (heldD != null && gems.getType(heldD) == type && !plugin.hudHeld(p)) {
                     Long until = gemDisabledUntil.get(p.getUniqueId());
                     long secs = (until == null) ? 0 : Math.max(0, (until - now) / 1000);
                     p.sendActionBar(Component.text(ChatColor.DARK_PURPLE + "✦ GEM DISABLED " + secs + "s"));
@@ -430,10 +486,20 @@ public class GemListener implements Listener {
                 continue;
             }
 
+            // The Drift horse never carries anyone through a Pantheon event: dismounted and gone.
+            if (p.getVehicle() != null && p.getVehicle().getPersistentDataContainer().has(DRIFT_HORSE, org.bukkit.persistence.PersistentDataType.BYTE)
+                    && plugin.inPantheonEvent(p)) {
+                Entity horse = p.getVehicle();
+                horse.eject();
+                horse.remove();
+            }
+
             // Puff Double Jump: grant flight while grounded so space-double-tap can jump
             if (type == GemType.PUFF && EnergyStage.allowsPassives(energy)
                     && (p.getGameMode() == org.bukkit.GameMode.SURVIVAL || p.getGameMode() == org.bukkit.GameMode.ADVENTURE)) {
-                if (p.isOnGround() && !p.getAllowFlight()) p.setAllowFlight(true);
+                boolean blockedJump = plugin.eventBlocks(p, "double-jump"); // a Pantheon event (Motion): no double jump
+                if (blockedJump && p.getAllowFlight() && !p.isFlying()) p.setAllowFlight(false);
+                else if (!blockedJump && p.isOnGround() && !p.getAllowFlight()) p.setAllowFlight(true);
             }
 
             // Flux Flow State: momentum builds speed + mining haste, then decays
@@ -448,13 +514,14 @@ public class GemListener implements Listener {
                 flowMove.put(p.getUniqueId(), move);
                 int mine = Math.max(0, fluxOf(flowMine, p.getUniqueId()) - 1);
                 flowMine.put(p.getUniqueId(), mine);
-                if (move >= 7) p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, Math.min(2, move / 7 - 1), true, false, false));
+                if (move >= 7 && !plugin.eventBlocks(p, "flow-speed"))
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, Math.min(2, move / 7 - 1), true, false, false));
                 if (mine >= 7) p.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, 60, Math.min(2, mine / 7 - 1), true, false, false));
             }
 
             // Actionbar for held gem (accurate live status)
             ItemStack held = heldGem(p);
-            if (held != null) {
+            if (held != null && !plugin.hudHeld(p)) { // a one-off message (1.5 s) or a Pantheon event's own HUD has the bar
                 if (plugin.revenant() == null || !plugin.revenant().hudActive(p)) sendActionbar(p, held); // the Revenant HUD has the bar
                 if (type == GemType.STRENGTH && (plugin.bounty() == null || !plugin.bounty().hunting(p)))
                     proximityHint(p, energy); // a hunt shows its own time instead (BountyHunt)
@@ -496,7 +563,8 @@ public class GemListener implements Listener {
                 }
                 break;
             case SPEED:
-                p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 80, Math.max(0, ampSpd), true, false, false));
+                if (!plugin.eventBlocks(p, "speed-passive")) // a Pantheon event (Motion): no passive Speed, and it wears off in 4 s
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 80, Math.max(0, ampSpd), true, false, false));
                 // Dolphin's Grace only in water with no boots
                 boolean inWater = p.getLocation().getBlock().isLiquid();
                 boolean noBoots = p.getInventory().getBoots() == null || p.getInventory().getBoots().getType() == Material.AIR;
@@ -865,6 +933,8 @@ public class GemListener implements Listener {
         if (!blurRuns.isEmpty()) endBlursOf(p.getUniqueId(), false); // no clones left behind
         trackAlertUntil.remove(p.getUniqueId());
         clearAstraDaggers(p.getUniqueId());
+        plugin.forgetHold(p.getUniqueId());
+        if (plugin.eventBlock() != null) plugin.eventBlock().forget(p.getUniqueId());
     }
 
     private boolean isCriticalHit(Player p) {
@@ -1054,6 +1124,7 @@ public class GemListener implements Listener {
             if (!right) return;
             long rem2 = cdRemain(p, "dash");
             if (rem2 > 0) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "dash")) return; // a Pantheon event (event-blocked-powers): no cooldown spent
             cdStart(p, "dash", cooldownMs("dash", energy));
             useDash(p, energy);
             return;
@@ -1107,6 +1178,7 @@ public class GemListener implements Listener {
             if (left) { fluxFire(p, energy); return; }
             // Kinetic Overdrive: only when its meter is full (FluxPower fills it from what happens around you); it empties
             if (plugin.flux() == null || !plugin.flux().overdriveFull(p)) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "overdrive-speed")) return; // the meter stays full
             plugin.flux().emptyOverdrive(p);
             useOverdrive(p, energy);
             return;
@@ -1133,6 +1205,8 @@ public class GemListener implements Listener {
             // Silenced — no chat spam
             return;
         }
+        if (type == GemType.PUFF && plugin.eventRefuses(p, "dash")) return;
+        if (type == GemType.SPEED && plugin.eventRefuses(p, "speedy-storm")) return;
         cdStart(p, "power:" + type.name(), cooldownMs("power", energy));
         usePower(p, type, tier, energy);
     }
@@ -1172,6 +1246,7 @@ public class GemListener implements Listener {
             // Thunderstep has an ordinary cooldown; the charge pool belongs to Speedy Storm.
             long rem = cdRemain(p, "thunderstep");
             if (rem > 0) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "thunderstep")) return;
             cdStart(p, "thunderstep", cooldownMs("thunderstep", energy));
             useThunderstep(p, energy);
             return;
@@ -1179,6 +1254,7 @@ public class GemListener implements Listener {
         if (type == GemType.PUFF) {
             long rem = cdRemain(p, "doublejump");
             if (rem > 0) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "double-jump")) return;
             cdStart(p, "doublejump", cooldownMs("doublejump", energy));
             useDoubleJump(p);
             return;
@@ -1187,6 +1263,7 @@ public class GemListener implements Listener {
             if (isGemDisabled(p)) { /* Silenced */ return; }
             long rem = cdRemain(p, "drift");
             if (rem > 0) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "drift")) return;
             cdStart(p, "drift", 15_000L);
             useDimensionalDrift(p, tier, energy);
             return;
@@ -1433,7 +1510,8 @@ public class GemListener implements Listener {
             if (distance >= reach) continue;
             double impact = (1.0 - distance / reach) * fireballExposure(center, victim);
             if (impact <= 0) continue;
-            victim.damage(((impact * impact + impact) / 2.0 * 7.0 * reach + 1.0) * multiplier, built);
+            double blast = ((impact * impact + impact) / 2.0 * 7.0 * reach + 1.0) * multiplier;
+            asAbility(false, () -> victim.damage(blast, built)); // the Fireball: ability damage for Broken victims
         }
     }
 
@@ -1577,6 +1655,7 @@ public class GemListener implements Listener {
             meteorLastShot.put(victimId, now);
             Location above = v.getLocation().clone().add((Math.random() - 0.5) * 8, 6 + Math.random() * 3, (Math.random() - 0.5) * 8);
             var fb = v.getWorld().spawn(above, org.bukkit.entity.SmallFireball.class);
+            fb.getPersistentDataContainer().set(ABILITY_PROJECTILE, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1); // Meteor Shower
             Vector dir = v.getLocation().toVector().subtract(above.toVector()).normalize().multiply(0.8);
             fb.setVelocity(dir);
             fb.setIsIncendiary(true);
@@ -2479,6 +2558,8 @@ public class GemListener implements Listener {
         long now = System.currentTimeMillis();
         Long last = unboundedLast.get(p.getUniqueId());
         if (last != null && now - last < 30_000) return;
+        if (plugin.eventRefuses(p, "unbounded")) return;
+        if (plugin.inPantheonEvent(host)) { if (plugin.eventBlock() != null) plugin.eventBlock().say(p); return; } // never into an event
         if (plugin.astral() == null || !plugin.astral().startUnbounded(p, host)) return;
         unboundedLast.put(p.getUniqueId(), now);
         usedOn(p, GemNames.tx("Unbounded"), host.getName());
@@ -2492,6 +2573,7 @@ public class GemListener implements Listener {
     /** Astral Projection [Sneak + right-click] T2: out of your body as a spectator, your body left behind (AstralSpectate). */
     private void useProjection(Player p, int energy) {
         if (cdRemain(p, "projection") > 0) return; // Silenced
+        if (plugin.eventRefuses(p, "projection")) return;
         if (plugin.astral() == null || !plugin.astral().startProjection(p)) return;
         endVolley(p.getUniqueId(), false);
         cdStart(p, "projection", cooldownMs("projection", energy));
@@ -2767,7 +2849,7 @@ public class GemListener implements Listener {
                 p.setHealth(p.getHealth() + heal);
                 for (Entity en : p.getNearbyEntities(5, 5, 5)) {
                     if (en instanceof LivingEntity le && !en.getUniqueId().equals(p.getUniqueId())) {
-                        le.damage(2.0, p);
+                        asAbility(false, () -> le.damage(2.0, p)); // Siphon
                     }
                 }
                 GemSounds.play(plugin, "life.siphon", p.getLocation());
@@ -2852,10 +2934,10 @@ public class GemListener implements Listener {
         }
         switch (kind) {
             case "energybottle" -> {
-                int slot = inventoryGemSlot(p, g -> { int en = gems.getEnergy(g); return en > 0 && en < 10; });
+                int slot = inventoryGemSlot(p, g -> gems.getEnergy(g) < 10); // a Broken gem (0) can drink it too: out of Broken (D11)
                 if (slot < 0) {
                     if (onlyGold(p)) p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
-                    else if (inventoryGemSlot(p, g -> true) >= 0) p.sendMessage(ChatColor.RED + "Cannot absorb: your gem is Broken or already Pristine +5.");
+                    else if (inventoryGemSlot(p, g -> true) >= 0) p.sendMessage(ChatColor.RED + "Cannot absorb: your gem is already Pristine +5.");
                     else p.sendMessage(ChatColor.RED + "Keep a gem in your inventory to absorb this.");
                     return;
                 }
@@ -3107,7 +3189,7 @@ public class GemListener implements Listener {
                     || e.getCause() == EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK;
             if (melee && gems.isGem(striking) && gems.getType(striking) == GemType.SPEED
                     && gems.getTier(striking) >= 2 && EnergyStage.allowsPowers(gems.getEnergy(striking))
-                    && e.getEntity() instanceof LivingEntity le) {
+                    && e.getEntity() instanceof LivingEntity le && !plugin.eventBlocks(p, "blur")) {
                 useBlur(p, le, gems.getEnergy(striking));
             }
             return;
@@ -3410,6 +3492,7 @@ public class GemListener implements Listener {
         p.setFlying(false);
         long rem = cdRemain(p, "doublejump");
         if (rem > 0) return;
+        if (plugin.eventRefuses(p, "double-jump")) return;
         cdStart(p, "doublejump", cooldownMs("doublejump", gems.getEnergy(gem)));
         useDoubleJump(p);
     }
@@ -3449,17 +3532,24 @@ public class GemListener implements Listener {
 
     // ---------- energy kill/death ----------
 
+    /** A standard gem: energy rules apply (never a mythic or the Gold Gem). */
+    private boolean standardGem(ItemStack it) { return gems.isGem(it) && !gems.isMythic(it) && !gems.isGold(it); }
+
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         Player victim = e.getEntity();
         Player killer = victim.getKiller();
+        // Inside a running Pantheon event: no Soulbound death effects at all (no energy lost or gained, the held
+        // mythic stays put). The gems are still protected the usual way below.
+        boolean inEvent = plugin.inPantheonEvent(victim);
+        deathInEvent.put(victim.getUniqueId(), inEvent);
 
         ItemStack heldMythic = null;
         ItemStack mainHeld = victim.getInventory().getItemInMainHand();
         ItemStack offHeld = victim.getInventory().getItemInOffHand();
         if (gems.isMythic(mainHeld)) heldMythic = mainHeld.clone();
         else if (gems.isMythic(offHeld)) heldMythic = offHeld.clone();
-        if (heldMythic != null && plugin.getConfig().getBoolean("mythics.drop-on-death", true)) {
+        if (!inEvent && heldMythic != null && plugin.getConfig().getBoolean("mythics.drop-on-death", true)) {
             boolean inDrops = false;
             for (ItemStack d : e.getDrops()) {
                 if (gems.isMythic(d) && gems.getType(d) == gems.getType(heldMythic)) { inDrops = true; break; }
@@ -3471,7 +3561,7 @@ public class GemListener implements Listener {
             if (gems.isMythic(offHeld)) victim.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         }
 
-        // keep standard gems (soulbound)
+        // keep standard gems (soulbound): every one of them, not only the first
         if (plugin.getConfig().getBoolean("protection.keep-on-death", true)) {
             List<ItemStack> toKeep = new ArrayList<>();
             for (ItemStack d : new ArrayList<>(e.getDrops())) {
@@ -3481,24 +3571,13 @@ public class GemListener implements Listener {
                 }
             }
             if (!toKeep.isEmpty()) {
-                pendingRespawnGem.put(victim.getUniqueId(), toKeep.get(0));
+                pendingRespawnGem.put(victim.getUniqueId(), toKeep);
                 saveRespawnGems();
             }
         }
+        // The energy loss is in onDeathKeptInventory (MONITOR), once keepInventory is final.
 
-        ItemStack vGem = findGem(victim);
-        if (vGem != null && !gems.isMythic(vGem)) {
-            int loss = plugin.getConfig().getInt("energy.death-loss", 1);
-            gems.setEnergy(vGem, gems.getEnergy(vGem) - loss);
-            // The gem that comes back on respawn is a copy taken above, before this: it loses the energy too.
-            ItemStack kept = pendingRespawnGem.get(victim.getUniqueId());
-            if (kept != null) {
-                gems.setEnergy(kept, gems.getEnergy(kept) - loss);
-                saveRespawnGems();
-            }
-        }
-
-        if (killer != null && !killer.getUniqueId().equals(victim.getUniqueId())) {
+        if (!inEvent && killer != null && !killer.getUniqueId().equals(victim.getUniqueId()) && !plugin.inPantheonEvent(killer)) {
             ItemStack kGem = findGem(killer);
             if (kGem != null && !gems.isMythic(kGem) && !gems.isGold(kGem) && !plugin.mythics().hasMythic(killer)) { // the Gold Gem: no energy gain
                 int en = gems.getEnergy(kGem);
@@ -3519,18 +3598,23 @@ public class GemListener implements Listener {
     }
 
     /**
-     * Something after us turned keepInventory on for this death (a Pantheon event, another plugin): the gem never left
-     * the inventory, so no copy may come back on respawn (that was a second gem), and a held mythic taken out of the
-     * hand goes back unless it's still in the drops.
+     * Once keepInventory is final (MONITOR):
+     * <ul>
+     *   <li>something after us turned it on (a Pantheon event, another plugin): the gems never left the inventory, so no
+     *   copy may come back on respawn (that was a second gem), and a held mythic taken out of the hand goes back unless
+     *   it's still in the drops;</li>
+     *   <li>outside Pantheon events, every standard gem the player carried loses energy.death-loss, wherever it was.</li>
+     * </ul>
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeathKeptInventory(PlayerDeathEvent e) {
         UUID id = e.getEntity().getUniqueId();
         ItemStack mythic = mythicTakenAtDeath.remove(id);
         Boolean fromOffhand = mythicTakenFromOffhand.remove(id);
-        if (!e.getKeepInventory()) return;
-        if (pendingRespawnGem.remove(id) != null) saveRespawnGems();
-        if (mythic == null) return;
+        boolean inEvent = Boolean.TRUE.equals(deathInEvent.remove(id));
+        if (e.getKeepInventory() && pendingRespawnGem.remove(id) != null) saveRespawnGems();
+        if (!inEvent) deathEnergyLoss(e);
+        if (!e.getKeepInventory() || mythic == null) return;
         for (ItemStack d : e.getDrops()) if (gems.isMythic(d) && gems.getType(d) == gems.getType(mythic)) return; // it drops: nothing lost
         org.bukkit.inventory.PlayerInventory inv = e.getEntity().getInventory();
         if (Boolean.TRUE.equals(fromOffhand) && inv.getItemInOffHand().getType().isAir()) inv.setItemInOffHand(mythic);
@@ -3538,18 +3622,50 @@ public class GemListener implements Listener {
         else inv.addItem(mythic).values().forEach(left -> e.getEntity().getWorld().dropItemNaturally(e.getEntity().getLocation(), left));
     }
 
-    /** Logged out on the death screen, or in those few ticks after respawning: the saved gem comes on their next join. */
+    /**
+     * Dying costs every standard gem the player carried energy.death-loss, wherever it was (main hand, off hand, hotbar,
+     * inventory, armour slots): the copies that come back on respawn, or the inventory itself under keepInventory, or
+     * the drops when protection.keep-on-death is off. Not holding the gem is never a way out. The player is told.
+     */
+    private void deathEnergyLoss(PlayerDeathEvent e) {
+        Player victim = e.getEntity();
+        int loss = plugin.getConfig().getInt("energy.death-loss", 1);
+        if (loss <= 0) return;
+        List<ItemStack> kept = pendingRespawnGem.get(victim.getUniqueId());
+        List<ItemStack> losing = new ArrayList<>();
+        if (kept != null) for (ItemStack g : kept) if (standardGem(g)) losing.add(g);
+        if (e.getKeepInventory()) { for (ItemStack it : victim.getInventory().getContents()) if (standardGem(it)) losing.add(it); }
+        else for (ItemStack d : e.getDrops()) if (standardGem(d)) losing.add(d);
+        boolean changed = false;
+        for (ItemStack g : losing) {
+            int before = gems.getEnergy(g);
+            gems.setEnergy(g, before - loss);
+            int after = gems.getEnergy(g);
+            if (after == before) continue; // already Broken
+            changed = true;
+            GemType t = gems.getType(g);
+            victim.sendMessage(ChatColor.RED + "-" + (before - after) + " energy → " + after + "/10"
+                    + (losing.size() > 1 && t != null ? ChatColor.GRAY + " (" + t.shown() + ")" : ""));
+        }
+        if (changed && kept != null) saveRespawnGems();
+    }
+
+    /** Every gem kept through a death goes back in the inventory (anything that doesn't fit drops at their feet). */
+    private void giveKept(Player p, List<ItemStack> kept) {
+        for (ItemStack g : kept) for (ItemStack left : p.getInventory().addItem(g).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
+    }
+
+    /** Logged out on the death screen, or in those few ticks after respawning: the saved gems come on their next join. */
     @EventHandler
     public void onSavedGemJoin(org.bukkit.event.player.PlayerJoinEvent e) {
         Player p = e.getPlayer();
         if (!pendingRespawnGem.containsKey(p.getUniqueId())) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!p.isOnline() || p.isDead()) return; // still dead: the respawn gives it
-            ItemStack kept = pendingRespawnGem.remove(p.getUniqueId());
+            if (!p.isOnline() || p.isDead()) return; // still dead: the respawn gives them
+            List<ItemStack> kept = pendingRespawnGem.remove(p.getUniqueId());
             if (kept == null) return;
             saveRespawnGems();
-            if (findGem(p) == null) p.getInventory().addItem(kept);
-            else p.getWorld().dropItemNaturally(p.getLocation(), kept);
+            giveKept(p, kept);
         }, 10L);
     }
 
@@ -3558,12 +3674,11 @@ public class GemListener implements Listener {
         Player p = e.getPlayer();
         if (!pendingRespawnGem.containsKey(p.getUniqueId())) return;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (!p.isOnline()) return; // still saved: they get it when they're back
-            ItemStack kept = pendingRespawnGem.remove(p.getUniqueId());
+            if (!p.isOnline()) return; // still saved: they get them when they're back
+            List<ItemStack> kept = pendingRespawnGem.remove(p.getUniqueId());
             if (kept == null) return;
-            saveRespawnGems(); // only now that it's back with them
-            if (findGem(p) == null) p.getInventory().addItem(kept);
-            else p.getWorld().dropItemNaturally(p.getLocation(), kept);
+            saveRespawnGems(); // only now that they're back with them
+            giveKept(p, kept);
         }, 5L);
     }
 

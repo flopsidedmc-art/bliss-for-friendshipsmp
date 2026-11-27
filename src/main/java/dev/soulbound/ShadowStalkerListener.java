@@ -224,6 +224,10 @@ public class ShadowStalkerListener implements Listener, CommandExecutor {
             sender.sendMessage(Component.text("Players only.", NamedTextColor.RED));
             return true;
         }
+        if (!hunter.hasPermission("bliss.admin")) { // admins only for now (plugin.yml says so too)
+            hunter.sendMessage(Component.text("You lack permission.", NamedTextColor.RED));
+            return true;
+        }
         if (args.length == 0) {
             hunter.sendMessage(Component.text("/stalker <player> — start hunt · /stalker stop — cancel",
                     NamedTextColor.GRAY));

@@ -219,6 +219,32 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
                 plugin.configGui().openHub(p);
                 return true;
             }
+            case "starter" -> {
+                if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
+                String what = a.length > 1 ? a[1].toLowerCase() : "";
+                if (what.equals("give") && a.length > 2) {
+                    Player t = Bukkit.getPlayerExact(a[2]);
+                    if (t == null) { s.sendMessage(ChatColor.RED + a[2] + " isn't online."); return true; }
+                    String err = plugin.starter().adminGive(t);
+                    s.sendMessage(err == null ? ChatColor.GOLD + "Gave " + t.getName() + " a starter gem." : ChatColor.RED + err);
+                } else if (what.equals("reset") && a.length > 2) {
+                    if (a[2].equalsIgnoreCase("all")) {
+                        int n = plugin.starter().reset(null);
+                        s.sendMessage(ChatColor.GOLD + "Starter gem record wiped (" + n + " players): everyone gets one on their next join.");
+                    } else {
+                        org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayerIfCached(a[2]);
+                        if (op == null) { s.sendMessage(ChatColor.RED + "Unknown player: " + a[2]); return true; }
+                        int n = plugin.starter().reset(op.getUniqueId());
+                        s.sendMessage(n > 0 ? ChatColor.GOLD + op.getName() + " gets a starter gem on their next join." : ChatColor.GRAY + op.getName() + " had no starter gem on record.");
+                    }
+                } else s.sendMessage(ChatColor.YELLOW + "Usage: /bliss starter <give <player>|reset <player|all>>");
+                return true;
+            }
+            case "landprotect" -> {
+                if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
+                landProtect(s, a);
+                return true;
+            }
             case "pedestal" -> {
                 if (!s.hasPermission("bliss.admin")) { s.sendMessage(ChatColor.RED + "No permission."); return true; }
                 if (a.length < 2) {
@@ -305,7 +331,7 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
         }
         // Players without bliss.admin see only their own subcommands (every argument of them); the admin ones are hidden.
         boolean admin = s.hasPermission("bliss.admin");
-        if (a.length == 1) return filter(admin ? List.of("info", "withdraw", "track", "trust", "give", "setenergy", "giveitem", "menu", "config", "pedestal", "build")
+        if (a.length == 1) return filter(admin ? List.of("info", "withdraw", "track", "trust", "give", "setenergy", "giveitem", "menu", "config", "pedestal", "landprotect", "starter", "build")
                 : PLAYER_SUBS, a[0]);
         String sub = a[0].toLowerCase();
         if (!admin && !PLAYER_SUBS.contains(sub)) return List.of();
@@ -320,6 +346,11 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
             case "trust" -> n == 2 ? filter(List.of("add", "remove", "list"), typed)
                     : n == 3 && (a[1].equalsIgnoreCase("add") || a[1].equalsIgnoreCase("remove")) ? players(typed) : List.of();
             case "pedestal" -> n == 2 ? filter(List.of("activate", "deactivate"), typed) : List.of();
+            case "landprotect" -> n == 2 ? filter(List.of("pos1", "pos2", "add", "remove", "list"), typed)
+                    : n == 3 && a[1].equalsIgnoreCase("remove") && plugin.getConfig().isConfigurationSection("land.protected")
+                    ? filter(new ArrayList<>(plugin.getConfig().getConfigurationSection("land.protected").getKeys(false)), typed) : List.of();
+            case "starter" -> n == 2 ? filter(List.of("give", "reset"), typed)
+                    : n == 3 ? filter(a[1].equalsIgnoreCase("reset") ? concat(players(typed), "all") : players(typed), typed) : List.of();
             case "build" -> n == 2 ? filter(List.of("create", "save", "paste", "list", "exit"), typed)
                     : n == 3 && (a[1].equalsIgnoreCase("save") || a[1].equalsIgnoreCase("paste")) ? filter(plugin.builds().buildList(), typed)
                     : n == 4 && a[1].equalsIgnoreCase("create") ? filter(List.of("17", "33", "65"), typed) : List.of();
@@ -334,6 +365,60 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
     static final List<String> ITEMS = List.of("upgrader", "trader", "repairkit", "energybottle", "eobsidian");
 
     /** /bliss with nothing after it: every subcommand you can use, with its full arguments (the admin ones only for admins). */
+    private final java.util.Map<java.util.UUID, org.bukkit.Location[]> landPositions = new java.util.HashMap<>();
+
+    /** /bliss landprotect pos1|pos2|add <name>|remove <name>|list: Crisp and Vitality Vortex keep out of these boxes. */
+    private void landProtect(CommandSender s, String[] a) {
+        String sub = a.length > 1 ? a[1].toLowerCase() : "";
+        var cfg = plugin.getConfig();
+        switch (sub) {
+            case "pos1", "pos2" -> {
+                if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
+                org.bukkit.Location[] pos = landPositions.computeIfAbsent(p.getUniqueId(), k -> new org.bukkit.Location[2]);
+                pos[sub.equals("pos1") ? 0 : 1] = p.getLocation().getBlock().getLocation();
+                org.bukkit.Location l = pos[sub.equals("pos1") ? 0 : 1];
+                s.sendMessage(ChatColor.GOLD + sub + ChatColor.GRAY + " set at " + l.getBlockX() + " " + l.getBlockY() + " " + l.getBlockZ() + ".");
+            }
+            case "add" -> {
+                if (!(s instanceof Player p)) { s.sendMessage("Players only."); return; }
+                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss landprotect add <name>"); return; }
+                org.bukkit.Location[] pos = landPositions.get(p.getUniqueId());
+                if (pos == null || pos[0] == null || pos[1] == null) { s.sendMessage(ChatColor.RED + "Set pos1 and pos2 first (stand on each corner)."); return; }
+                if (!pos[0].getWorld().equals(pos[1].getWorld())) { s.sendMessage(ChatColor.RED + "pos1 and pos2 are in different worlds."); return; }
+                String name = a[2].toLowerCase().replaceAll("[^a-z0-9_-]", "");
+                if (name.isEmpty()) { s.sendMessage(ChatColor.RED + "Use letters, numbers, - or _ for the name."); return; }
+                String k = "land.protected." + name + ".";
+                cfg.set(k + "world", pos[0].getWorld().getName());
+                cfg.set(k + "x1", pos[0].getBlockX()); cfg.set(k + "y1", pos[0].getBlockY()); cfg.set(k + "z1", pos[0].getBlockZ());
+                cfg.set(k + "x2", pos[1].getBlockX()); cfg.set(k + "y2", pos[1].getBlockY()); cfg.set(k + "z2", pos[1].getBlockZ());
+                plugin.saveConfig();
+                if (plugin.land() != null) plugin.land().keepOutChanged();
+                s.sendMessage(ChatColor.GOLD + "Protected box '" + name + "' added: Crisp and Vitality Vortex leave it alone.");
+            }
+            case "remove" -> {
+                if (a.length < 3) { s.sendMessage(ChatColor.RED + "Usage: /bliss landprotect remove <name>"); return; }
+                String name = a[2].toLowerCase();
+                if (!cfg.isConfigurationSection("land.protected." + name)) { s.sendMessage(ChatColor.RED + "No box called '" + name + "'."); return; }
+                cfg.set("land.protected." + name, null);
+                plugin.saveConfig();
+                if (plugin.land() != null) plugin.land().keepOutChanged();
+                s.sendMessage(ChatColor.GOLD + "Protected box '" + name + "' removed.");
+            }
+            case "list" -> {
+                var sec = cfg.getConfigurationSection("land.protected");
+                if (sec == null || sec.getKeys(false).isEmpty()) { s.sendMessage(ChatColor.GRAY + "No protected boxes. Spawn (" + cfg.getInt("land.spawn-radius", 48)
+                        + "), the ritual site and pedestal (" + cfg.getInt("land.site-radius", 8) + ") and Pantheon arenas (" + cfg.getInt("land.pantheon-radius", 24) + ") are always kept out."); return; }
+                for (String n : sec.getKeys(false)) {
+                    var b = sec.getConfigurationSection(n);
+                    if (b == null) continue;
+                    s.sendMessage(ChatColor.GOLD + n + ChatColor.GRAY + ": " + b.getString("world") + " " + b.getInt("x1") + " " + b.getInt("y1") + " " + b.getInt("z1")
+                            + " → " + b.getInt("x2") + " " + b.getInt("y2") + " " + b.getInt("z2"));
+                }
+            }
+            default -> s.sendMessage(ChatColor.YELLOW + "Usage: /bliss landprotect <pos1|pos2|add <name>|remove <name>|list>");
+        }
+    }
+
     private void help(CommandSender s) {
         s.sendMessage(ChatColor.GOLD + "/bliss info" + ChatColor.GRAY + " — your gem, tier and energy");
         s.sendMessage(ChatColor.GOLD + "/bliss withdraw" + ChatColor.GRAY + " — 1 energy into an Energy Bottle");
@@ -345,7 +430,15 @@ public class BlissCommand implements CommandExecutor, TabCompleter {
         s.sendMessage(ChatColor.GOLD + "/bliss giveitem <player> <" + String.join("|", ITEMS) + ">");
         s.sendMessage(ChatColor.GOLD + "/bliss menu" + ChatColor.GRAY + " | " + ChatColor.GOLD + "/bliss config");
         s.sendMessage(ChatColor.GOLD + "/bliss pedestal <activate|deactivate>");
+        s.sendMessage(ChatColor.GOLD + "/bliss landprotect <pos1|pos2|add <name>|remove <name>|list>" + ChatColor.GRAY + " — boxes Crisp and Vortex leave alone");
+        s.sendMessage(ChatColor.GOLD + "/bliss starter <give <player>|reset <player|all>>" + ChatColor.GRAY + " — starter gems");
         s.sendMessage(ChatColor.GOLD + "/bliss build <create <name> [size]|save <name>|paste <name>|list|exit>");
+    }
+
+    private static List<String> concat(List<String> list, String extra) {
+        List<String> out = new ArrayList<>(list);
+        out.add(extra);
+        return out;
     }
 
     private List<String> players(String typed) {

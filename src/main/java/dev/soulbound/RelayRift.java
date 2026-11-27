@@ -219,6 +219,7 @@ final class RelayRift implements Listener {
 
     void openMenu(Player p) {
         if (!enabled()) return;
+        if (plugin.eventRefuses(p, "rift")) return; // a Pantheon event
         if (revenant(p)) { p.sendMessage("§6The Revenant can't open rifts."); return; }
         if (p.getOpenInventory().getTopInventory().getHolder() instanceof Menu) return;
         if (finaleRunning()) { p.sendMessage("§6Rifts are sealed while the finale runs."); return; }
@@ -355,6 +356,7 @@ final class RelayRift implements Listener {
     private void travel(Player p, int slot) {
         UUID id = p.getUniqueId();
         if (!enabled() || p.isDead() || !holdsRelay(p) || revenant(p)) return;
+        if (plugin.eventRefuses(p, "rift")) return;
         if (finaleRunning()) { p.sendMessage("§6Rifts are sealed while the finale runs."); return; }
         if (relay.inDomain(id) || p.getWorld().getName().equals(domainWorld()) || casts.containsKey(id)) return;
         String capture = plugin.captures() == null ? null : plugin.captures().riftBlocked(p.getLocation());
@@ -534,6 +536,7 @@ final class RelayRift implements Listener {
         Player o = Bukkit.getPlayer(f.player());
         if (o == null || o.isDead() || !o.isValid() || o.isInsideVehicle() || o.getGameMode() == GameMode.SPECTATOR) return;
         if (relay.inDomain(f.player()) || finaleRunning()) return;
+        if (plugin.inPantheonEvent(o)) return; // never pulled out of a Pantheon event
         Location spot = findSpot(f.anchor(), f.landed(), o);
         if (spot == null) { o.sendMessage("§6The rift spat you back out: nowhere safe to land."); return; }
         o.setFallDistance(0);

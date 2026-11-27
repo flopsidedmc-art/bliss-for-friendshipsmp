@@ -297,7 +297,7 @@ final class BountyHunt implements Listener {
             }
             boolean here = hunter.getWorld().equals(target.getWorld());
             if (here) drawTrail(hunter, target);
-            if (ticks % 10 == 0 && !hasOwnHud(hunter)) hunter.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(status(h, here, now)));
+            if (ticks % 10 == 0 && !hasOwnHud(hunter) && !plugin.hudHeld(hunter)) hunter.sendActionBar(LegacyComponentSerializer.legacySection().deserialize(status(h, here, now)));
         }
     }
 
@@ -377,6 +377,7 @@ final class BountyHunt implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(PlayerDeathEvent e) {
+        if (plugin.inPantheonEvent(e.getEntity())) return; // a Pantheon event death: the hunts go on
         endHuntsOn(e.getEntity(), "fell.");
     }
 }
