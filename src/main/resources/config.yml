@@ -1053,3 +1053,22 @@ land:
   site-radius: 8 # around the Gold Gem ritual site and the pedestal
   pantheon-radius: 24 # around every point Pantheon's events use (spawns, lobbies, zones, course points, checkpoints)
   protected: {} # boxes, made with /bliss landprotect pos1, pos2, add <name>; e.g. hub: {world: world, x1: 0, y1: 60, z1: 0, x2: 40, y2: 120, z2: 40}
+
+# The repair Pedestal (/bliss pedestal activate|deactivate): an 11 x 11 round floor whose parts swap between an open and
+# a closed block (in a wave over transform-seconds). Parts: H heart, I touching it, O two out on the axes, F diagonals,
+# L the (2,1) spots, R rim (slabs), C accents, Q outer, S / P the checkered ring. Block names; basalt lies along its arm
+# and slabs are bottom slabs automatically. The beacon heart is the only block that breaks (5 breaks end a rite).
+pedestal:
+  transform-seconds: 1.5
+  particle-radius: 1.6 # the 8 end rods circling the heart while it's open
+  blocks:
+    H: {open: BEACON, closed: BEDROCK}
+    I: {open: GILDED_BLACKSTONE, closed: BLACKSTONE}
+    O: {open: CHERRY_WOOD, closed: BASALT}
+    F: {open: GOLD_BLOCK, closed: NETHERITE_BLOCK}
+    L: {open: RAW_GOLD_BLOCK, closed: COBBLED_DEEPSLATE}
+    S: {open: CHERRY_PLANKS, closed: DEEPSLATE_TILES}
+    P: {open: STRIPPED_CHERRY_WOOD, closed: POLISHED_DEEPSLATE}
+    C: {open: CHISELED_QUARTZ_BLOCK, closed: CHISELED_POLISHED_BLACKSTONE}
+    Q: {open: QUARTZ_BLOCK, closed: POLISHED_BLACKSTONE}
+    R: {open: QUARTZ_SLAB, closed: POLISHED_BLACKSTONE_SLAB}

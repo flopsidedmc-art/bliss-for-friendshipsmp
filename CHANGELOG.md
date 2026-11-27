@@ -1,3 +1,71 @@
+# The repair Pedestal, Bliss style (open and closed)
+
+## What I found first (the old Pedestal)
+- **`activate`** painted a radius-9 deepslate disc (about 253 blocks) at y−1, with netherite at the four cardinals, an ancient debris heart and a diamond block on top. **Nothing about the original ground was stored.**
+- **Activating somewhere else left the old build in the world, unprotected,** free to take: 4 netherite blocks, a diamond block and the debris.
+- **`deactivate`** only set a flag; nothing in the world changed.
+- **Protection** was a 12-block no-break sphere that also blocked players' own blocks nearby. There was nothing against pistons, bed/anchor explosions, endermen or fire.
+- **The "weathers the assault" message** always said 0/5.
+
+## What changed
+- **The build:** an 11 x 11 round floor of 97 blocks at y−1, level with the ground. It's laid out exactly like your grid, with ten parts that each swap between an open and a closed block.
+  - **Config:** `pedestal.blocks.<part>.open/closed`. Basalt lies along its arm (axis x east/west, z north/south), and slabs are bottom slabs automatically.
+  - **Hidden underneath** (both states): a 3 x 3 of netherite (y−2) and ancient debris (y−3).
+- **The change:**
+  - **First activate:** builds it and it blooms open from the heart out over `pedestal.transform-seconds` (1.5).
+  - **Deactivate:** closes from the rim in. **Activate again** at the same spot: opens.
+  - **Particles:** END_ROD and sparkles when opening, smoke and ash when closing. The activate sound plays at the start.
+  - **Clean up:** one task, which stops itself. A plugin stop mid-wave finishes it at once.
+- **The beam:** open, the beacon has its pyramid underneath, so it shines when the sky is clear. Right-clicking it does nothing (no menu), and no effects are set, so nobody gets any.
+- **The heart:** the beacon. Breaking it works like the old debris: it drops nothing, comes back, the orange counter goes up, and 5 breaks end an active rite. Closed, it's bedrock and nothing breaks.
+  - The message now says **5/5**.
+- **Protection: only the build's own blocks** (the 97 + the hidden 10), so players can break their own blocks next to it again. Those blocks:
+  - can't be broken, even in creative;
+  - can't be moved by explosions (entity or block), pistons, endermen, withers or ravagers;
+  - can't burn (the cherry parts are flammable);
+  - can't have a slab doubled onto the rim or be filled with water;
+  - can't be stripped with an axe, shovel or hoe;
+  - are skipped by Crisp and Vortex (`land.site-radius` 8);
+  - **never drop anything.**
+- **Moving it:** the original block at every spot is recorded when it's first built (`pedestal.yml`). Activating somewhere else puts the old spot back exactly, hidden base included, before building the new one.
+- **The old Pedestal is rebuilt once on start** (same centre, same open/closed state).
+  - **The old ring past the new floor** is refilled with the ground block most common just outside the old disc (grass in most places).
+  - **The diamond crown** is removed so the beam can shine.
+  - **No recording exists for the old build,** so moving it later puts that common ground back.
+- **Restart:** open stays open (beam and all), closed stays closed.
+- **Particles while open:** the 8 end rods circle the heart at radius 1.6 (`pedestal.particle-radius`; it was 2.5).
+- **Unchanged:** repair rites, their rules and costs. The Finale's merge pedestal (`PedestalDrop`) isn't touched.
+
+## Files
+- **New:** `PedestalLayout.java` (the layout maths: parts, blocks, wave order, base, heart counter) and `PedestalTest.java` (7 tests).
+- **Rewritten:** `Pedestal.java` (build, waves, heart, guards, recording, migration; the rite code is unchanged).
+- **Changed:** `SoulboundGemsPlugin.java` (`start()` on enable, `shutdown()` on disable) and `config.yml` (the `pedestal:` section).
+
+## Tested
+- Compiles against paper-api 1.21.11; **all 311 tests pass**.
+- **Covered:**
+  - the layout against your grid, all 97 blocks and part counts;
+  - every part's open/closed block (and the config);
+  - the basalt axis;
+  - the hidden base;
+  - the wave order;
+  - the heart counter (5 ends a rite, the count restarts);
+  - the guards and no drops;
+  - moving, restarting and the old save.
+
+## Not tested
+- **Nothing in game.**
+- **No in-game check yet of:** how it looks against your reference screenshots (they didn't come through, only the layout picture), the beam, the wave's timing, or the old Pedestal's rebuild on your actual ground.
+
+## In-game test plan
+1. `/bliss pedestal activate` on flat ground: it blooms open, matches the "Open" picture, level with the grass, with a beacon beam.
+2. Right-click the beacon: no menu.
+3. `/bliss pedestal deactivate`: it darkens from the rim inwards, matches "Closed", and the beam stops. `activate` again: it blooms open from the centre.
+4. Start a repair rite; a friend breaks the beacon 5 times: the rite ends ("The rite is broken") and it closes. It drops nothing and comes back each time.
+5. Try to break a quartz slab, a gold block and (dig down) the netherite and debris: all refused, nothing drops. Blocks you place next to it break normally.
+6. Restart while open: still open with the beam. Activate somewhere else: the old one is gone and the ground is back.
+7. On the server with the old Pedestal: start it and check the new build is at the same spot, the old outer ring is ground again and the diamond crown is gone.
+
 # Audit decisions: the Pantheon link, event rules, deaths, Broken gems, starter gems
 
 Soulbound Gems together with Pantheon 2.2.0. Every decision from section 4 of AUDIT.md, with the five defaults: 24-block Pantheon arena radius, keep the 4-track eligibility, a Broken ceiling of 40, protect players in events from being pulled, and each gem loses 1 at death.

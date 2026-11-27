@@ -153,6 +153,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(progression, this);
         Bukkit.getPluginManager().registerEvents(menu, this);
         Bukkit.getPluginManager().registerEvents(pedestal, this);
+        pedestal.start(); // an old-style Pedestal is rebuilt once; otherwise its saved state (open with its beam, or closed)
         Bukkit.getPluginManager().registerEvents(configGui, this);
         provenance = new ItemProvenanceListener(this);
         Bukkit.getPluginManager().registerEvents(provenance, this);
@@ -294,6 +295,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (land != null) land.shutdown(); // every Crisp and Vitality Vortex change goes back at once
         if (blessing != null) blessing.shutdown(); // no blessed hearts outlive the plugin
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar
+        if (pedestal != null) pedestal.shutdown(); // a wave in progress finishes in its target state
         if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
