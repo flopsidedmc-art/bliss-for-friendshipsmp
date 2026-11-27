@@ -2,6 +2,7 @@ package dev.soulbound;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -658,16 +659,35 @@ public class GemManager {
 
     // ---- special items (kind stored in PDC) ----
 
+    /** Special items drawn by the pack's own models: kind -> blissgems:&lt;item definition&gt;. */
+    static final Map<String, String> KIND_MODELS = Map.of(
+            "upgrader", "upgrader",
+            "trader", "trader",
+            "energybottle", "energy_bottle");
+
     private ItemStack kinded(Material mat, String kind, String name, String... loreLines) {
         ItemStack item = new ItemStack(mat, 1);
         ItemMeta m = item.getItemMeta();
         m.getPersistentDataContainer().set(keyKind, PersistentDataType.STRING, kind);
+        String model = KIND_MODELS.get(kind);
+        if (model != null) m.setItemModel(new NamespacedKey("blissgems", model));
         m.setDisplayName(name);
         List<String> lore = new ArrayList<>();
         for (String s : loreLines) lore.add(s);
         m.setLore(lore);
         item.setItemMeta(m);
         return item;
+    }
+
+    /** Gives an Upgrader, Trader or Bottle of Energy made before the textures were hooked up its look. */
+    public void styleKind(ItemStack item) {
+        String model = KIND_MODELS.get(getKind(item));
+        if (model == null) return;
+        ItemMeta m = item.getItemMeta();
+        NamespacedKey want = new NamespacedKey("blissgems", model);
+        if (want.equals(m.getItemModel())) return;
+        m.setItemModel(want);
+        item.setItemMeta(m);
     }
 
     public String getKind(ItemStack item) {

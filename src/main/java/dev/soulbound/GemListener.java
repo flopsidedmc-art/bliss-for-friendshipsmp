@@ -379,10 +379,12 @@ public class GemListener implements Listener {
             ItemStack item = p.getInventory().getStorageContents()[i];
             if (gems.isGem(item) && !gems.isMythic(item)) gems.refreshVisuals(item);
             gems.styleLore(item);
+            if (item != null) gems.styleKind(item);
         }
         ItemStack off = p.getInventory().getItemInOffHand();
         if (gems.isGem(off) && !gems.isMythic(off)) gems.refreshVisuals(off);
         gems.styleLore(off);
+        if (off != null) gems.styleKind(off);
     }
 
 
@@ -2786,68 +2788,60 @@ public class GemListener implements Listener {
     // ---------- special items ----------
 
     private void handleSpecial(Player p, ItemStack inHand, String kind) {
-        if (gems.isGold(offOrMainGem(p)) || gems.isGold(findGem(p))) { // the Gold Gem takes no bottles, upgrades, trades or repairs
+        gems.styleKind(inHand);
+        // The Bottle of Energy, Upgrader and Trader work on a gem anywhere in your inventory (held or not); the Gold Gem is skipped.
+        if (kind.equals("repairkit") && (gems.isGold(offOrMainGem(p)) || gems.isGold(findGem(p)))) { // the Gold Gem takes no repairs
             p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
             return;
         }
         switch (kind) {
             case "energybottle" -> {
-                ItemStack gem = offOrMainGem(p);
-                if (gem == null) {
-                    p.sendMessage(ChatColor.RED + "Hold a gem (or keep one in offhand) to absorb this.");
+                int slot = inventoryGemSlot(p, g -> { int en = gems.getEnergy(g); return en > 0 && en < 10; });
+                if (slot < 0) {
+                    if (onlyGold(p)) p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
+                    else if (inventoryGemSlot(p, g -> true) >= 0) p.sendMessage(ChatColor.RED + "Cannot absorb: your gem is Broken or already Pristine +5.");
+                    else p.sendMessage(ChatColor.RED + "Keep a gem in your inventory to absorb this.");
                     return;
                 }
+                ItemStack gem = p.getInventory().getItem(slot);
                 int en = gems.getEnergy(gem);
-                if (en <= 0 || en >= 10) {
-                    p.sendMessage(ChatColor.RED + "Cannot absorb: gem is Broken or already Pristine +5.");
-                    return;
-                }
                 gems.setEnergy(gem, en + 1);
                 consumeOne(p, inHand);
                 p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1.4f);
                 p.sendMessage(ChatColor.YELLOW + "Absorbed +1 energy → " + gems.getEnergy(gem) + "/10 (" + EnergyStage.name(gems.getEnergy(gem)) + ")");
             }
             case "upgrader" -> {
-                // The Upgrader must be in the main hand, but the target gem may be
-                // anywhere in the player's inventory (including the offhand).
-                ItemStack gem = findInventoryGemForUpgrade(p);
-                if (gem == null) {
-                    p.sendMessage(ChatColor.RED + "Keep a Tier 1 gem somewhere in your inventory to upgrade it.");
+                // The target is the first Tier 1 gem anywhere in the inventory (held or not).
+                int slot = inventoryGemSlot(p, g -> gems.getTier(g) < 2);
+                if (slot < 0) {
+                    if (onlyGold(p)) p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
+                    else if (inventoryGemSlot(p, g -> true) >= 0) p.sendMessage(ChatColor.GRAY + "Your gem is already Tier 2.");
+                    else p.sendMessage(ChatColor.RED + "Keep a Tier 1 gem somewhere in your inventory to upgrade it.");
                     return;
                 }
-                if (gems.getTier(gem) >= 2) {
-                    p.sendMessage(ChatColor.GRAY + "That gem is already Tier 2.");
-                    return;
-                }
+                ItemStack gem = p.getInventory().getItem(slot);
                 gems.setTier(gem, 2);
                 consumeOne(p, inHand);
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1, 1);
                 p.sendMessage(ChatColor.YELLOW + "Upgraded your gem to Tier 2! Check tablist glow.");
             }
             case "trader" -> {
-                ItemStack gem = null;
-                boolean gemMain = false;
-                ItemStack mainGem = p.getInventory().getItemInMainHand();
-                ItemStack offGem = p.getInventory().getItemInOffHand();
-                if (gems.isGem(mainGem)) { gem = mainGem; gemMain = true; }
-                else if (gems.isGem(offGem)) { gem = offGem; }
-                if (gem == null) {
-                    p.sendMessage(ChatColor.RED + "Hold a gem in either hand to trade.");
+                int slot = inventoryGemSlot(p, g -> { GemType t = gems.getType(g); return t != null && !t.isMythic(); });
+                if (slot < 0) { // mythics are one of a kind: no trading them (the Trader isn't used up)
+                    if (onlyGold(p)) p.sendMessage(ChatColor.GOLD + SmallCaps.of("The Gold Gem takes none of that."));
+                    else if (inventoryGemSlot(p, g -> true) >= 0) p.sendMessage(ChatColor.RED + "Mythic gems can't be traded.");
+                    else p.sendMessage(ChatColor.RED + "Keep a gem in your inventory to trade it.");
                     return;
                 }
+                ItemStack gem = p.getInventory().getItem(slot);
                 GemType cur = gems.getType(gem);
-                if (cur == null || cur.isMythic()) { // mythics are one of a kind: no trading them (the Trader isn't used up)
-                    p.sendMessage(ChatColor.RED + "Mythic gems can't be traded.");
-                    return;
-                }
                 List<GemType> pool = GemType.tradePool(cur); // standard gems only: a Trader never makes a mythic
                 if (pool.isEmpty()) return;
                 GemType next = pool.get((int) (Math.random() * pool.size()));
                 int tier = gems.getTier(gem);
                 int en = gems.getEnergy(gem);
                 ItemStack replacement = gems.createGem(next, tier, en);
-                if (gemMain) p.getInventory().setItemInMainHand(replacement);
-                else p.getInventory().setItemInOffHand(replacement);
+                p.getInventory().setItem(slot, replacement);
                 consumeOne(p, inHand);
                 p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_TRADE, 1, 1);
                 p.sendMessage(ChatColor.AQUA + "Time for a change: " + cur.shown() + " → " + next.shown());
@@ -2890,19 +2884,32 @@ public class GemListener implements Listener {
 
 
     /**
-     * Finds the player's gem anywhere in normal inventory storage or offhand.
-     * The Upgrader itself is held in the main hand, so the main-hand slot is
-     * naturally skipped unless it somehow contains a gem (which cannot happen
-     * during normal Upgrader use). Armor slots are intentionally not searched.
+     * The slot of the first gem (not the Gold Gem) that {@code ok} accepts: the main hand, then the offhand, then the
+     * rest of the inventory (hotbar and storage). -1 if there's none. The slot numbers work with getItem / setItem.
      */
-    private ItemStack findInventoryGemForUpgrade(Player p) {
-        ItemStack off = p.getInventory().getItemInOffHand();
-        if (gems.isGem(off)) return off;
-
-        for (ItemStack stack : p.getInventory().getStorageContents()) {
-            if (gems.isGem(stack)) return stack;
+    int inventoryGemSlot(Player p, java.util.function.Predicate<ItemStack> ok) {
+        org.bukkit.inventory.PlayerInventory inv = p.getInventory();
+        List<Integer> order = new ArrayList<>();
+        order.add(inv.getHeldItemSlot());
+        order.add(40); // the offhand
+        for (int i = 0; i < 36; i++) if (i != inv.getHeldItemSlot()) order.add(i);
+        for (int i : order) {
+            ItemStack it = inv.getItem(i);
+            if (gems.isGem(it) && !gems.isGold(it) && ok.test(it)) return i;
         }
-        return null;
+        return -1;
+    }
+
+    /** The player's only gem is the Gold Gem. */
+    private boolean onlyGold(Player p) {
+        boolean gold = false;
+        for (int i = 0; i <= 40; i++) {
+            ItemStack it = p.getInventory().getItem(i);
+            if (!gems.isGem(it)) continue;
+            if (!gems.isGold(it)) return false;
+            gold = true;
+        }
+        return gold;
     }
 
     private ItemStack offOrMainGem(Player p) {

@@ -35,3 +35,9 @@ Rebuild with `tools/pack/rift_frames.py` then `tools/pack/relay_pack_assets.py`.
 ## Known, not fixed
 
 The screen-flash images (`textures/overlay/gold_*.png`, `red_*.png`, `brown_flash.png`) are 512x288 and 1024x576. Minecraft font glyphs are limited to 256x256 pixels, so these may show as empty boxes instead of a flash. They were supplied this way and have been left alone.
+
+## Upgrader, Trader and Bottle of Energy
+
+`assets/blissgems/items/upgrader.json`, `trader.json` and `energy_bottle.json` point at the main pack's `blissgems:item/upgrader`, `trader` and `energy_bottle` models. Those models and their textures are copied in too. The plugin sets the item's `item_model` to `blissgems:upgrader`, `blissgems:trader` or `blissgems:energy_bottle`, and restyles older copies when a player joins or uses one.
+
+Not verified in a Minecraft client.

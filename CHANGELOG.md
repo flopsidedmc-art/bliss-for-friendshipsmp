@@ -1,3 +1,41 @@
+# Upgrader, Trader and Bottle of Energy: textures, and no need to hold the gem
+
+## What changed
+- **Textures hooked up.** The three items now use your main pack's models through the `item_model` component:
+  - the Gem Upgrader uses `blissgems:upgrader`;
+  - the Gem Trader uses `blissgems:trader`;
+  - the Bottle of Energy uses `blissgems:energy_bottle`.
+  - **Older copies:** ones players already have are restyled when they join or use one.
+  - **Where they came from:** the pack you sent had no textures for these items, so the models and textures (`upgrader.png`, `trader.png`, `energy_bottle.png`) come from your main Soulbound Gems pack.
+  - **The overlay:** I added three item definitions to the overlay, plus copies of those models and textures, so they show even over an older main pack.
+  - **The new pack:** the repo's `Relay-Temporal-Pack.zip` is now the pack you just sent (its only change was the Gold Gem's held/GUI display transforms), with these items added.
+- **All three work without holding the gem.** They find a gem anywhere in your inventory: your main hand first, then the offhand, then the hotbar and storage. The Gold Gem is always skipped.
+  - **Bottle of Energy:** the first gem that can take +1 energy (not Broken, not already at 10).
+  - **Upgrader:** the first Tier 1 gem. Before, it picked the first gem it found, even a Tier 2 one, and then refused.
+  - **Trader:** the first standard (non-mythic) gem. The new gem goes into the same slot.
+  - **Messages:** each one says what's wrong: no gem; already Tier 2, or Broken/full; mythic; or only the Gold Gem.
+- **The Gold Gem:** carrying it no longer blocks using these items on another gem you carry.
+- **Unchanged:** the Repair Kit, including its Gold Gem refusal.
+
+## Files
+- `GemManager.java`: `KIND_MODELS`, the item model on new items, `styleKind()` for old ones.
+- `GemListener.java`: `handleSpecial` for the three items, `inventoryGemSlot()` and `onlyGold()`, restyling on join; the unused `findInventoryGemForUpgrade` removed.
+- `resource-pack/Relay-Temporal-Pack.zip`, `resource-pack/overlay/...`, `README.md`, `README.txt`: the pack files.
+- `SpecialItemsTest.java`: new test.
+
+## Tested
+- Compiles against paper-api 1.21.11; all 281 unit tests pass (3 new: the models, the pack's files, the inventory search wiring).
+
+## Not tested
+- Nothing was tested in game, and no client was used to check how the models look.
+
+## In-game test plan
+1. Load the new pack. `/bliss give upgrader`, `trader` and `energybottle`: each shows its texture in the hotbar and in hand.
+2. Put a Tier 1 gem in your storage (not held). Right-click the Upgrader: the gem becomes Tier 2.
+3. With the gem still in storage, right-click the Trader: the gem in that slot changes type, keeping its tier and energy.
+4. With the gem still in storage and below 10 energy, right-click a Bottle of Energy: +1.
+5. With only the Gold Gem on you, each item says "The Gold Gem takes none of that." and isn't used up.
+
 # Gold Gem test commands
 
 ## What changed
