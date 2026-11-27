@@ -1,3 +1,61 @@
+# Gold Gem: the new repurpose scene (no chains, no lightning)
+
+## What changed from the plan I built
+The Gold Gem was already built with the first prompt's scene: the gem rose to 7.5 blocks, four gold Auratus chains latched onto it, and cosmetic lightning struck around it. All of that is gone:
+- **Removed:** the chains, the lightning, `AuratusGem.stillChain` (only the Gold Gem used it), the `repurpose.chains` / `repurpose.lightning` settings and the `chains` / `chains-snap` sounds.
+- **Old servers:** a one-time config migration (balance-version 9) removes those keys from existing configs too.
+- **Unchanged:** the trigger, the stun, the respawn without a gem, duplicates and the test dummy.
+
+## The scene now (`gold.repurpose`, 5 s; every step's end time is in config)
+1. **The hit (0 s):** a heavy hit sound (warden impact with a knockback thud).
+2. **Torn out (0–0.5 s):** their exact gem comes out of their chest as an item display. It grows to 2.5 (`gem-scale`), with no billboard: fixed, upright, at their facing + 90°, so it's side-on. Thick white smoke (cloud and poof) bursts off its sides.
+3. **Rise (0.5–2.5 s):** it rises slowly to 4 blocks above their head (`apex`), easing to a stop. White sparkles pop around it, gem-coloured orbs drift off it, and a soft hum and chime play.
+4. **Look up (2.5–3.5 s):** it tips back over 0.5 s (`tilt-seconds`, smoothed) until its face points at the sky, then holds still.
+5. **Quiver (3.5–4.5 s):** it shakes harder and faster: a translation jitter of up to 0.05 blocks and rotation up to 4°, every tick with interpolation 1. A strain of amethyst cracks and chimes rises in loudness and pitch, and a few white sparkles flick off it.
+6. **Shatter (4.5 s):** it breaks in mid-air: its own pieces (item particles of the gem), gem-coloured dust, a white flash of end rods and sparkles, and a crack-and-amethyst shatter sound.
+7. **Absorbed (4.5–5 s):** the shards stream as a gem-colour-and-gold trail into the holder, wherever they are. It ends in a gold burst at them and a deep chime only they hear.
+- **Then:** "<victim>'s soul was repurposed." and a normal death: their items drop, the gem doesn't, and the death screen appears.
+
+## Things you asked me to tell you
+- **The victim's view:** I didn't use spectator mode. The victim would have to be put back into survival before the death, and that's the risky part we built Astral Projection's restore around. Instead, their camera turns every tick to keep their gem centred, from their own body (they never move). You can turn it off with `follow-camera: false`.
+- **The overlay through the death screen:**
+  - The death resets their helmet slot on their screen, so the plugin sends the overlay again one tick after the death and clears it when they respawn.
+  - **I can't test here whether the client draws camera overlays on the death screen.** If it doesn't, they'll see it until the moment they die.
+- **Overlay textures to make:** `assets/blissgems/textures/overlay/repurpose_<gem>.png` for astra, fire, flux, life, puff, speed, strength and wealth: smoke at the edges in that gem's colour, full screen like `gold_0`.
+  - Then set `gold.repurpose.overlay.<gem>: blissgems:overlay/repurpose_<gem>`.
+  - Until then it's `gold_0`; a missing texture would show as the purple-and-black square.
+- **The pack:** the repo's pack already has every Gold Gem look (`blissgems:gold/gold_gem_<bits>`, 255 combinations, since `00000000` can't happen, plus the animated `gold_gem_awakened`). No new pack came with this message, so nothing was merged.
+
+## New config (`gold.repurpose`)
+- **Steps:** `seconds`, `steps.torn-out / rise / look-up / quiver`, `tilt-seconds`.
+- **The gem's motion:** `gem-scale`, `apex`, `quiver-blocks`, `quiver-degrees`.
+- **Particles:** `particles.smoke / sparkles / orbs / shatter / trail`.
+- **Camera, overlays, messages:** `follow-camera`, `overlay.<gem>`, `message`, `respawn-message`.
+- **Sounds** (`sounds.gold`): `repurpose-hit`, `repurpose` (the rise), `repurpose-strain`, `repurpose-shatter`, `absorb` (the deep chime).
+
+## Files
+- **New:** `RepurposeMath.java` (the steps, easing, tilt, quiver and trail; tested) and `RepurposeTest.java`.
+- **Changed:**
+  - `GoldGem.java` (the scene, shatter, shard stream, follow camera, overlay through death);
+  - `CameraOverlay.java` (`showUntilRespawn`);
+  - `AuratusGem.java` (`stillChain` removed);
+  - `SoulboundGemsPlugin.java` (the version-9 config clean-up);
+  - `config.yml`;
+  - `GoldTest.java` (now checks there are no chains and no lightning).
+
+## Tested
+- Compiles against paper-api 1.21.11; **all 316 tests pass**.
+- **Covered:** the step timings and order (even with badly ordered config), the easing rise, the size, the tilt, the quiver growing to the break, the trail, the side-on yaw, the config and sounds, and that the old keys are gone.
+
+## Not tested
+- **Nothing in game.** That includes how the gem looks side-on at 2.5, the smoothness of the interpolation, the camera turning, the sounds, and the overlay on the death screen.
+
+## In-game test plan
+1. `/goldgem testrepurpose fire`: watch the whole scene on the dummy from the side and the front. Check the gem is side-on, the rise slows at the top, it tips to face the sky, quivers harder, shatters into its own pieces, and the trail reaches you with a chime.
+2. Repurpose a real marked player. Their camera follows their gem, their screen is tinted the whole time, and they die normally (items drop, gem doesn't). Check whether the tint shows on the death screen.
+3. Log out mid-scene as the victim: it finishes at once and the gem is socketed.
+4. On a server with an older config: start it and check `gold.repurpose.lightning` / `chains` and the chain sounds are gone from config.yml.
+
 # The repair Pedestal, Bliss style (open and closed)
 
 ## What I found first (the old Pedestal)

@@ -46,6 +46,18 @@ final class CameraOverlay implements Listener {
         p.sendEquipmentChange(p, EquipmentSlot.HEAD, fake);
     }
 
+    /**
+     * The same, while they're dead: shown on the death screen until they respawn (onRespawn sends the real helmet
+     * back). Sent after the death, since the death itself resets their helmet slot on their screen.
+     */
+    void showUntilRespawn(Player p, String texture) {
+        if (p == null || !p.isOnline() || texture == null) return;
+        ItemStack fake = item(texture);
+        if (fake == null) return;
+        shown.put(p.getUniqueId(), texture);
+        p.sendEquipmentChange(p, EquipmentSlot.HEAD, fake);
+    }
+
     /** Ends this player's overlay: their real helmet (or nothing) is sent back. */
     void clear(Player p) {
         if (p == null || shown.remove(p.getUniqueId()) == null) return;

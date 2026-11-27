@@ -321,7 +321,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 8) return;
+        if (version >= 9) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -359,8 +359,25 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (version < 7 && c.getInt("cooldowns.beam", 120) == 120) { c.set("cooldowns.beam", 8); changed.add("Energy Beam cooldown 120 -> 8 s (charging is the cost now)"); }
         // Balance 8: Astral Projection cools down in 60 s (its tags lock gems); a /config override still at the old 20 moves too.
         if (version < 8 && c.contains("cooldowns.projection", true) && c.getInt("cooldowns.projection") == 20) { c.set("cooldowns.projection", 60); changed.add("Projection cooldown 20 -> 60 s"); }
-        c.set("balance-version", 8);
+        // 9: the Gold Gem repurpose has no chains or lightning any more: their settings go; the absorb is a deep chime
+        // and the rise gets its soft chime (only where they were still the old defaults).
+        if (version < 9) {
+            for (String k : new String[] {"gold.repurpose.lightning", "gold.repurpose.chains", "sounds.gold.chains", "sounds.gold.chains-snap"}) {
+                if (c.contains(k, true)) { c.set(k, null); changed.add("removed " + k); }
+            }
+            if ("ENTITY_ZOMBIE_VILLAGER_CURE".equals(c.getString("sounds.gold.absorb.event"))) copyDefault(c, "sounds.gold.absorb");
+            if (!c.contains("sounds.gold.repurpose.layer", true)) copyDefault(c, "sounds.gold.repurpose");
+        }
+        c.set("balance-version", 9);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
+    }
+
+    /** Puts the shipped default of one config section back (every value under it). */
+    private static void copyDefault(org.bukkit.configuration.file.FileConfiguration c, String path) {
+        var d = c.getDefaults() == null ? null : c.getDefaults().getConfigurationSection(path);
+        if (d == null) return;
+        c.set(path, null);
+        for (String k : d.getKeys(true)) if (!d.isConfigurationSection(k)) c.set(path + "." + k, d.get(k));
     }
 
     private void registerRecipes() {

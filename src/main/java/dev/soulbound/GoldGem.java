@@ -73,7 +73,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * The Gold Gem (gold: in config.yml, /goldgem). An admin turns a player's gem into a Gold Gem: their own gem is its CORE.
  * It's a gem item whose type is its ACTIVE gem (Tier 2, full energy), so every power, passive, control and action bar
  * works exactly as holding that gem. Its holder MARKS up to 3 Tier 2 players (red name, glow, tab and chat); killing a
- * marked player REPURPOSES them: 5 s frozen while gold chains hold their gem in the sky, then they die and their gem is
+ * marked player REPURPOSES them: 5 s stunned while their gem is torn out, rises, looks up, quivers and shatters into the
+ * holder, then they die and their gem is
  * socketed (one of each type, 8 in all). Sneak + F cycles the active gem (or /goldgem switch picks one). The holder dying
  * sends every stolen gem home. With all 8, a ritual at the site awakens it: GOLD mode, with Snap and Golden Drill.
  * Saved to gold.yml: holders, cores, sockets, held gems, marks, gems waiting for offline owners, the ritual site.
@@ -659,10 +660,11 @@ final class GoldGem implements Listener {
         final ItemStack gem;
         final GemType type;
         final Location base;
+        final float yaw; // the gem stands side-on: the victim's facing + 90
         boolean dummy; // /goldgem testrepurpose: a Mannequin, not a player
         ItemDisplay display;
-        final List<ItemDisplay> chains = new ArrayList<>();
-        final Set<Integer> boltTicks = new HashSet<>();
+        RepurposeMath.Timing timing;
+        Location shatterAt;
         int age;
         boolean holderDied;
         BukkitTask task;
@@ -674,9 +676,16 @@ final class GoldGem implements Listener {
             this.gem = gem;
             this.type = gem == null ? null : gems().getType(gem);
             this.base = v.getLocation().clone();
+            this.yaw = RepurposeMath.yaw(base.getYaw());
         }
 
-        Location gemAt() { return base.clone().add(0, 7.5, 0); }
+        /** Where the gem comes out: their chest. */
+        Location chest() { return base.clone().add(0, 1.2, 0); }
+
+        /** Its apex: repurpose.apex blocks above their head. */
+        double apexRise() { return 0.6 + cfgD("repurpose.apex", 4.0); }
+
+        Color colour() { return type == null ? PALE : Color.fromRGB(colourOf(type).value()); }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -722,80 +731,151 @@ final class GoldGem implements Listener {
         play(sc, v.getWorld());
     }
 
-    /** The scene itself (the gem rising, the chains, the lightning), for a real victim or the test dummy. */
+    /**
+     * The scene, for a real victim or the test dummy (gold.repurpose): the hit; their gem torn out of their chest (large,
+     * side-on, smoke off its sides); it rises slowly to its apex; tips back to face the sky; quivers harder and harder;
+     * shatters; the shards stream into the Gold Gem holder. No chains, no lightning.
+     */
     private void play(Scene sc, World world) {
-        ItemStack gem = sc.gem;
-        int seconds = (int) Math.max(1, cfgD("repurpose.seconds", 5)), bolts = (int) cfgD("repurpose.lightning", 4);
-        for (int i = 0; i < bolts; i++) sc.boltTicks.add(10 + rnd.nextInt(seconds * 20 - 10));
-        if (gem != null) {
-            ItemStack shown = gem.clone();
-            sc.display = world.spawn(sc.base.clone().add(0, 1.4, 0), ItemDisplay.class, d -> {
+        sc.timing = RepurposeMath.timing(cfgD("repurpose.seconds", 5), cfgD("repurpose.steps.torn-out", 0.5), cfgD("repurpose.steps.rise", 2.5),
+                cfgD("repurpose.steps.look-up", 3.5), cfgD("repurpose.steps.quiver", 4.5));
+        GemSounds.play(plugin, "gold.repurpose-hit", sc.base); // THE HIT
+        if (sc.gem != null) {
+            ItemStack shown = sc.gem.clone();
+            Location at = sc.chest();
+            at.setYaw(sc.yaw);
+            at.setPitch(0);
+            sc.display = world.spawn(at, ItemDisplay.class, d -> {
                 d.setItemStack(shown);
+                d.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+                d.setBillboard(Display.Billboard.FIXED); // fixed in the world, upright, side-on
                 d.setPersistent(false);
                 d.setBrightness(new Display.Brightness(15, 15));
-                d.setBillboard(Display.Billboard.VERTICAL);
-                d.setTeleportDuration(20); // it rises over a second
+                d.setTransformation(pose(0, 0.3f, 0, 0, 0));
             });
-            Bukkit.getScheduler().runTaskLater(plugin, () -> { if (sc.display != null && sc.display.isValid()) sc.display.teleport(sc.gemAt()); }, 1L);
         }
-        GemSounds.play(plugin, "gold.repurpose", sc.base);
-        sc.task = Bukkit.getScheduler().runTaskTimer(plugin, () -> tickScene(sc, seconds * 20), 1L, 1L);
+        sc.task = Bukkit.getScheduler().runTaskTimer(plugin, () -> tickScene(sc), 1L, 1L);
         save();
     }
 
-    private void tickScene(Scene sc, int total) {
+    /** The display's pose: risen {@code up} blocks, at {@code scale}, tipped back {@code tilt} degrees, shaken by {@code jx/jdeg}. */
+    private static org.bukkit.util.Transformation pose(double up, float scale, double tilt, double jitter, double jitterDeg) {
+        java.util.concurrent.ThreadLocalRandom r = java.util.concurrent.ThreadLocalRandom.current();
+        org.joml.Vector3f t = new org.joml.Vector3f((float) (jitter * (r.nextDouble() * 2 - 1)), (float) (up + jitter * (r.nextDouble() * 2 - 1)),
+                (float) (jitter * (r.nextDouble() * 2 - 1)));
+        org.joml.Quaternionf rot = new org.joml.Quaternionf().rotateX((float) Math.toRadians(-tilt)) // its face turns from forward to the sky
+                .rotateZ((float) Math.toRadians(jitterDeg * (r.nextDouble() * 2 - 1)));
+        return new org.bukkit.util.Transformation(t, rot, new org.joml.Vector3f(scale, scale, scale), new org.joml.Quaternionf());
+    }
+
+    private void tickScene(Scene sc) {
         sc.age++;
         org.bukkit.entity.Entity v = Bukkit.getEntity(sc.victim);
         if (v == null || !v.isValid()) { finish(sc, true); return; }
-        if (v.getLocation().distanceSquared(sc.base) > 0.04) v.teleport(sc.base); // frozen where they stand
+        RepurposeMath.Timing t = sc.timing;
         World w = sc.base.getWorld();
-        if (sc.age == 20 && sc.display != null) { // the chains shoot out of the ground and latch on
-            int n = (int) Math.max(1, cfgD("repurpose.chains", 4));
-            for (int i = 0; i < n; i++) {
-                double a = Math.PI * 2 * i / n;
-                Location from = sc.base.clone().add(Math.cos(a) * 3.2, 0.1, Math.sin(a) * 3.2);
-                from.setY(sc.base.getBlockY() + 0.1);
-                sc.chains.addAll(AuratusGem.stillChain(from, sc.gemAt(), 1.0f));
+        RepurposeMath.Step step = RepurposeMath.step(t, sc.age);
+        float full = (float) cfgD("repurpose.gem-scale", 2.5);
+        double up = RepurposeMath.rise(t, sc.age) * sc.apexRise();
+        Location gemAt = sc.chest().add(0, up, 0);
+        Color gc = sc.colour();
+
+        if (sc.display != null && sc.display.isValid()) {
+            double shake = RepurposeMath.quiver(t, sc.age);
+            sc.display.setInterpolationDelay(0);
+            sc.display.setInterpolationDuration(step == RepurposeMath.Step.QUIVER ? 1 : 2);
+            sc.display.setTransformation(pose(up, (float) RepurposeMath.scale(t, sc.age, 0.3, full),
+                    RepurposeMath.tilt(t, sc.age, (int) Math.round(cfgD("repurpose.tilt-seconds", 0.5) * 20)),
+                    shake * cfgD("repurpose.quiver-blocks", 0.05), shake * cfgD("repurpose.quiver-degrees", 4)));
+        }
+        if (v instanceof Player vp) {
+            if (cfgB("repurpose.follow-camera", true) && sc.display != null && step != RepurposeMath.Step.ABSORB) {
+                Location look = sc.base.clone(); // the camera keeps their gem centred; they never move
+                Vector to = gemAt.toVector().subtract(vp.getEyeLocation().toVector());
+                if (to.lengthSquared() > 1e-4) look.setDirection(to);
+                vp.teleport(look);
+            } else if (v.getLocation().distanceSquared(sc.base) > 0.04) v.teleport(sc.base); // frozen where they stand
+        } else if (v.getLocation().distanceSquared(sc.base) > 0.04) v.teleport(sc.base);
+
+        switch (step) {
+            case TORN_OUT -> { // white smoke puffs burst off its sides
+                if (sc.age == 1 || sc.age % 3 == 0) {
+                    Vector side = new Vector(-Math.sin(Math.toRadians(sc.yaw)), 0, Math.cos(Math.toRadians(sc.yaw))).multiply(0.9 * full / 2.5);
+                    int n = (int) cfgD("repurpose.particles.smoke", 30) / 3;
+                    for (Vector off : new Vector[] {side, side.clone().multiply(-1)}) {
+                        Location puff = gemAt.clone().add(off);
+                        w.spawnParticle(Particle.CLOUD, puff, n, 0.15, 0.25, 0.15, 0.06);
+                        w.spawnParticle(Particle.POOF, puff, Math.max(1, n / 2), 0.1, 0.2, 0.1, 0.04);
+                    }
+                }
             }
-            GemSounds.play(plugin, "gold.chains", sc.base);
-        }
-        if (sc.boltTicks.contains(sc.age)) {
-            double a = rnd.nextDouble() * Math.PI * 2, r = 2 + rnd.nextDouble() * 3;
-            w.strikeLightningEffect(sc.base.clone().add(Math.cos(a) * r, 0, Math.sin(a) * r)); // only the look: no fire, no damage
-        }
-        if (sc.age % 2 == 0 && sc.display != null && sc.age > 15) {
-            Location g = sc.gemAt();
-            Color gc = sc.type == null ? PALE : Color.fromRGB(colourOf(sc.type).value());
-            for (int i = 0; i < 6; i++) {
-                double a = sc.age * 0.2 + i * Math.PI / 3;
-                w.spawnParticle(Particle.DUST, g.clone().add(Math.cos(a) * 0.9, Math.sin(a * 0.7) * 0.4, Math.sin(a) * 0.9), 1, 0, 0, 0, 0,
-                        new Particle.DustOptions(i % 2 == 0 ? GOLD_DUST : gc, 1.2f));
+            case RISE -> {
+                if (sc.age == t.tornOut()) GemSounds.play(plugin, "gold.repurpose", gemAt); // a soft chime and hum
+                if (sc.age % 2 == 0) {
+                    int sp = (int) cfgD("repurpose.particles.sparkles", 3), orbs = (int) cfgD("repurpose.particles.orbs", 2);
+                    w.spawnParticle(Particle.END_ROD, gemAt, sp, 0.8, 0.8, 0.8, 0.01);
+                    w.spawnParticle(Particle.FIREWORK, gemAt, Math.max(1, sp / 2), 0.7, 0.7, 0.7, 0.0);
+                    w.spawnParticle(Particle.DUST, gemAt, orbs, 0.5, 0.5, 0.5, 0, new Particle.DustOptions(gc, 1.1f));
+                }
             }
+            case LOOK_UP -> {
+                if (sc.age % 4 == 0) w.spawnParticle(Particle.DUST, gemAt, 1, 0.4, 0.4, 0.4, 0, new Particle.DustOptions(gc, 1.0f));
+            }
+            case QUIVER -> { // the strain builds: cracks and chimes, faster and higher, a few sparkles flicking off
+                double shake = RepurposeMath.quiver(t, sc.age);
+                int every = shake < 0.3 ? 6 : shake < 0.7 ? 3 : 2;
+                if ((sc.age - t.lookUp()) % every == 0) GemSounds.playScaled(plugin, "gold.repurpose-strain", gemAt, null, 0.6 + 0.6 * shake, 0.8 + 0.7 * shake);
+                if (sc.age % 3 == 0) w.spawnParticle(Particle.END_ROD, gemAt, 1, 0.5, 0.5, 0.5, 0.04);
+            }
+            case ABSORB -> {
+                if (sc.shatterAt == null) shatter(sc, gemAt);
+                streamShards(sc, RepurposeMath.absorb(t, sc.age));
+            }
+            case DONE -> { }
         }
-        if (sc.age >= total) finish(sc, false);
+        if (sc.age >= t.total()) finish(sc, false);
     }
 
-    /** The end: the chains snap, the gem flies into the holder, the victim dies (dropping their items, not their gem). */
+    /** SHATTER: the gem breaks in mid-air: its own pieces, gem-coloured dust, a white flash, glass and amethyst. */
+    private void shatter(Scene sc, Location at) {
+        sc.shatterAt = at.clone();
+        World w = at.getWorld();
+        if (sc.display != null && sc.display.isValid()) sc.display.remove();
+        int n = (int) cfgD("repurpose.particles.shatter", 40);
+        if (sc.gem != null) w.spawnParticle(Particle.ITEM, at, n, 0.3, 0.3, 0.3, 0.18, sc.gem.clone());
+        w.spawnParticle(Particle.DUST, at, n, 0.6, 0.6, 0.6, 0, new Particle.DustOptions(sc.colour(), 1.4f));
+        w.spawnParticle(Particle.END_ROD, at, Math.max(6, n / 3), 0.2, 0.2, 0.2, 0.25);
+        w.spawnParticle(Particle.FIREWORK, at, Math.max(4, n / 4), 0.3, 0.3, 0.3, 0.15);
+        GemSounds.play(plugin, "gold.repurpose-shatter", at);
+    }
+
+    /** ABSORBED: the shards stream into the holder (gem colour and gold); a gold burst and a deep chime for them at the end. */
+    private void streamShards(Scene sc, double head) {
+        Player holder = Bukkit.getPlayer(sc.holder);
+        World w = sc.shatterAt.getWorld();
+        Location end = holder != null && holder.getWorld().equals(w) ? holder.getLocation().add(0, 1.2, 0) : sc.shatterAt.clone().add(0, 6, 0);
+        Vector d = end.toVector().subtract(sc.shatterAt.toVector());
+        int per = (int) Math.max(1, cfgD("repurpose.particles.trail", 6));
+        double tail = Math.max(0, head - 0.3);
+        for (int i = 0; i < per; i++) {
+            double f = tail + (head - tail) * (i + 1) / per;
+            w.spawnParticle(Particle.DUST, sc.shatterAt.clone().add(d.clone().multiply(f)), 1, 0.05, 0.05, 0.05, 0,
+                    new Particle.DustOptions(i % 2 == 0 ? GOLD_DUST : sc.colour(), 1.1f));
+        }
+        if (head >= 1 && holder != null && holder.getWorld().equals(w)) {
+            w.spawnParticle(Particle.DUST, end, 30, 0.4, 0.5, 0.4, 0, new Particle.DustOptions(GOLD_DUST, 1.5f));
+            w.spawnParticle(Particle.END_ROD, end, 8, 0.3, 0.4, 0.3, 0.05);
+            GemSounds.playTo(plugin, "gold.absorb", holder); // a deep chime, for them
+        }
+    }
+
+    /** The end: the gem is the holder's, the victim dies (dropping their items, not their gem). Early: a logout or the plugin stopping. */
     private void finish(Scene sc, boolean early) {
         if (scenes.remove(sc.victim) == null) return;
         if (sc.task != null) sc.task.cancel();
         World w = sc.base.getWorld();
-        for (ItemDisplay d : sc.chains) {
-            if (d.isValid()) { w.spawnParticle(Particle.CRIT, d.getLocation(), 3, 0.1, 0.1, 0.1, 0.1); d.remove(); }
-        }
-        if (!sc.chains.isEmpty()) GemSounds.play(plugin, "gold.chains-snap", sc.gemAt());
         Player holder = Bukkit.getPlayer(sc.holder);
-        if (sc.display != null && sc.display.isValid()) {
-            Location from = sc.display.getLocation();
-            if (holder != null && holder.getWorld().equals(w)) { // a streak into the Gold Gem
-                Vector d = holder.getLocation().add(0, 1.2, 0).toVector().subtract(from.toVector());
-                int n = (int) Math.max(8, d.length() * 3);
-                for (int i = 0; i <= n; i++) w.spawnParticle(Particle.DUST, from.clone().add(d.clone().multiply(i / (double) n)), 1, 0, 0, 0, 0,
-                        new Particle.DustOptions(i % 2 == 0 ? GOLD_DUST : PALE, 1.0f));
-                GemSounds.play(plugin, "gold.absorb", holder.getLocation());
-            }
-            sc.display.remove();
-        }
+        if (sc.display != null && sc.display.isValid()) sc.display.remove();
         GoldMath.State s = states.get(sc.holder);
         if (sc.dummy) { // the test: socket it as a test gem, the dummy simply goes
             if (sc.gem != null && s != null) s.take(sc.type.name(), TEST_OWNER, "Dummy", encode(sc.gem));
@@ -817,11 +897,15 @@ final class GoldGem implements Listener {
         String who = v != null ? plugin.shownName(v) : sc.victimName;
         Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize("§6" + cfg("repurpose.message", "{victim}'s soul was repurposed.").replace("{victim}", who)));
         if (v != null) {
+            String overlay = sc.type == null ? null : cfg("repurpose.overlay." + sc.type.name().toLowerCase(), "blissgems:overlay/gold_0");
             if (plugin.overlay() != null) plugin.overlay().clear(v);
             unstun(v);
             v.setInvulnerable(false);
             if (holder != null) v.setKiller(holder);
             v.setHealth(0); // a normal death: their items drop, their gem doesn't (it's gone from their inventory)
+            // The tint stays on through the death screen until they respawn (the death itself sends their real helmet back).
+            if (!early && overlay != null && plugin.overlay() != null && plugin.isEnabled())
+                Bukkit.getScheduler().runTask(plugin, () -> { if (v.isOnline() && v.isDead()) plugin.overlay().showUntilRespawn(v, overlay); });
         }
         if (holder != null) sync(holder);
         save();

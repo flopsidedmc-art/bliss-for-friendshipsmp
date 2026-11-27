@@ -204,7 +204,7 @@ class GoldTest {
         String g = read("GoldGem.java");
         assertTrue(g.contains("if (!p.isSneaking() || !gems().isGold(e.getOffHandItem()) || stateOf(p) == null) return;"), "F alone swaps as normal");
         assertTrue(g.contains("p.startRiptideAttack(20,"), "the real Riptide spin");
-        assertTrue(g.contains("strikeLightningEffect("), "cosmetic lightning");
-        assertTrue(g.contains("AuratusGem.stillChain("), "the Auratus chains");
+        assertFalse(g.contains("strikeLightningEffect("), "no lightning in the repurpose any more");
+        assertFalse(g.contains("AuratusGem.stillChain(") || read("AuratusGem.java").contains("stillChain("), "no chains, and no unused chain code left");
     }
 }

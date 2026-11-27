@@ -119,10 +119,11 @@ sounds:
   gold: # The Gold Gem: bells, gold, souls
     switch: {event: BLOCK_NOTE_BLOCK_CHIME, volume: 0.6, pitch: 1.6, enabled: true}  # you only: the active gem changed
     mark: {event: BLOCK_NOTE_BLOCK_PLING, volume: 0.8, pitch: 0.6, enabled: true}  # you only
-    repurpose: {event: BLOCK_RESPAWN_ANCHOR_AMBIENT, volume: 1.2, pitch: 0.6, enabled: true}  # the victim freezes, their gem rises
-    chains: {event: BLOCK_SMITHING_TABLE_USE, volume: 1.0, pitch: 0.6, enabled: true}  # the gold chains latch on
-    chains-snap: {event: ENTITY_ITEM_BREAK, volume: 1.0, pitch: 0.5, enabled: true}
-    absorb: {event: ENTITY_ZOMBIE_VILLAGER_CURE, volume: 0.5, pitch: 1.6, enabled: true}  # the gem flies into the holder
+    repurpose-hit: {event: ENTITY_WARDEN_ATTACK_IMPACT, volume: 1.2, pitch: 0.7, enabled: true, layer: {event: ENTITY_PLAYER_ATTACK_KNOCKBACK, volume: 1.0, pitch: 0.6}}  # the killing blow lands
+    repurpose: {event: BLOCK_RESPAWN_ANCHOR_AMBIENT, volume: 1.2, pitch: 0.6, enabled: true, layer: {event: ENTITY_ALLAY_AMBIENT_WITHOUT_ITEM, volume: 0.6, pitch: 1.4}}  # the gem rises: a hum and a soft chime
+    repurpose-strain: {event: BLOCK_LARGE_AMETHYST_BUD_BREAK, volume: 0.7, pitch: 0.8, enabled: true, layer: {event: BLOCK_MEDIUM_AMETHYST_BUD_BREAK, volume: 0.5, pitch: 1.2}}  # the quiver: cracks and chimes building (louder and higher as it goes)
+    repurpose-shatter: {event: ENTITY_ITEM_BREAK, volume: 1.4, pitch: 0.8, enabled: true, layer: {event: BLOCK_LARGE_AMETHYST_BUD_BREAK, volume: 1.2, pitch: 0.5}}  # it shatters in mid-air
+    absorb: {event: BLOCK_NOTE_BLOCK_CHIME, volume: 1.0, pitch: 0.5, enabled: true, layer: {event: ENTITY_ZOMBIE_VILLAGER_CURE, volume: 0.4, pitch: 1.6}}  # the holder only: a deep chime as the shards reach them
     shatter: {event: ITEM_TOTEM_USE, volume: 0.8, pitch: 1.4, enabled: true}  # the holder fell: souls return home
     ritual: {event: BLOCK_NOTE_BLOCK_BELL, volume: 1.0, pitch: 0.5, enabled: true}  # everyone: the ritual begins
     awaken: {event: ITEM_TOTEM_USE, volume: 1.0, pitch: 0.6, enabled: true}
@@ -974,12 +975,28 @@ gold:
     red-tab: true
     red-chat: true # the invisibility scramble still wins in chat
   repurpose: # killing a marked player (the blow, or anything within 10 s of your last hit on them)
-    seconds: 5
-    lightning: 4 # cosmetic strikes around them (no fire, no damage)
-    chains: 4
+    seconds: 5 # the whole scene; the victim is stunned (no moving, attacking, items, abilities, damage or healing)
+    steps: # when each step ends, in seconds from the hit; the rest (to seconds) is the shards flying into the holder
+      torn-out: 0.5 # their gem comes out of their chest, large and side-on, smoke bursting off its sides
+      rise: 2.5 # it rises slowly to its apex, slowing at the top (sparkles, gem-coloured orbs, a soft chime)
+      look-up: 3.5 # it tips back to face the sky (tilt-seconds), then holds still
+      quiver: 4.5 # it shakes harder and faster with a rising strain, then shatters
+    tilt-seconds: 0.5
+    gem-scale: 2.5 # the gem's size
+    apex: 4.0 # blocks above their head
+    quiver-blocks: 0.05 # the shake at its strongest
+    quiver-degrees: 4
+    particles:
+      smoke: 30 # white smoke while it's torn out
+      sparkles: 3 # white sparkles while it rises, every 2 ticks
+      orbs: 2 # gem-coloured dust drifting off it
+      shatter: 40 # pieces and dust when it breaks
+      trail: 6 # per tick of the shards' trail into the holder
+    follow-camera: true # the victim's camera keeps their gem centred (they turn to watch it; they never move)
     message: "{victim}'s soul was repurposed."
     respawn-message: "Your gem was taken by the Gold Gem holder. Kill them to take it back."
-    overlay: # the victim's screen during it (camera overlay textures under textures/); gold_0 until per-gem ones exist
+    overlay: # the victim's screen, the whole time and through the death screen (camera overlay textures under textures/). Per gem,
+      # e.g. blissgems:overlay/repurpose_astra (textures/overlay/repurpose_astra.png: smoke at the edges in that gem's colour); gold_0 until those exist
       astra: blissgems:overlay/gold_0
       fire: blissgems:overlay/gold_0
       flux: blissgems:overlay/gold_0
