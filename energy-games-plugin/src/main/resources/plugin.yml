@@ -1,0 +1,33 @@
+name: EnergyGames
+version: '${project.version}'
+main: net.friendshipsmp.energygames.EnergyGamesPlugin
+api-version: '1.20'
+description: EnergyGames event (port of energy_games.sk by Smp Remakers / EvokerCord)
+softdepend: [Skript]
+
+commands:
+  energygames:
+    description: EnergyGames main command
+    usage: /<command> <start|end|tracker|rule|trade|settoken|cleartoken|reload>
+    aliases: [eg]
+  glowing:
+    description: Make every player glow for the configured duration
+    permission: energygames.admin
+  glowing-end:
+    description: Stop the glowing timer
+    permission: energygames.admin
+  double-energy:
+    description: Start the Double Energy timer
+    permission: energygames.admin
+    aliases: [doubleenergy]
+  endtimer:
+    description: Stop the Double Energy timer
+    permission: energygames.admin
+
+permissions:
+  energygames.admin:
+    description: Start/end EnergyGames, timers, give items
+    default: op
+  energygames.trade:
+    description: Use /energygames trade
+    default: true

@@ -1,0 +1,83 @@
+# EnergyGames - port of energy_games.sk
+# Colours: '&' codes and hex in the form <##RRGGBB>, <#RRGGBB> or &#RRGGBB.
+
+# Scoreboard teams on the main scoreboard. Glowing players glow in their team's colour.
+# If a team with this name already exists it is reused, otherwise it is created.
+teams:
+  participant:
+    name: energygames_blue
+    color: AQUA
+  eliminated:
+    name: energygames_red
+    color: RED
+
+# All durations are in seconds.
+durations:
+  glowing: 18000        # /glowing      (5 hours)
+  double-energy: 7200   # /double-energy (2 hours)
+  tracker: 3600         # player tracker (1 hour)
+  trade-villager: 8     # how long the Energy Merchant stays
+
+trades:
+  tracker-cost: 3
+  rule-request-cost: 2
+  max-uses: 999999
+
+items:
+  tracker-name: "<##E30000>ᴘʟᴀʏ<##6B0202>ᴇʀ ᴛʀᴀ<##360000>ᴄᴋᴇʀ"
+  rule-request-name: "<##FFE359>ʀᴜʟ<##E8C517>ᴇ ʀᴇǫᴜᴇsᴛ"
+
+# The energy token used to pay at the Energy Merchant. Checked in this order:
+#  1. an item saved in-game with /energygames settoken (hold the real token in your main hand)
+#  2. the Skript function getEnergyToken() from your Bliss script, if Skript is installed
+#  3. the fallback item below
+energy-token:
+  fallback:
+    material: NETHER_STAR
+    name: "&bEnergy Token"
+
+# Action bars are not shown to a player holding a gem / mythical item (so the gem's own action bar wins).
+busy-hand:
+  # Call the Skript functions IsGem(item) and isMythical(item) if they exist.
+  use-skript-functions: true
+  # Extra checks that don't need Skript (an item matches if ANY rule matches).
+  name-contains: []     # e.g. ["Gem", "Mythical"]
+  materials: []         # e.g. [AMETHYST_SHARD]
+
+skript:
+  # Mirror state into Skript variables so your other scripts keep working:
+  # {EnergyGames}, {participant::<uuid>}, {timer.running} (double energy), {timer.running1} (glowing)
+  sync-variables: true
+  # Skript variable checked before /energygames start is allowed.
+  dragon-games-variable: DragonGames
+
+messages:
+  incorrect-argument: "&cIncorrect Argument"
+  no-permission: "&cYou don't have permission to do that."
+  players-only: "&cOnly players can do that."
+  joined: "&b&lYou are now a part of &e&lEnergyGames"
+  eliminated: "&cA player has been eliminated"
+  dragon-games: "&e(i)&f. &eYou cannot start energy games during &cDragonGames"
+  started: "&e&lEnergyGames &b&lbegins!"
+  ended: "&e&lEnergyGames &chas ended"
+  not-running: "&cEnergyGames is not running."
+  villager-name: "&e&lEnergy Merchant"
+  timer-already-running: "&cA timer is already running."
+  no-timer-running: "&cNo timer is running."
+  timer-ended: "&aTimer ended."
+  glowing-actionbar: "&6Glowing: &e&l{h}h {m}m {s}s"
+  double-energy-actionbar: "<##45F5CC>Double Energy: &e&l{h}h {m}m {s}s"
+  tracker-gui-title: "&bSelect &cTarget"
+  tracker-head-name: "&e{player}"
+  tracker-head-lore: "&7Click to track this player"
+  tracker-no-players: "&cThere is nobody to track."
+  tracker-player-offline: "&cThat player is no longer online."
+  tracker-started: "&aYour tracker is now pointing to &e{player}&a for {time}."
+  tracker-already-active: "&cThis tracker is already tracking someone."
+  tracker-expired: "&cYour tracker has expired."
+  tracker-target-offline: "&cYour target went offline."
+  tracker-being-tracked: "&4&lYou are being tracked - &c{h}h &4{m}m {s}s"
+  token-saved: "&aSaved the item in your hand as the energy token."
+  token-cleared: "&aCleared the saved energy token."
+  token-need-item: "&cHold the energy token in your main hand."
+  reloaded: "&aEnergyGames config reloaded."

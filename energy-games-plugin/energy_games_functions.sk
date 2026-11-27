@@ -1,0 +1,18 @@
+# OPTIONAL. Only needed if your OTHER scripts call these functions,
+# which used to live in energy_games.sk. Commands/events are now in the EnergyGames plugin.
+
+function getTracker() :: item:
+	return a compass named "<##E30000>ᴘʟᴀʏ<##6B0202>ᴇʀ ᴛʀᴀ<##360000>ᴄᴋᴇʀ"
+
+function getRuleRequest() :: item:
+	return a paper named "<##FFE359>ʀᴜʟ<##E8C517>ᴇ ʀᴇǫᴜᴇsᴛ"
+
+function busyHand(p: player) :: boolean:
+	if any:
+		IsGem({_p}'s held item) is true
+		IsGem({_p}'s offhand item) is true
+		isMythical({_p}'s held item) is true
+		isMythical({_p}'s offhand item) is true
+	then:
+		return true
+	return false
