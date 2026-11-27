@@ -419,6 +419,9 @@ final class GoldGem implements Listener {
         if (dummy.getEquipment() != null) dummy.getEquipment().setItemInMainHand(held.clone());
         Scene sc = new Scene(dummy, s.holder, held);
         sc.dummy = true;
+        if (sc.type != null && plugin.overlay() != null) // the tester sees the victim's overlay (the dummy has no screen); cleared at the end
+            plugin.overlay().play(p, repurposeOverlayStyle(sc.type), (int) cfgD("repurpose.overlay.frame-count", 12), (int) cfgD("repurpose.overlay.frame-ticks", 2),
+                    (int) cfgD("repurpose.overlay.fade-in-ticks", 8), (int) cfgD("repurpose.overlay.fade-steps", 4), false);
         scenes.put(dummy.getUniqueId(), sc);
         if (dummy.getEquipment() != null) Bukkit.getScheduler().runTaskLater(plugin, () -> { if (dummy.isValid()) dummy.getEquipment().setItemInMainHand(null); }, 1L); // torn out
         play(sc, dummy.getWorld());
@@ -717,6 +720,11 @@ final class GoldGem implements Listener {
         }
     }
 
+    /** The overlay style for this gem: gold.repurpose.overlay.style with &lt;gem&gt; filled in (repurpose_astra ...). */
+    String repurposeOverlayStyle(GemType type) {
+        return RepurposeMath.overlayStyle(cfg("repurpose.overlay.style", "repurpose_<gem>"), type.name());
+    }
+
     private void startScene(Player v, GoldMath.State s) {
         int slot = standardGemSlot(v);
         ItemStack gem = null;
@@ -727,7 +735,9 @@ final class GoldGem implements Listener {
         v.setInvulnerable(true);
         v.setVelocity(new Vector());
         stun(v);
-        if (sc.type != null && plugin.overlay() != null) plugin.overlay().show(v, cfg("repurpose.overlay." + sc.type.name().toLowerCase(), "blissgems:overlay/gold_0"));
+        if (sc.type != null && plugin.overlay() != null) // their screen: the gem's animated overlay, fading in, through the death screen
+            plugin.overlay().play(v, repurposeOverlayStyle(sc.type), (int) cfgD("repurpose.overlay.frame-count", 12), (int) cfgD("repurpose.overlay.frame-ticks", 2),
+                    (int) cfgD("repurpose.overlay.fade-in-ticks", 8), (int) cfgD("repurpose.overlay.fade-steps", 4), true);
         play(sc, v.getWorld());
     }
 
@@ -881,6 +891,7 @@ final class GoldGem implements Listener {
             if (sc.gem != null && s != null) s.take(sc.type.name(), TEST_OWNER, "Dummy", encode(sc.gem));
             org.bukkit.entity.Entity d = Bukkit.getEntity(sc.victim);
             if (d != null) { w.spawnParticle(Particle.CLOUD, d.getLocation().add(0, 1, 0), 20, 0.3, 0.6, 0.3, 0.02); d.remove(); }
+            if (holder != null && plugin.overlay() != null) plugin.overlay().clear(holder); // the tester's overlay ends with the test
             Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize("§6" + cfg("repurpose.message", "{victim}'s soul was repurposed.").replace("{victim}", "Dummy")));
             if (holder != null) sync(holder);
             save();
@@ -897,15 +908,11 @@ final class GoldGem implements Listener {
         String who = v != null ? plugin.shownName(v) : sc.victimName;
         Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize("§6" + cfg("repurpose.message", "{victim}'s soul was repurposed.").replace("{victim}", who)));
         if (v != null) {
-            String overlay = sc.type == null ? null : cfg("repurpose.overlay." + sc.type.name().toLowerCase(), "blissgems:overlay/gold_0");
-            if (plugin.overlay() != null) plugin.overlay().clear(v);
+            // The overlay keeps looping through the death screen and ends when they respawn (CameraOverlay).
             unstun(v);
             v.setInvulnerable(false);
             if (holder != null) v.setKiller(holder);
             v.setHealth(0); // a normal death: their items drop, their gem doesn't (it's gone from their inventory)
-            // The tint stays on through the death screen until they respawn (the death itself sends their real helmet back).
-            if (!early && overlay != null && plugin.overlay() != null && plugin.isEnabled())
-                Bukkit.getScheduler().runTask(plugin, () -> { if (v.isOnline() && v.isDead()) plugin.overlay().showUntilRespawn(v, overlay); });
         }
         if (holder != null) sync(holder);
         save();

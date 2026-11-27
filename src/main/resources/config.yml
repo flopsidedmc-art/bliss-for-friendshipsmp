@@ -995,16 +995,13 @@ gold:
     follow-camera: true # the victim's camera keeps their gem centred (they turn to watch it; they never move)
     message: "{victim}'s soul was repurposed."
     respawn-message: "Your gem was taken by the Gold Gem holder. Kill them to take it back."
-    overlay: # the victim's screen, the whole time and through the death screen (camera overlay textures under textures/). Per gem,
-      # e.g. blissgems:overlay/repurpose_astra (textures/overlay/repurpose_astra.png: smoke at the edges in that gem's colour); gold_0 until those exist
-      astra: blissgems:overlay/gold_0
-      fire: blissgems:overlay/gold_0
-      flux: blissgems:overlay/gold_0
-      life: blissgems:overlay/gold_0
-      puff: blissgems:overlay/gold_0
-      speed: blissgems:overlay/gold_0
-      strength: blissgems:overlay/gold_0
-      wealth: blissgems:overlay/gold_0
+    overlay: # the victim's screen, for them only: fades in through <style>_fade_1..N, then loops <style>_0..N-1 for the whole scene
+      # and on through the death screen until they respawn (textures/overlay/ in the pack). /goldgem testrepurpose shows it to you.
+      style: "repurpose_<gem>" # <gem> is the victim's gem: repurpose_astra, repurpose_fire ...
+      frame-count: 12 # loop frames: <style>_0 .. <style>_11
+      fade-steps: 4 # fainter frames <style>_fade_1..4 (1 the faintest); 0 = no fade
+      frame-ticks: 2 # a new frame every 2 ticks: one loop takes 1.2 s
+      fade-in-ticks: 8
   ritual: # all 8 gems: right-click the site's centre block (/goldgem ritual set) with the Gold Gem
     seconds: 30
     radius: 6 # stay this close or it breaks (no cost)

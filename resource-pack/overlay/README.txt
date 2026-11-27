@@ -18,3 +18,5 @@ New brown haze: gold_0..4 are the five new frames (played in order: frames 0 and
 
 
 Special items: adds blissgems:upgrader, blissgems:trader and blissgems:energy_bottle (item definitions, plus the main pack's upgrader, trader and energy_bottle models and textures copied in, so they show even over an older main pack). The plugin sets these as the item_model of the Gem Upgrader, Gem Trader and Bottle of Energy.
+
+Gold Gem repurpose overlay: textures/overlay/repurpose_<gem>_0..11.png, _fade_1..4.png and repurpose_<gem>.png for the eight gems (in the zip only; this folder doesn't mirror every texture).

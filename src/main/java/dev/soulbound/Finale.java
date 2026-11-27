@@ -105,8 +105,7 @@ public final class Finale implements Listener {
     private boolean pulseRed;
     private boolean skyOn;
     private int skyTicks;
-    private int overlayFrame;
-    private int fadeLevel; // the fade-in frame shown now (0 = none yet)
+    private final int[] overlayState = new int[2]; // OverlayAnim: [0] the loop frame now, [1] the fade-in level shown (0 = none yet)
     private org.bukkit.scheduler.BukkitTask overlayFadeOut; // the fade-out after the sky stops
 
     private Location pedAuratus;
@@ -344,8 +343,8 @@ public final class Finale implements Listener {
     private void startSky() {
         skyOn = true;
         skyTicks = 0;
-        overlayFrame = 0;
-        fadeLevel = 0;
+        overlayState[0] = 0;
+        overlayState[1] = 0;
         flashUntil = -1;
         cancelOverlayFadeOut();
         for (Player p : Bukkit.getOnlinePlayers()) applySky(p);
@@ -370,7 +369,7 @@ public final class Finale implements Listener {
             t[0]++;
             int level = FinaleMath.fadeOutLevel(t[0], fadeOut, steps);
             if (level <= 0) { cancelOverlayFadeOut(); clearOverlay(); return; }
-            if (level != shownLevel[0]) { shownLevel[0] = level; showOverlay(fadeTexture(style, level)); }
+            if (level != shownLevel[0]) { shownLevel[0] = level; showOverlay(OverlayAnim.fadeTexture(style, level)); }
         }, 1L, 1L);
     }
 
@@ -379,8 +378,6 @@ public final class Finale implements Listener {
 
     private String overlayStyle() { return pulseRed || "red".equalsIgnoreCase(skyS("overlay.style", "gold")) ? "red" : "gold"; }
 
-    private String overlayTexture() { return "blissgems:overlay/" + overlayStyle() + "_" + (overlayFrame % overlayFrames(overlayStyle())); }
-
     /** Frames in the pack for a style (finale.overlay.frame-count.<style>): textures/overlay/<style>_0..N-1.png. */
     private int overlayFrames(String style) { return overlayFrames(plugin, style); }
 
@@ -388,8 +385,6 @@ public final class Finale implements Listener {
         int fallback = "gold".equals(style) ? 5 : 6;
         return Math.max(1, Math.min(16, plugin.getConfig().getInt("finale.overlay.frame-count." + style, fallback)));
     }
-
-    private static String fadeTexture(String style, int level) { return "blissgems:overlay/" + style + "_fade_" + level; }
 
     /** Fainter frames in the pack for fading; 0 = no fade (pop in, cut out). */
     private int fadeSteps() { return (int) Math.max(0, Math.min(8, skyL("overlay.fade-steps", 4L))); }
@@ -426,16 +421,9 @@ public final class Finale implements Listener {
         int steps = fadeSteps();
         int fadeIn = steps > 0 ? Math.max(0, (int) skyL("overlay.fade-in-ticks", 30L)) : 0;
         if (skyB("overlay.enabled", true)) {
-            String texture = null;
-            if (fadeIn > 0 && skyTicks <= fadeIn) { // fade in through the fainter frames, then animate
-                int level = FinaleMath.fadeInLevel(skyTicks, fadeIn, steps);
-                if (level != fadeLevel) { fadeLevel = level; texture = fadeTexture(overlayStyle(), level); }
-            } else if (fadeIn <= 0 && skyTicks == 1) {
-                texture = overlayTexture(); // no fade: the first frame at once
-            } else if (skyTicks % frameTicks == 0 && skyTicks >= flashUntil) {
-                overlayFrame = (overlayFrame + 1) % overlayFrames(overlayStyle()); // every frame-ticks, the next frame's helmet
-                texture = overlayTexture();
-            }
+            // Fade in through the fainter frames, then the next frame every frame-ticks (held during a flash): OverlayAnim.
+            String style = overlayStyle();
+            String texture = OverlayAnim.step(skyTicks, style, overlayFrames(style), frameTicks, fadeIn, steps, skyTicks >= flashUntil, overlayState);
             if (texture != null) showOverlay(texture);
         }
         if (skyTicks % 10 == 0 && skyB("sparkles", true)) {

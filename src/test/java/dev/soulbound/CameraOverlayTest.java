@@ -51,7 +51,9 @@ class CameraOverlayTest {
         for (String f : new String[] {"Finale.java", "Turmoil.java"}) {
             String s = Files.readString(Path.of("src/main/java/dev/soulbound", f));
             assertFalse(s.contains("0xE100") || s.contains("0xE110"), f + " still draws the overlay as a title glyph");
-            assertTrue(s.contains("blissgems:overlay/"), f + " uses the camera overlay textures");
+            assertTrue(s.contains("blissgems:overlay/") || s.contains("OverlayAnim."), f + " uses the camera overlay textures");
         }
+        assertTrue(Files.readString(Path.of("src/main/java/dev/soulbound/OverlayAnim.java")).contains("\"blissgems:overlay/\" + style"),
+                "the shared frame and fade names (the Finale and the repurpose)");
     }
 }

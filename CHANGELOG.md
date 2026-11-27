@@ -1,3 +1,57 @@
+# Gold Gem: the repurpose overlay is animated
+
+## What I found first
+- **The Finale's overlay** is a camera overlay: a fake helmet sent to each player (`CameraOverlay`).
+  - **Fade in:** it fades in through `<style>_fade_1..N` (`finale.overlay.fade-steps`, 1 the faintest) over `fade-in-ticks`.
+  - **Loop:** it then moves to the next frame `<style>_0..N-1` every `frame-ticks` (`frame-count.<style>`: gold 5, red 6). The frame is held during its flash.
+  - **Style:** gold, or red during the Revenant's pulse. It fades out on its own timer.
+- **The repurpose** showed one fixed texture per gem, and `showUntilRespawn` sent it again after the death.
+
+## What changed
+- **Shared helper `OverlayAnim`:** the fade-in-then-loop step and the frame/fade texture names, pulled out of the Finale.
+  - **The Finale uses it unchanged:** gold/red, its own frame counts, frame-ticks, fade-in, fade-out, and the frame held during the flash.
+  - **The same sequence as before:** a test replays the default gold sequence: fade 1–4, then gold_1, 2, 3, 4, 0 …
+- **The victim's overlay** fades in through `repurpose_<gem>_fade_1..4` over 8 ticks, then loops `repurpose_<gem>_0..11`, one frame every 2 ticks (1.2 s a loop). It runs for the whole scene and on through the death screen, and ends at respawn.
+  - **No fade-out.** Only the victim sees it; while it plays, the Finale's overlay never overwrites it.
+- **`CameraOverlay.play(...)`** is the per-player animation, replacing `showUntilRespawn`.
+  - **One task** runs only while someone has an animation and stops itself when none are left.
+  - **Ends on:** respawn, logout, world change, `clear` and plugin disable.
+  - **Through death:** an animation that plays through death is sent again after the death resets the helmet slot, then keeps looping.
+- **`/goldgem testrepurpose <gem>`** now plays the overlay for you (the dummy has no screen) and clears it when the test ends. That way you can check it alone.
+- **Config `gold.repurpose.overlay`:** `style: "repurpose_<gem>"` (the gem is filled in), `frame-count` 12, `fade-steps` 4, `frame-ticks` 2, `fade-in-ticks` 8.
+  - The per-gem texture keys from the last change are gone. A one-time config clean-up (balance-version 10) removes them from existing configs.
+- **The pack:** the repo's `Relay-Temporal-Pack.zip` is your new pack (136 repurpose overlay textures: 12 frames, 4 fades and a copy of frame 0 per gem). It keeps the Upgrader, Trader and Bottle of Energy files the new pack didn't have, and both README notes.
+
+## Files
+- **New:** `OverlayAnim.java` (shared frame/fade step and names) and `OverlayAnimTest.java` (4 tests).
+- **Changed:**
+  - `Finale.java`: uses `OverlayAnim`, same behaviour.
+  - `CameraOverlay.java`: `play()` animations through death; `showUntilRespawn` removed.
+  - `GoldGem.java`: plays the gem's animated overlay; testrepurpose shows it to the tester.
+  - `RepurposeMath.java`: the overlay style per gem.
+  - `SoulboundGemsPlugin.java`: the version-10 clean-up.
+  - `config.yml`.
+  - `resource-pack/Relay-Temporal-Pack.zip` and `overlay/README.txt`.
+  - Tests: `RepurposeTest`, `CameraOverlayTest` (the Finale's textures now come through `OverlayAnim`).
+
+## Tested
+- Compiles against paper-api 1.21.11; **all 320 tests pass**.
+- **Covered:**
+  - the frame and fade names for all 8 gems (and that every one is in the pack);
+  - the loop order (wrapping 11 → 0) and the fade-in order (1 → 4);
+  - no fade means frame 0 at once;
+  - the Finale's gold sequence and its config are unchanged;
+  - the config, and the clean-up of the old keys;
+  - the animation ending at respawn and logout, and only for the victim.
+
+## Not tested
+- **Nothing in game.** In particular, whether the client draws camera overlays on the death screen is still unknown.
+
+## In-game test plan
+1. `/goldgem testrepurpose astra`: the purple overlay fades in on your screen and swirls for the whole scene, then it's gone when the test ends. On a real victim it keeps swirling on the death screen until respawn.
+2. Try two other gems: each in its own colour.
+3. Start the Finale: its gold overlay is unchanged (fade in, the haze, fade out).
+
 # Gold Gem: the new repurpose scene (no chains, no lightning)
 
 ## What changed from the plan I built

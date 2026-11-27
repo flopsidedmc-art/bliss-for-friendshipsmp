@@ -73,6 +73,12 @@ final class RepurposeMath {
         return Math.min(1, (age - t.quiver() + 1) / (double) (t.total() - t.quiver()));
     }
 
+    /** The victim's overlay style: {@code pattern} with &lt;gem&gt; as the gem's name in lower case (repurpose_astra ...). */
+    static String overlayStyle(String pattern, String gem) {
+        String p = pattern == null || pattern.isBlank() ? "repurpose_<gem>" : pattern.trim();
+        return p.replace("<gem>", gem.toLowerCase(java.util.Locale.ROOT));
+    }
+
     /** The gem stands side-on to the victim: turned 90 degrees from the way they face. */
     static float yaw(float victimYaw) {
         float y = victimYaw + 90;

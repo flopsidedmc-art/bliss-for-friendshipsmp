@@ -35,11 +35,23 @@ final class CameraOverlay implements Listener {
     private final Map<String, ItemStack> items = new HashMap<>(); // texture -> its fake helmet
     private final Map<UUID, String> shown = new HashMap<>(); // player -> the texture they see now
 
+    /** One player's animated overlay (OverlayAnim): the Gold Gem repurpose. */
+    private static final class Anim {
+        String style;
+        int frames, frameTicks, fadeIn, steps, tick;
+        final int[] state = new int[2];
+        boolean throughDeath;
+    }
+
+    private final Map<UUID, Anim> anims = new HashMap<>();
+    private org.bukkit.scheduler.BukkitTask animTask; // runs only while someone has an animation
+
     CameraOverlay(SoulboundGemsPlugin plugin) { this.plugin = plugin; }
 
     /** Shows {@code texture} (e.g. blissgems:overlay/gold_0, a path under textures/) to this player only. */
     void show(Player p, String texture) {
         if (p == null || !p.isOnline() || p.isDead() || texture == null) return;
+        if (anims.containsKey(p.getUniqueId())) return; // their own animation (the repurpose) has their screen
         ItemStack fake = item(texture);
         if (fake == null) return;
         shown.put(p.getUniqueId(), texture);
@@ -47,24 +59,61 @@ final class CameraOverlay implements Listener {
     }
 
     /**
-     * The same, while they're dead: shown on the death screen until they respawn (onRespawn sends the real helmet
-     * back). Sent after the death, since the death itself resets their helmet slot on their screen.
+     * An animated overlay for this player only (OverlayAnim): fade in through textures/overlay/&lt;style&gt;_fade_1..steps
+     * over fadeIn ticks, then loop &lt;style&gt;_0..frames-1, one every frameTicks, until it's cleared, they log out or
+     * respawn. With {@code throughDeath} it keeps playing on the death screen.
      */
-    void showUntilRespawn(Player p, String texture) {
-        if (p == null || !p.isOnline() || texture == null) return;
+    void play(Player p, String style, int frames, int frameTicks, int fadeIn, int steps, boolean throughDeath) {
+        if (p == null || !p.isOnline() || style == null || !plugin.isEnabled()) return;
+        Anim a = new Anim();
+        a.style = style;
+        a.frames = Math.max(1, frames);
+        a.frameTicks = Math.max(1, frameTicks);
+        a.fadeIn = Math.max(0, fadeIn);
+        a.steps = Math.max(0, steps);
+        a.throughDeath = throughDeath;
+        anims.put(p.getUniqueId(), a);
+        advance(p, a); // the first step now
+        if (animTask == null) animTask = Bukkit.getScheduler().runTaskTimer(plugin, this::animTick, 1L, 1L);
+    }
+
+    boolean playing(Player p) { return p != null && anims.containsKey(p.getUniqueId()); }
+
+    private void animTick() {
+        for (UUID id : new ArrayList<>(anims.keySet())) {
+            Player p = Bukkit.getPlayer(id);
+            Anim a = anims.get(id);
+            if (p == null || a == null) { anims.remove(id); continue; }
+            advance(p, a);
+        }
+        if (anims.isEmpty() && animTask != null) { animTask.cancel(); animTask = null; } // nothing left: no task keeps running
+    }
+
+    private void advance(Player p, Anim a) {
+        a.tick++;
+        String texture = OverlayAnim.step(a.tick, a.style, a.frames, a.frameTicks, a.fadeIn, a.steps, true, a.state);
+        if (texture != null) send(p, texture);
+    }
+
+    /** Sends a texture even on the death screen (an animation that plays through death). */
+    private void send(Player p, String texture) {
         ItemStack fake = item(texture);
-        if (fake == null) return;
+        if (fake == null || !p.isOnline()) return;
         shown.put(p.getUniqueId(), texture);
         p.sendEquipmentChange(p, EquipmentSlot.HEAD, fake);
     }
 
     /** Ends this player's overlay: their real helmet (or nothing) is sent back. */
     void clear(Player p) {
-        if (p == null || shown.remove(p.getUniqueId()) == null) return;
+        if (p == null) return;
+        anims.remove(p.getUniqueId());
+        if (shown.remove(p.getUniqueId()) == null) return;
         sendRealHelmet(p);
     }
 
     void clearAll() {
+        anims.clear();
+        if (animTask != null) { animTask.cancel(); animTask = null; }
         for (UUID id : new ArrayList<>(shown.keySet())) {
             Player p = Bukkit.getPlayer(id);
             if (p != null) sendRealHelmet(p);
@@ -117,13 +166,23 @@ final class CameraOverlay implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> { if (texture.equals(shown.get(p.getUniqueId()))) show(p, texture); });
     }
 
+    /** Death: the overlay goes, unless it's an animation that plays through the death screen (sent again after the death resets their helmet). */
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onDeath(PlayerDeathEvent e) { clear(e.getEntity()); }
+    public void onDeath(PlayerDeathEvent e) {
+        Player p = e.getEntity();
+        Anim a = anims.get(p.getUniqueId());
+        if (a == null || !a.throughDeath) { clear(p); return; }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            String now = shown.get(p.getUniqueId());
+            if (anims.get(p.getUniqueId()) == a && now != null) send(p, now);
+        });
+    }
 
-    /** Respawning: the real helmet; a running overlay comes back on its next frame. */
+    /** Respawning: any animation ends and the real helmet comes back; a running overlay (the finale) comes back on its next frame. */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent e) {
         Player p = e.getPlayer();
+        anims.remove(p.getUniqueId());
         if (shown.remove(p.getUniqueId()) != null) Bukkit.getScheduler().runTask(plugin, () -> sendRealHelmet(p));
     }
 
@@ -131,5 +190,8 @@ final class CameraOverlay implements Listener {
     public void onWorld(PlayerChangedWorldEvent e) { clear(e.getPlayer()); }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { shown.remove(e.getPlayer().getUniqueId()); } // nothing to send back: it's only on their screen
+    public void onQuit(PlayerQuitEvent e) { // nothing to send back: it's only on their screen
+        anims.remove(e.getPlayer().getUniqueId());
+        shown.remove(e.getPlayer().getUniqueId());
+    }
 }

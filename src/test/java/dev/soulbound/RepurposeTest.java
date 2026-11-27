@@ -63,7 +63,7 @@ class RepurposeTest {
         assertTrue(g.contains("w.spawnParticle(Particle.ITEM, at, n, 0.3, 0.3, 0.3, 0.18, sc.gem.clone());"), "its own pieces");
         assertTrue(g.contains("GemSounds.playTo(plugin, \"gold.absorb\", holder); // a deep chime, for them"));
         assertTrue(g.contains("vp.teleport(look);"), "the camera keeps the gem centred (from their body)");
-        assertTrue(g.contains("plugin.overlay().showUntilRespawn(v, overlay)"), "the tint stays through the death screen");
+        assertTrue(g.contains("plugin.overlay().play(v, repurposeOverlayStyle(sc.type)"), "the animated overlay, through the death screen (true)");
         assertTrue(g.contains("v.setHealth(0); // a normal death"), "then a normal death: items drop, not the gem");
         YamlConfiguration c = YamlConfiguration.loadConfiguration(new File("src/main/resources/config.yml"));
         assertEquals(5, c.getInt("gold.repurpose.seconds"));

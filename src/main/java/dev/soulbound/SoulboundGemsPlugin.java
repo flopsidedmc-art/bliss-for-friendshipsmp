@@ -321,7 +321,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     private void migrateBalance() {
         var c = getConfig();
         int version = c.getInt("balance-version", 1);
-        if (version >= 9) return;
+        if (version >= 10) return;
         java.util.List<String> changed = new java.util.ArrayList<>();
         String link = "mythics.heretic.bloodlinking.";
         if (version < 2) {
@@ -368,7 +368,14 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             if ("ENTITY_ZOMBIE_VILLAGER_CURE".equals(c.getString("sounds.gold.absorb.event"))) copyDefault(c, "sounds.gold.absorb");
             if (!c.contains("sounds.gold.repurpose.layer", true)) copyDefault(c, "sounds.gold.repurpose");
         }
-        c.set("balance-version", 9);
+        // 10: the repurpose overlay is animated (gold.repurpose.overlay.style ...): the per-gem texture keys go.
+        if (version < 10) {
+            for (GemType t : GemType.values()) {
+                String k = "gold.repurpose.overlay." + t.name().toLowerCase(java.util.Locale.ROOT);
+                if (!t.isMythic() && c.contains(k, true)) { c.set(k, null); changed.add("removed " + k); }
+            }
+        }
+        c.set("balance-version", 10);
         if (!changed.isEmpty()) getLogger().info("Balance update: " + String.join(", ", changed) + " (see CHANGELOG.md).");
     }
 
