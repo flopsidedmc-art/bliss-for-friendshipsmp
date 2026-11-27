@@ -9,6 +9,7 @@ energy:
   death-loss: 1
   # if killer is at max (10), victim drops a bottle instead of killer gaining
   drop-bottle-at-max: true
+  stage-cooldown-factor: 0.9 # Pristine-stage cooldowns (EnergyManager): each stage multiplies cooldowns by this
 
 cooldowns-seconds:
   # Fallbacks only — real values are per-ability in GemListener#cooldownMs.
@@ -324,6 +325,7 @@ mythics:
 
   # Relay Gem: prize for "The Signal" ARG. One of a kind, ignores energy, drops on death.
   relay:
+    enabled: true # false: the Rift's power is off
     passives:
       tag-duration-ms: 30000 # retained damage-tag passive, independent from the charge meter
       tag-damage-bonus: 0.05 # +5% damage from the holder against tagged players
@@ -996,3 +998,26 @@ gold:
     cooldown-seconds: 30
     damage: 8.0 # before ability-damage.multiplier
     speed: 3.0
+
+# The Prismatic Edge (/blissop give). These were read with these defaults before; they're listed here so they can be tuned.
+prismatic-edge:
+  reach: 6.5
+  cleave-damage-hp: 12.0
+  cleave-cooldown-seconds: 8
+  dismantle-damage-hp: 7.0
+  dismantle-cooldown-seconds: 3
+  parry-window-ms: 1250
+  parry-reflect-hp: 5.0
+  parry-cooldown-seconds: 6
+  marker-interval-ticks: 2
+
+# Shadow Stalker (/stalker <player>): a red trail toward a player. Same defaults as before, now visible here.
+shadow-stalker:
+  enabled: true
+  base-seconds: 30 # how long the trail lasts with none of their items
+  seconds-per-item: 30 # + this per item of theirs you carry
+  max-seconds: 180 # cap (carrying their head gives the cap at once)
+  stop-distance: 100.0 # the hunt ends within this many blocks of them
+  trail-interval-ticks: 20
+  trail-height: 25.0
+  trail-cube-spacing: 2.5

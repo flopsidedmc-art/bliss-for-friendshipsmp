@@ -196,6 +196,7 @@ public final class MythicListener implements Listener {
         World world = at.getWorld();
         if (world == null) return;
         ArmorStand as = world.spawn(at, ArmorStand.class, stand -> {
+            stand.setPersistent(false); // never saved: a stop mid-flight can't leave the invisible stand behind
             stand.setInvisible(true);
             stand.setMarker(true);
             stand.setSmall(true);
@@ -217,6 +218,12 @@ public final class MythicListener implements Listener {
             d.setItemStack(disc);
             d.setPersistent(false);
         });
+    }
+
+    /** Plugin disable: every Bloodsaw in flight is gone. */
+    void shutdown() {
+        for (BloodsawState st : bloodsaws.values()) removeSaw(st);
+        bloodsaws.clear();
     }
 
     private void removeSaw(BloodsawState s) {

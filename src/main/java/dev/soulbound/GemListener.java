@@ -74,6 +74,9 @@ public class GemListener implements Listener {
     private final Map<UUID, Integer> hitCount = new HashMap<>();
     private final Map<UUID, Boolean> chadArmed = new HashMap<>();
     private final Map<UUID, ItemStack> pendingRespawnGem = new HashMap<>();
+    /** A held mythic taken out of the hand at death, until the death is over (MONITOR puts it back under keepInventory). */
+    private final Map<UUID, ItemStack> mythicTakenAtDeath = new HashMap<>();
+    private final Map<UUID, Boolean> mythicTakenFromOffhand = new HashMap<>();
     // Strength systems (user-supplied kit)
     private final Map<UUID, Long> nullifiedUntil = new HashMap<>();
     private final Map<UUID, Long> chadUntil = new HashMap<>();
@@ -1843,6 +1846,10 @@ public class GemListener implements Listener {
 
     void shutdown() {
         for (Player p : Bukkit.getOnlinePlayers()) restoreHearts(p);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (pockets.containsValue(p.getOpenInventory().getTopInventory())) p.closeInventory(); // nothing left on the cursor
+        }
+        savePockets(); // what's in everyone's Pockets survives the restart
         blurRuns.clear();
         if (blurClones != null) blurClones.removeAll(); // every Blur clone is gone
         for (UUID id : new ArrayList<>(volleys.keySet())) clearAstraDaggers(id);
@@ -1853,14 +1860,43 @@ public class GemListener implements Listener {
     // ================= WEALTH (user kit, abilities offhand-only) =================
 
     private void openPockets(Player p) {
-        org.bukkit.inventory.Inventory inv = pockets.get(p.getUniqueId());
-        if (inv == null) {
-            inv = Bukkit.createInventory(null, 9, GemNames.tx("Pockets"));
-            pockets.put(p.getUniqueId(), inv);
-        }
+        org.bukkit.inventory.Inventory inv = pocketOf(p.getUniqueId());
         p.openInventory(inv);
         GemSounds.play(plugin, "wealth.pockets", p.getLocation());
         used(p, GemNames.tx("Pockets"));
+    }
+
+    /** Pockets are saved to pockets.yml (each close, and on disable), so a restart or crash never loses what's in them. */
+    private org.bukkit.inventory.Inventory pocketOf(UUID id) {
+        org.bukkit.inventory.Inventory inv = pockets.get(id);
+        if (inv != null) return inv;
+        inv = Bukkit.createInventory(null, 9, GemNames.tx("Pockets"));
+        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(dataFile("pockets.yml"));
+        List<String> saved = y.getStringList(id.toString());
+        for (int i = 0; i < Math.min(9, saved.size()); i++) {
+            String s = saved.get(i);
+            if (s == null || s.isEmpty()) continue;
+            try { inv.setItem(i, GoldGem.decode(s)); }
+            catch (RuntimeException ex) { plugin.getLogger().warning("pockets.yml: skipping slot " + i + " of " + id + " (" + ex.getMessage() + ")"); }
+        }
+        pockets.put(id, inv);
+        return inv;
+    }
+
+    void savePockets() {
+        if (pockets.isEmpty()) return;
+        var y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(dataFile("pockets.yml"));
+        for (var e : pockets.entrySet()) {
+            List<String> slots = new ArrayList<>();
+            for (ItemStack it : e.getValue().getContents()) slots.add(it == null || it.getType().isAir() ? "" : GoldGem.encode(it));
+            y.set(e.getKey().toString(), slots);
+        }
+        try { y.save(dataFile("pockets.yml")); } catch (java.io.IOException ex) { plugin.getLogger().warning("Couldn't save pockets.yml: " + ex.getMessage()); }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPocketsClose(org.bukkit.event.inventory.InventoryCloseEvent e) {
+        if (pockets.containsValue(e.getInventory())) savePockets();
     }
 
     /** Item Lock [Left Click]: lock held consumables of nearby untrusted. */
@@ -1933,18 +1969,26 @@ public class GemListener implements Listener {
 
     /** Thunderstep [Prog 4+]: teleport a few blocks in the direction of motion. Hit reduces cooldown. */
     private void useThunderstep(Player p, int energy) {
-        Vector dir = p.getLocation().getDirection();
-        // Teleport a few blocks forward in the direction of motion
-        Location target = p.getLocation().add(dir.multiply(3));
-        // Ensure we don't teleport into a wall
-        if (!target.getBlock().getType().isAir()) {
-            target = p.getLocation().add(dir.multiply(1.5));
-        }
+        // Up to 3 blocks the way you look, stopping before anything solid: never through a wall or into the ground.
+        Location target = thunderstepTarget(p.getLocation(), 3.0);
         p.teleport(target);
         p.setFallDistance(0);
         GemSounds.play(plugin, "speed.thunderstep", p.getLocation());
         p.getWorld().spawnParticle(Particle.PORTAL, p.getLocation(), 40, 0.5, 1, 0.5, 0.2);
         used(p, GemNames.tx("Thunderstep"));
+    }
+
+    /** The furthest spot along the look direction (up to {@code max}) where your feet and head fit all the way there. */
+    static Location thunderstepTarget(Location from, double max) {
+        Vector dir = from.getDirection();
+        Location best = from.clone();
+        for (double d = 0.25; d <= max + 1e-9; d += 0.25) {
+            Location c = from.clone().add(dir.clone().multiply(d));
+            Block feet = c.getBlock(), head = feet.getRelative(org.bukkit.block.BlockFace.UP);
+            if (!feet.isPassable() || !head.isPassable()) break; // a wall, the ground: stop before it
+            best = c;
+        }
+        return best;
     }
 
     private Player aimPlayerWithin(Player p, double maxDist) {
@@ -2374,10 +2418,22 @@ public class GemListener implements Listener {
         }
     }
 
+    private static final org.bukkit.NamespacedKey DRIFT_HORSE = new org.bukkit.NamespacedKey("soulboundgems", "drift_horse");
+
+    /** The Drift horse drops nothing (its saddle was free). */
+    @EventHandler
+    public void onDriftHorseDeath(org.bukkit.event.entity.EntityDeathEvent e) {
+        if (!e.getEntity().getPersistentDataContainer().has(DRIFT_HORSE, org.bukkit.persistence.PersistentDataType.BYTE)) return;
+        e.getDrops().clear();
+        e.setDroppedExp(0);
+    }
+
     /** Dimensional Drift [offhand right-click]: the ghost horse ride for 5s, at both tiers. */
     private void useDimensionalDrift(Player p, int tier, int energy) {
         GemSounds.play(plugin, "astra.dimensional-drift", p.getLocation());
         org.bukkit.entity.Horse horse = p.getWorld().spawn(p.getLocation(), org.bukkit.entity.Horse.class);
+        horse.setPersistent(false); // never saved: a stop mid-ride can't leave a tame saddled horse behind
+        horse.getPersistentDataContainer().set(DRIFT_HORSE, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
         horse.setAdult();
         horse.setTamed(true);
         horse.getInventory().setSaddle(new ItemStack(Material.SADDLE));
@@ -3409,6 +3465,8 @@ public class GemListener implements Listener {
                 if (gems.isMythic(d) && gems.getType(d) == gems.getType(heldMythic)) { inDrops = true; break; }
             }
             if (!inDrops) e.getDrops().add(heldMythic);
+            mythicTakenAtDeath.put(victim.getUniqueId(), heldMythic);
+            mythicTakenFromOffhand.put(victim.getUniqueId(), !gems.isMythic(mainHeld));
             if (gems.isMythic(mainHeld)) victim.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
             if (gems.isMythic(offHeld)) victim.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
         }
@@ -3430,8 +3488,14 @@ public class GemListener implements Listener {
 
         ItemStack vGem = findGem(victim);
         if (vGem != null && !gems.isMythic(vGem)) {
-            int en = gems.getEnergy(vGem);
-            gems.setEnergy(vGem, en - plugin.getConfig().getInt("energy.death-loss", 1));
+            int loss = plugin.getConfig().getInt("energy.death-loss", 1);
+            gems.setEnergy(vGem, gems.getEnergy(vGem) - loss);
+            // The gem that comes back on respawn is a copy taken above, before this: it loses the energy too.
+            ItemStack kept = pendingRespawnGem.get(victim.getUniqueId());
+            if (kept != null) {
+                gems.setEnergy(kept, gems.getEnergy(kept) - loss);
+                saveRespawnGems();
+            }
         }
 
         if (killer != null && !killer.getUniqueId().equals(victim.getUniqueId())) {
@@ -3452,6 +3516,26 @@ public class GemListener implements Listener {
                 }
             }
         }
+    }
+
+    /**
+     * Something after us turned keepInventory on for this death (a Pantheon event, another plugin): the gem never left
+     * the inventory, so no copy may come back on respawn (that was a second gem), and a held mythic taken out of the
+     * hand goes back unless it's still in the drops.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDeathKeptInventory(PlayerDeathEvent e) {
+        UUID id = e.getEntity().getUniqueId();
+        ItemStack mythic = mythicTakenAtDeath.remove(id);
+        Boolean fromOffhand = mythicTakenFromOffhand.remove(id);
+        if (!e.getKeepInventory()) return;
+        if (pendingRespawnGem.remove(id) != null) saveRespawnGems();
+        if (mythic == null) return;
+        for (ItemStack d : e.getDrops()) if (gems.isMythic(d) && gems.getType(d) == gems.getType(mythic)) return; // it drops: nothing lost
+        org.bukkit.inventory.PlayerInventory inv = e.getEntity().getInventory();
+        if (Boolean.TRUE.equals(fromOffhand) && inv.getItemInOffHand().getType().isAir()) inv.setItemInOffHand(mythic);
+        else if (!Boolean.TRUE.equals(fromOffhand) && inv.getItemInMainHand().getType().isAir()) inv.setItemInMainHand(mythic);
+        else inv.addItem(mythic).values().forEach(left -> e.getEntity().getWorld().dropItemNaturally(e.getEntity().getLocation(), left));
     }
 
     /** Logged out on the death screen, or in those few ticks after respawning: the saved gem comes on their next join. */
@@ -3508,22 +3592,121 @@ public class GemListener implements Listener {
         return true;
     }
 
-    @EventHandler
+    /** Container inventories a gem may not go into. */
+    static boolean storage(InventoryType t) {
+        return switch (t) {
+            case CHEST, ENDER_CHEST, BARREL, SHULKER_BOX, HOPPER, DISPENSER, DROPPER, CRAFTER, FURNACE, BLAST_FURNACE, SMOKER -> true;
+            default -> false;
+        };
+    }
+
+    /** A soulbound gem: every gem except Auratus and Heretic (the Prophet's, which may be handed over). */
+    private boolean bound(ItemStack it) { return gems.isGem(it) && !LooseMythics.droppable(gems, it); }
+
+    /**
+     * Gems stay out of containers however they're moved: a click in the container, a shift-click from your own
+     * inventory, a number key or the offhand key into a container slot, or a drag. They never go into a bundle either
+     * (a bundle could then be stored or dropped).
+     */
+    @EventHandler(priority = EventPriority.LOW)
     public void onChestStore(InventoryClickEvent e) {
         if (!plugin.getConfig().getBoolean("protection.prevent-chest-store", true)) return;
-        if (e.getClickedInventory() == null) return;
-        InventoryType t = e.getClickedInventory().getType();
-        boolean isContainer = t == InventoryType.CHEST || t == InventoryType.ENDER_CHEST
-                || t == InventoryType.BARREL || t == InventoryType.SHULKER_BOX
-                || t == InventoryType.HOPPER || t == InventoryType.DISPENSER || t == InventoryType.DROPPER;
-        if (!isContainer) return;
-        ItemStack moving = e.getCurrentItem();
-        // Auratus and Heretic are the Prophet's: they go in and he pulls them back out (Prophet)
-        boolean normal = gems.isGem(moving) && !LooseMythics.droppable(gems, moving)
-                || gems.isGem(e.getCursor()) && !LooseMythics.droppable(gems, e.getCursor());
-        if (normal) {
-            e.setCancelled(true);
-            if (e.getWhoClicked() instanceof Player p) p.sendMessage(ChatColor.RED + "Gems cannot be stored in containers.");
+        if (e.getClickedInventory() == null || !(e.getWhoClicked() instanceof Player p)) return;
+        if (pluginMenu(e.getView().getTopInventory())) return; // our own menus show gem icons and cancel every click themselves
+        boolean bundle = isBundle(e.getCursor()) && bound(e.getCurrentItem()) || isBundle(e.getCurrentItem()) && bound(e.getCursor());
+        InventoryType top = e.getView().getTopInventory().getType();
+        // Containers keep out soulbound gems (Auratus and Heretic are the Prophet's: they go in and he pulls them back
+        // out); workstations keep out every gem, mythics too, since crafting, trims, trades or payment would use it up.
+        java.util.function.Predicate<ItemStack> kept = storage(top) ? this::bound : workstation(top) ? gems::isGem : it -> false;
+        boolean clickedTop = e.getClickedInventory().equals(e.getView().getTopInventory());
+        boolean into = false;
+        if (clickedTop) {
+            into = kept.test(e.getCurrentItem()) || kept.test(e.getCursor())
+                    || e.getHotbarButton() >= 0 && kept.test(p.getInventory().getItem(e.getHotbarButton()))
+                    || e.getClick() == org.bukkit.event.inventory.ClickType.SWAP_OFFHAND && kept.test(p.getInventory().getItemInOffHand());
+        } else if (e.isShiftClick() && top != InventoryType.CRAFTING) {
+            into = kept.test(e.getCurrentItem()); // shift-click from your inventory into the open one
         }
+        if (into || bundle) {
+            e.setCancelled(true);
+            p.sendMessage(ChatColor.RED + (bundle ? "Gems cannot go into bundles." : storage(top) ? "Gems cannot be stored in containers." : "Gems cannot be used here."));
+        }
+    }
+
+    /** A menu of this plugin's (not the bounty offering, which takes real items): it handles its own clicks. */
+    static boolean pluginMenu(Inventory top) {
+        org.bukkit.inventory.InventoryHolder h = top.getHolder(false);
+        if (h == null) return false; // Pockets, and plain inventories: still guarded
+        String n = h.getClass().getName();
+        return n.startsWith("dev.soulbound.") && !n.startsWith("dev.soulbound.BountyHunt$Offer"); // the offering takes real items
+    }
+
+        private static boolean isBundle(ItemStack it) {
+        return it != null && it.getItemMeta() instanceof org.bukkit.inventory.meta.BundleMeta;
+    }
+
+    /** Inventories that would use an item up: crafting grids, smithing (trims), looms (dye), trades, beacons and the rest. */
+    static boolean workstation(InventoryType t) {
+        return switch (t) {
+            case WORKBENCH, CRAFTING, SMITHING, LOOM, MERCHANT, BEACON, CARTOGRAPHY, STONECUTTER, GRINDSTONE, ENCHANTING, BREWING -> true;
+            default -> false;
+        };
+    }
+
+    /** A gem in a crafting grid (or a crafter) never makes anything: no gem is ever crafted away. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGemCraft(org.bukkit.event.inventory.PrepareItemCraftEvent e) {
+        for (ItemStack it : e.getInventory().getMatrix()) {
+            if (gems.isGem(it)) { e.getInventory().setResult(null); return; }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGemSmith(org.bukkit.event.inventory.PrepareSmithingEvent e) {
+        for (ItemStack it : e.getInventory().getContents()) {
+            if (gems.isGem(it) && it != e.getResult()) { e.setResult(null); return; }
+        }
+    }
+
+    /** An anvil never uses a gem as its repair material (Auratus is a gold ingot). Renaming a gem is GemNameListener's. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onGemAnvilMaterial(org.bukkit.event.inventory.PrepareAnvilEvent e) {
+        if (gems.isGem(e.getInventory().getItem(1))) e.setResult(null);
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onChestDrag(org.bukkit.event.inventory.InventoryDragEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.prevent-chest-store", true)) return;
+        InventoryType topType = e.getView().getTopInventory().getType();
+        if (!(storage(topType) && bound(e.getOldCursor()) || workstation(topType) && gems.isGem(e.getOldCursor()))) return;
+        int topSize = e.getView().getTopInventory().getSize();
+        for (int raw : e.getRawSlots()) {
+            if (raw < topSize) {
+                e.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    /** No gem goes into an item frame, an allay's hand or an armour stand, which anyone could then take it from. */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onGemToEntity(PlayerInteractEntityEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.prevent-chest-store", true)) return;
+        Entity en = e.getRightClicked();
+        if (!(en instanceof org.bukkit.entity.ItemFrame || en instanceof org.bukkit.entity.Allay)) return;
+        ItemStack hand = e.getHand() == EquipmentSlot.OFF_HAND ? e.getPlayer().getInventory().getItemInOffHand() : e.getPlayer().getInventory().getItemInMainHand();
+        if (bound(hand)) e.setCancelled(true); // an ability on that click (Astra, Wealth) still runs: onEntityInteract doesn't skip cancelled clicks
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onGemToStand(org.bukkit.event.player.PlayerArmorStandManipulateEvent e) {
+        if (plugin.getConfig().getBoolean("protection.prevent-chest-store", true) && bound(e.getPlayerItem())) e.setCancelled(true);
+    }
+
+    /** A decorated pot takes the item from your hand without a menu. */
+    @EventHandler(priority = EventPriority.LOW)
+    public void onGemToPot(PlayerInteractEvent e) {
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null || e.getClickedBlock().getType() != Material.DECORATED_POT) return;
+        if (plugin.getConfig().getBoolean("protection.prevent-chest-store", true) && bound(e.getItem())) e.setCancelled(true);
     }
 }

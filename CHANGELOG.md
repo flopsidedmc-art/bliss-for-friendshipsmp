@@ -1,3 +1,39 @@
+# Pre-launch audit fixes
+
+The full audit of Soulbound Gems and Pantheon (system map, checklist, decisions, permissions, test plan) is in **AUDIT.md**. This entry lists only what changed in Soulbound Gems; Pantheon is unchanged.
+
+## Fixed
+- **Gem dupe with keep-inventory.** If another plugin turned keepInventory on for a death after Soulbound Gems had kept the gem (Pantheon's Command trial and Motion runs do), you kept the gem *and* got a copy on respawn. A held mythic was also deleted. Now no copy comes back when the inventory was kept, and the mythic goes back in your hand.
+- **Death energy loss never applied.** The gem given back on respawn was copied before the −1, so dying cost nothing. It loses the energy now (when the gem was held, as before).
+- **Gems in containers:**
+  - **Containers:** shift-click, number keys, the offhand key and dragging got gems into chests and shulkers. Crafters and furnaces are now covered too.
+  - **Other ways out:** gems no longer go into bundles, item frames, allays, armour stands or decorated pots.
+  - **Our own menus** (Gold Gem switch, config, menu) no longer show a false "can't be stored" message.
+- **Gems used up as ingredients:** no gem (mythics included) can be used in a crafting grid, a smithing table, a loom, a villager trade, a beacon or as anvil repair material. Renaming a gem in an anvil still works.
+- **Wealth's Pockets** are saved to `pockets.yml` (each close and on stop). They were lost on every restart.
+- **Thunderstep** stops before anything solid: no more passing through walls or ending inside the ground.
+- **Nothing left behind:** Heretic Bloodsaw stands and the Dimensional Drift horse are never saved with the world, the horse drops no saddle, and saws are removed on stop.
+- **Pristine stages:** the held-gem gain runs once a minute as designed (it gained a stage every few seconds and spammed chat), and a stage that dropped to 0 no longer comes back after a restart.
+- **The Revenant** "shattered at the hands of" message scrambles an invisible killer's name.
+- **`/mythicconfig [heretic|auratus]`** works (it was declared but never registered).
+- **26.x safety:** the Relay item clean-up uses an experimental API; if it changes, it's skipped with one log line instead of an error every 2 ticks.
+- **config.yml** now lists 19 keys the code already read with defaults (`energy.stage-cooldown-factor`, `mythics.relay.enabled`, `prismatic-edge.*`, `shadow-stalker.*`), same values, so they can be tuned.
+
+## Files
+- **Code:** `GemListener.java`, `GemManager.java`, `EnergyManager.java`, `MythicListener.java`, `RevenantMace.java`, `SoulboundGemsPlugin.java`.
+- **Resources:** `config.yml`, `plugin.yml`.
+- **Docs:** `AUDIT.md` (new).
+- **Tests:**
+  - `AuditFixesTest.java` (new, 11 tests);
+  - `ProphetTest.java` (checks the new `bound()` helper);
+  - `LifeTest` passes unchanged (hearts are still restored first on stop).
+
+## Tested
+- Compiles against paper-api 1.21.11; all 292 unit tests pass (11 new). These are source checks plus a config check: every key read by full path must be in config.yml.
+
+## Not tested
+- **Nothing was tested in game.** The in-game test plan is section 6 of AUDIT.md, worst first.
+
 # Upgrader, Trader and Bottle of Energy: textures, and no need to hold the gem
 
 ## What changed

@@ -551,10 +551,21 @@ public class GemManager {
     static final String RIFT_LORE = "§7— §x§B§8§9§3§5§8✦ RIFT §8[Sneak + left-click gem]";
 
     /** Migrates old Relay items without replacing item identity or model data. */
+    private static boolean consumableApiBroken;
+
     public static void prepareRelayItem(ItemStack item) {
         // Remove the legacy hold-to-consume input without touching PDC/model data.
-        if (item.hasData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE))
-            item.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE);
+        // The data-component API is experimental: if a server version changes it, skip this step (logged once) instead
+        // of throwing every 2 ticks from the Relay tick.
+        if (!consumableApiBroken) {
+            try {
+                if (item.hasData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE))
+                    item.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE);
+            } catch (LinkageError | RuntimeException ex) {
+                consumableApiBroken = true;
+                org.bukkit.Bukkit.getLogger().warning("[SoulboundGems] Relay item clean-up skipped on this server version: " + ex);
+            }
+        }
         var meta=item.getItemMeta();
         if(meta!=null && meta.hasLore()) {
             var lore=meta.getLore();boolean changed=false;

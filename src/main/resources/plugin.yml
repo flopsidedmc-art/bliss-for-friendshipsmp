@@ -17,7 +17,7 @@ commands:
     permission-message: You lack permission.
   mythicconfig:
     description: In-depth live tuner for Auratus and Heretic numbers.
-    usage: /mythicconfig
+    usage: /mythicconfig [heretic|auratus]
     permission: bliss.admin
     permission-message: You lack permission.
   givegem:

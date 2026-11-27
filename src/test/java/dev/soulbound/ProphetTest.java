@@ -74,7 +74,9 @@ class ProphetTest {
     @Test void auratusAndHereticAreDroppableAndTheProphetsInContainers() throws Exception {
         String gl = Files.readString(Path.of("src/main/java/dev/soulbound/GemListener.java"));
         int i = gl.indexOf("public void onChestStore(");
-        assertTrue(gl.substring(i, Math.min(gl.length(), i + 1200)).contains("LooseMythics.droppable("), "the chest rule steps aside for the two mythics");
+        assertTrue(gl.substring(i, Math.min(gl.length(), i + 1400)).contains("storage(top) ? this::bound"), "containers use bound()");
+        assertTrue(gl.contains("private boolean bound(ItemStack it) { return gems.isGem(it) && !LooseMythics.droppable(gems, it); }"),
+                "the chest rule steps aside for the two mythics");
         String lm = Files.readString(Path.of("src/main/java/dev/soulbound/LooseMythics.java"));
         assertTrue(lm.contains("t == GemType.AURATUS || t == GemType.HERETIC"), "only those two: the Relay and the mace are unchanged");
         assertTrue(lm.contains("setUnlimitedLifetime(true)") && lm.contains("setGlowing(true)"));

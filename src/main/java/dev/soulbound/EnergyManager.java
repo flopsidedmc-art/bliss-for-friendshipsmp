@@ -114,9 +114,8 @@ public class EnergyManager implements Listener {
         for (Map.Entry<UUID, EnumMap<GemType, Integer>> e : energy.entrySet()) {
             for (GemType type : GemType.values()) {
                 Integer units = e.getValue().get(type);
-                if (units != null && units > 0) {
-                    data.set("players." + e.getKey() + "." + type.name(), units);
-                }
+                // 0 is written as "nothing": before, a value that dropped to 0 stayed on disk and came back after a restart.
+                data.set("players." + e.getKey() + "." + type.name(), units != null && units > 0 ? units : null);
             }
         }
         try {
@@ -198,8 +197,16 @@ public class EnergyManager implements Listener {
         }
     }
 
-    /** Call from the plugin's repeating tick task every 20*60 ticks. */
+    private long lastPassive = System.currentTimeMillis();
+
+    /**
+     * Called from the plugin's repeating tick task, which runs every few ticks: the held-gem gain applies once a
+     * minute, as designed (it ran every call before, so it gained a stage every few seconds).
+     */
     public void passiveTick() {
+        long now = System.currentTimeMillis();
+        if (now - lastPassive < 60_000L) return;
+        lastPassive = now;
         for (Player player : Bukkit.getOnlinePlayers()) {
             EnumMap<GemType, Integer> map = energy.get(player.getUniqueId());
             if (map == null) continue;

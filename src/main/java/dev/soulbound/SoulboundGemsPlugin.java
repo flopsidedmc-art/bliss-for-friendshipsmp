@@ -201,6 +201,17 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             getCommand("blissop").setExecutor(opCmd);
             getCommand("blissop").setTabCompleter(opCmd);
         }
+        if (getCommand("mythicconfig") != null) { // the live tuner (also reachable from /bliss config)
+            getCommand("mythicconfig").setExecutor((s, c, l, a) -> {
+                if (!(s instanceof Player p)) { s.sendMessage("Players only."); return true; }
+                String which = a.length > 0 ? a[0].toLowerCase(java.util.Locale.ROOT) : "heretic";
+                mythics.openMythicConfig(p, which.startsWith("a") ? "mythics.auratus." : "mythics.heretic.");
+                return true;
+            });
+            getCommand("mythicconfig").setTabCompleter((s, c, l, a) -> a.length == 1
+                    ? java.util.stream.Stream.of("heretic", "auratus").filter(o -> o.startsWith(a[0].toLowerCase(java.util.Locale.ROOT))).toList()
+                    : java.util.List.of());
+        }
         TurmoilCommand turmoilCommand = new TurmoilCommand(this);
         if (getCommand("turmoil") != null) {
             getCommand("turmoil").setExecutor(turmoilCommand);
@@ -250,6 +261,7 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (listener != null) listener.shutdown(); // removes the Astra dagger models
         if (revenant != null) revenant.shutdown(); // pauses a running fight and gives the holder their own movement back
         if (relay != null) relay.shutdown();
+        if (mythics != null) mythics.shutdown(); // Bloodsaws in flight
         if (auratus != null) auratus.shutdown(); // removes chains, halos and slam rings, and lets go of anyone on a Flagpole
         if (finale != null) finale.shutdown();
         if (turmoil != null && turmoil.isActive()) turmoil.stop();

@@ -763,7 +763,7 @@ final class RevenantMace implements Listener, CommandExecutor, TabCompleter {
         w.spawnParticle(Particle.SOUL, at, 50, 1.2, 1.2, 1.2, 0.05);
         w.playSound(at, Sound.ENTITY_WARDEN_DEATH, SoundCategory.MASTER, 2.0f, 0.8f);
         w.playSound(at, Sound.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.MASTER, 1.5f, 0.6f);
-        Bukkit.broadcastMessage(TEAL_TEXT + "§lThe Revenant has shattered" + (killer != null && !killer.equals(h) ? " at the hands of " + killer.getName() : "")
+        Bukkit.broadcastMessage(TEAL_TEXT + "§lThe Revenant has shattered" + (killer != null && !killer.equals(h) ? " at the hands of " + plugin.shownName(killer) : "")
                 + ". §7The soul is finally still.");
         removeStats(h);
         clearFight();
