@@ -41,3 +41,14 @@ The screen-flash images (`textures/overlay/gold_*.png`, `red_*.png`, `brown_flas
 `assets/blissgems/items/upgrader.json`, `trader.json` and `energy_bottle.json` point at the main pack's `blissgems:item/upgrader`, `trader` and `energy_bottle` models. Those models and their textures are copied in too. The plugin sets the item's `item_model` to `blissgems:upgrader`, `blissgems:trader` or `blissgems:energy_bottle`, and restyles older copies when a player joins or uses one.
 
 Not verified in a Minecraft client.
+
+## The Lost Halo
+
+Merged from the "glowing gems" pack (Relay-Temporal-Pack-glowing-gems_4.zip), which added only these files; everything else in this zip is as before (the special items and the repurpose overlays included).
+
+| What | Files | Used as |
+|---|---|---|
+| Halo Fragments 1 to 5 | `assets/blissgems/items/halo/fragment_1.json` … `fragment_5.json`, `models/item/halo/`, `textures/item/halo/fragment_<n>.png` (animated, `frametime` 2) | the `item_model` of Halo Fragment n: `blissgems:halo/fragment_<n>` (`/halo give`, and the floating fragment on a reliquary) |
+| Halo Reliquary | `assets/blissgems/items/halo/reliquary.json`, `models/item/halo/reliquary.json` (vanilla chiseled quartz, quartz pillar, gold and raw gold textures) | `blissgems:halo/reliquary`, shown one block in size by an item display over the shrine's barrier block (`/halo reliquary <1-5>`) |
+
+Not verified in a Minecraft client.

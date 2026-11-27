@@ -56,12 +56,16 @@ final class EventBlock {
     /** The player's running Pantheon event, or null. */
     String event(Player p) { return plugin.pantheon() == null ? null : plugin.pantheon().eventName(p); }
 
-    /** Blocked for this player right now (no message: passives and checks on other players). */
+    /**
+     * Blocked for this player right now (no message: passives and checks on other players). The Heretic's Games use
+     * their own two lists (heretic-games while fighting, heretic-games-rest between fights), never "all".
+     */
     boolean blockedFor(Player p, String power) {
-        String ev = event(p);
-        if (ev == null) return false;
         var c = plugin.getConfig();
-        return blocked(ev, c.getStringList("event-blocked-powers.all"), c.getStringList("event-blocked-powers." + ev), power);
+        String ev = event(p);
+        if (ev != null) return blocked(ev, c.getStringList("event-blocked-powers.all"), c.getStringList("event-blocked-powers." + ev), power);
+        String games = plugin.games() == null ? null : plugin.games().blockList(p);
+        return games != null && blocked(games, List.of(), c.getStringList("event-blocked-powers." + games), power);
     }
 
     /** Blocked: tells the player (at most every 2 s) and returns true. Call it before any cooldown or charge is spent. */

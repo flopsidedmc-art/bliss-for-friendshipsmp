@@ -1102,7 +1102,7 @@ final class GoldGem implements Listener {
     }
 
     /** The gold flash for everyone: the finale's title-flash glyph in gold (gold.flash.glyph). */
-    private void flashAll(int ticks) {
+    void flashAll(int ticks) {
         TextColor col = TextColor.fromHexString(cfg("flash.color", "#FFC846"));
         Title t = Title.title(Component.text(cfg("flash.glyph", "")).color(col == null ? TextColor.color(0xFFC846) : col), Component.empty(),
                 Title.Times.times(Duration.ZERO, Duration.ofMillis(Math.max(1, ticks) * 50L), Duration.ofMillis(Math.max(1, ticks) * 50L)));

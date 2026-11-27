@@ -1,3 +1,183 @@
+# Mythic events: The Lost Halo and The Heretic's Games
+
+How the Auratus and the Heretic enter a season. Both are run by admins (one of each at a time), saved to disk, and configured under `events.halo` and `events.heretic-games` in config.yml (every key commented). Built with your six defaults, and your change to 6: fragments float on lava and never burn, and the void sends them to world spawn.
+
+## The Lost Halo (`/halo`, permission `soulbound.halo.admin`)
+- **Hiding fragments:**
+  - `/halo give <1-5>`: Halo Fragment n, item model `blissgems:halo/fragment_<n>`, with a unique id. Hide it in a chest. A new fragment n makes every older copy of n void.
+  - `/halo reliquary <1-5>`: the quartz-and-gold shrine (`blissgems:halo/reliquary`, one block, over a barrier) on the block you look at, with fragment n floating above it at 0.7 scale. The fragment spins and bobs, with small WAX_OFF and END_ROD sparkles only for players within 8 blocks. No beam, no glow.
+  - **Taking it:** right-click the fragment. It flies into your hand with a soft chime, and the shrine crumbles (gold and quartz pieces, a crumble sound); the display, barrier and click box all go. Before the hunt starts, only admins can take one.
+  - **Reliquaries:** unbreakable (breaking, pistons, explosions), saved in halo.yml, and rebuilt on enable and chunk load. Their displays are never saved with the chunk, so they are never doubled. `/halo reliquary remove <n>` removes one.
+- **`/halo start [force]`:**
+  - Refused if an Auratus is in an online inventory or ender chest, lying loose, or was given out by an earlier hunt; `force` overrides.
+  - Three tolls of a layered deep bell, a golden sky fading out (the gold overlay), and the title "ᴛʜᴇ ʜᴀʟᴏ ʜᴀꜱ ꜰᴀʟʟᴇɴ" / "ꜰɪɴᴅ ɪᴛꜱ ᴘɪᴇᴄᴇꜱ".
+- **The hunt:**
+  - A first find is announced as "ᴀ ʜᴀʟᴏ ꜰʀᴀɢᴍᴇɴᴛ ʜᴀꜱ ʙᴇᴇɴ ꜰᴏᴜɴᴅ (2/5)", never saying who. Holders are never shown.
+  - Copies are deleted: a second copy in one inventory, or a copy of one that someone online really holds.
+  - **Fragments can't be kept safe:** no dropping, containers, ender chests, Pockets, bundles, item frames, armour stands, pots, shelves, hoppers, mobs, crafting, smithing or anvils. Admins can still hide them in chests before the hunt, or in creative during it.
+  - **Death and logout:** every fragment drops where the player was, even with keepInventory.
+  - **On the ground:** fragments never despawn, can't be destroyed, float on lava, never burn, and the void returns them to that world's spawn. A faint gold beam shows after 60 s on the ground.
+- **The claim** (3 distinct fragments, `fragments-needed`, never in creative):
+  - The player is held where they stand for 3 s and can't be hit. This uses a damage cancel, so no Invulnerable flag can stick after a crash.
+  - Four gold chains lower the Auratus into their hand. Everyone gets three bells, the gold flash and the title "<name> ʜᴀꜱ ʙᴇᴇɴ ʜᴀʟᴏᴇᴅ" (scrambled while they're invisible).
+  - Every other fragment vanishes: online, on the ground and in loaded chests now, in unloaded chests as they load or open, and from offline players when they join.
+  - A restart or logout mid-scene still gives the Auratus. The hunt is marked as won, so the next `start` needs `force`.
+- **`/halo status`** shows where each fragment is (holder, container or ground coordinates, or reliquary). **`/halo stop`** deletes every fragment and reliquary.
+- **A restart resumes the hunt** (halo.yml).
+
+## The Heretic's Games (`/hgames`)
+- **Setup (admin, `soulbound.hgames.admin`):**
+  - `pos1`, `pos2`, then `arena set <name>`. The box's bottom is where Rising Lava starts.
+  - `arena use|list`, `spawn add` (8 or more), `spawn clear`, `lobby set`, `open`, `start [force]`, `stop`, `status`.
+  - Players (`soulbound.hgames.play`, everyone by default) use `join`, `leave` and `status`.
+  - `start` needs 4 players and is refused while a Heretic exists (online, ender chest, on the ground, in a player's stash, or given out before), unless you add `force`.
+- **Joining:**
+  - The whole inventory, XP, health, food, effects, game mode and position are written to `heretic-games-stash/<uuid>.yml` before anything is taken.
+  - Mythics go into the stash; the standard gem and the Gold Gem stay and work.
+  - Players wait in the lobby in adventure mode and can't be hurt.
+  - **Everything comes back** on leave, the end, logout, `/hgames stop`, plugin disable, or a crash (on their next join).
+- **Rounds** (5 by default):
+  - Each round has a random kit and a random curse, never the same curse twice in a row.
+  - A 5 s title ("ʀᴏᴜɴᴅ 2: ᴍᴀᴄᴇ · ʟᴏᴡ ɢʀᴀᴠɪᴛʏ") shows with everyone held at a random spawn.
+  - A round ends with one player left, or after 180 s. When time runs out, the players still standing are placed by health, then by kills that round.
+  - **A lethal hit never kills.** The player falls and spectates inside the arena until the next round, keeping everything.
+  - **Points:** 5 / 3 / 2 for the top three, plus 1 per kill (the last hit within 10 s, so a fall or lava after a hit counts too).
+- **Intermissions** (15 s):
+  - No damage of any kind. Everyone is healed, fed and cleansed, and a boss bar shows the standings.
+  - Gem powers that move anyone are blocked: `event-blocked-powers.heretic-games-rest`, which is teleport, astral, repurpose, movement and pockets.
+  - During rounds the block list is `heretic-games` (astral, repurpose, pockets). Pockets is blocked because it would reach past the stash.
+- **The kits** (`/hgames kits`):
+  - **The list:** left-click edits a kit, right-click turns it on or off, shift-right-click deletes it (it asks first). "New kit" asks for a name in chat.
+  - **The editor** is laid out like your inventory: armour and offhand on top, then the main rows, then the hotbar. Its buttons are Save, Cancel, Clear, Copy my inventory and Give me this kit.
+  - **It holds copies only:** your own items never move, and the cursor is cleared when it closes. Gems and Halo fragments are refused.
+  - **Storage:** `heretic-games-kits.yml` holds the exact items. The six default kits are written on first run: archer, trident (Riptide III), mace (+16 wind charges), axe and shield, naked (8 steak), sword.
+  - **Kit items are tagged:** taken back at each round's end, never dropped or picked up by anyone else.
+  - **Rule exceptions for kit items:**
+    - Kit maces aren't counted or tracked by the 3-mace limit. Density and Breach are still capped, and the glide smash rule still applies.
+    - The kit trident has no riptide fight cooldown, and Riptide works anywhere, not only in water or rain.
+    - The 5 s wind charge cooldown stays.
+- **The curses** (one class each, every one configurable under `curses.<id>`, each with `enabled:`):
+  - **low-gravity:** gravity ×0.35, plus 10 safe-fall blocks.
+  - **swap:** everyone trades places every 25 s; nobody keeps their own spot.
+  - **gem-roulette:** every 30 s your standard gem becomes another, at the same tier and energy. The Gold Gem is skipped. Your real gem and your exact cooldowns come back at the round's end; the real gem is on disk first, so it survives a crash.
+  - **no-sprint:** sprinting is cancelled; food stays above 6.
+  - **bloodthirst:** no natural healing. After 6 s without landing a hit you bleed 1 HP every 3 s, never below half a heart. Each hit you land heals 1 heart.
+  - **rising-lava:** a layer of lava every 20 s, up to 6 layers, air only, from the box's bottom. It's in the crash-safe LandWorks ledger and all goes back at the round's end.
+  - **blind:** Darkness, plus the nearest player's heartbeat, louder and faster the closer they are.
+  - **fists-only:** the kit's weapons go (armour and food stay), Strength II, and no projectiles.
+  - **reverse-knockback:** a hit pulls you toward the attacker.
+  - **one-shot:** 1 heart (absorption removed), a bow and 64 arrows, whatever the kit.
+- **The Blood Duel:**
+  - The top two fight. A tie for second goes to kills, then a coin flip.
+  - Duel kit: `duel-kit: sword`. When the 180 s run out, more health wins, then more points.
+  - Everyone else spectates.
+- **The finish:**
+  - The winner is lifted 3 blocks in the Heretic's blood fountain (visuals only).
+  - Everyone online hears a heartbeat and sees the title "<name> ʜᴀꜱ ʙᴇᴇɴ ᴄʜᴏꜱᴇɴ ʙʏ ᴛʜᴇ ʜᴇʀᴇᴛɪᴄ".
+  - Then everyone's inventory comes back, the Heretic goes into the winner's hand, and everyone goes to the lobby.
+- **Season points** go through the Pantheon link, as Solstice event points on track `heretic-games`: 10 / 6 / 4 for the top three and 1 for every other finisher.
+- **The arena keeps its players:**
+  - Anyone else inside is set down just outside the box (admins in creative or spectator can watch).
+  - A player outside is brought back, and teleports out are cancelled.
+  - Players can't open chests or ender chests, break or place blocks, or drop items.
+- **Counts as a Soulbound event:** no Pantheon kill points, no energy loss, no gem drops, no Gold Gem release or Revenant shatter.
+- **Leaving:**
+  - A leave or logout counts as falling; the last hitter gets the kill.
+  - A duelist who leaves forfeits.
+  - Under 2 players, the tournament is cancelled with no Heretic and no points.
+- **A restart cancels it cleanly:** stashes return, the lava goes back, roulette gems are replaced by the real ones, and curse attributes come off. Nobody gets the Heretic or points.
+
+## Pantheon 2.3.0
+- **Event points:** their own Solstice ledger (`solstice.yml`, `players.<uuid>.events.<track>`).
+  - **Season score:** Pantheon (best 4 of 5) + kills + event points. Eligibility still takes 4 Pantheon tracks.
+  - **Where they show:** `/standings` and `/solstice` show "+ events N (heretic-games 10)".
+  - **The API:** `PantheonPlugin.awardEventPoints(UUID, String, int)` is what Soulbound calls.
+- **Version:** bumped from 2.2.0 to 2.3.0 because of the new API. The README covers event points.
+
+## Also fixed
+- **Shelves (1.21.9) could take a gem out of your hand** without a menu. The gem guard now treats every `*_SHELF` like a decorated pot.
+
+## Decisions I made where the prompt left room
+- **Timeout placings:** the players still standing are placed by health, then by kills that round.
+- **"1 for every finisher":** the top three get 10 / 6 / 4 and everyone else who finished gets 1. If you meant +1 on top for everyone, change `season-points` to [11, 7, 5].
+- **My own numbers:** Bloodthirst's design, Swap every 25 s, low gravity ×0.35, and the 16-block lobby leash (`lobby-radius`). All of them are in config.
+- **Ender chests** aren't stashed. They're left untouched and can't be opened during the tournament.
+- **Sounds:** `halo` and `heretic-games` count as event families, like capture and prophet. The Halo reuses the bell and the games reuse the Heretic's heartbeat; the sound test now treats them that way.
+- **Arena spawns, the lobby and stash return spots** are saved as plain text. A world that isn't loaded yet then can't break the file.
+
+## Known, not handled
+- **A Pantheon event stashes inventories too.** A fragment carried into one is out of the hunt until Pantheon gives it back.
+- **Copper golems** (1.21.9) moving items out of copper chests aren't checked. Don't hide fragments in copper chests.
+- **Rising Lava** fills the whole box footprint at once per layer. In a very big arena (100 × 100 is 10,000 blocks a layer) that may hitch for a moment.
+- **`/solstice points reset`** wipes kill points only, not event points.
+
+## Files
+- **Soulbound, new:**
+  - `HaloMath.java`, `HaloHunt.java`, `HaloCommand.java`;
+  - `GamesMath.java`, `GamesKits.java` (kit store and menus), `HereticCurses.java` (the 10 curses), `HereticGames.java`, `GamesCommand.java`;
+  - tests `HaloTest.java` (12) and `GamesTest.java` (16).
+- **Soulbound, changed:**
+  - `SoulboundGemsPlugin.java`: wiring, and the tournament counts as an event in `isInSoulboundEvent` and `inPantheonEvent`.
+  - `EventBlock.java`: the tournament's two lists.
+  - `GemListener.java`: the cooldown snapshot and restore for Gem Roulette, Pockets refused in events, and the shelf guard.
+  - `MaceRules.java` and `CombatRules.java`: kit exceptions.
+  - `PantheonLink.java`: `awardEventPoints`.
+  - `AuratusGem.java`: `hangingChain` for the claim.
+  - `CameraOverlay.java`: `fadeOut` for the golden sky.
+  - `GoldGem.java`: `flashAll` is shared.
+  - `SporeFountain.java`: `stop()`.
+  - `config.yml` (`events:`, sounds, blocked powers) and `plugin.yml` (`/halo`, `/hgames`, permissions).
+  - `GemSoundsTest.java`.
+  - `resource-pack/Relay-Temporal-Pack.zip` and its README.
+- **The pack:** the repo's zip plus the new pack's 22 Halo files (fragments 1 to 5 and the reliquary). Nothing else changed; the special items and repurpose overlays are kept.
+- **Pantheon:**
+  - `SolsticeStore.java`, `SolsticeMath.java`, `Solstice.java`, `SolsticeCmd.java`, `PantheonPlugin.java`;
+  - `pom.xml` and `plugin.yml` (2.3.0), `README.md`;
+  - new `EventPointsTest.java` (3).
+
+## Tested
+- Both plugins compile against paper-api 1.21.11 (Maven, offline). **Soulbound: all 348 tests pass** (28 new); **Pantheon: all 25 pass** (3 new).
+- **The Halo:**
+  - fragment ids, generations and copy deletion; a find announced once and never naming the holder; the 3-fragment claim;
+  - the claim scene's parts (chains, bells, flash, held in place, no Invulnerable flag);
+  - every storage guard; drops on death (keepInventory too) and logout; lava, fire, void and despawn protection; the 60 s beam;
+  - reliquaries saved, rebuilt and never doubled (non-persistent, despawned before spawning); unbreakable;
+  - start refused while an Auratus exists.
+- **The Heretic's Games:**
+  - round placings (standing, then last to fall; time-up by health) and round, kill and season points;
+  - no curse twice in a row over 2000 rounds, with every curse showing up; all 10 curses exist and are configurable;
+  - Swap never leaves anyone in place;
+  - the lava layers, Bloodthirst floor and heartbeat volumes;
+  - only rounds and the duel can hurt; the rest and round block lists;
+  - Gem Roulette: the real gem is on disk before the swap, then the gem and cooldowns are restored;
+  - the stash: saved before anything is taken, restored on leave, logout, stop, the end and the next join after a crash;
+  - the Blood Duel tie-break (kills, then a real coin flip), the duel timeout and the final order; the finish order;
+  - arena box maths; the kit editor's layout round trip (all 41 slots) and its copies-only rules; the kit rule exceptions.
+
+## Not tested
+- **Nothing was run in game.** No server was started. That includes:
+  - every scene, sound, title, overlay and boss bar;
+  - the reliquary model's size and the fragment's height above it;
+  - Riptide outside water, and the reverse knockback;
+  - the kit editor's clicks in a real client;
+  - the crash and restart paths.
+
+## In-game test plan
+1. **The Halo:**
+   - `/halo give 1`, `2`, `3` into chests, and `/halo reliquary 4` and `5` somewhere. Then `/halo start`: three bells and a golden sky.
+   - Take one fragment: the broadcast doesn't say who.
+   - Die with it: it drops (and floats if it lands in lava).
+   - Hold 3: you're held, four chains bring the Auratus down into your hand where you stand, and the other fragments vanish.
+2. **The Heretic's Games:**
+   - Set it up: `/hgames pos1`, `pos2`, `arena set test`, 8 × `spawn add`, `lobby set`. Then `/hgames open`, 4 players `/hgames join`, `/hgames start`.
+   - Each round shows a kit and a curse. Try Swap, Gem Roulette (your gem changes, then your own comes back after the round) and No Sprint.
+   - Try to hit someone in an intermission: no damage.
+   - Also check `/hgames kits`: edit a kit, toggle one off, and make a new one.
+3. **The finish:**
+   - Finish with the Blood Duel. The winner rises in the blood fountain, everyone's inventory comes back, and the Heretic is in the winner's hand.
+   - `/standings` shows the event points.
+4. **A crash:** stop the server mid-tournament (during Rising Lava if you can) and restart. Everyone has their items back on join, the lava is gone, and nobody has a roulette gem.
+
 # Gold Gem: the repurpose overlay is animated
 
 ## What I found first

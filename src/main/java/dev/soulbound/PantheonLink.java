@@ -89,4 +89,11 @@ final class PantheonLink {
         Object o = call("seasonScore", new Class<?>[] {UUID.class}, id);
         return o instanceof Integer i ? i : 0;
     }
+
+    /** Season points from a Soulbound event (the Heretic's Games: track "heretic-games"). False without Pantheon. */
+    boolean awardEventPoints(UUID id, String track, int points) {
+        if (id == null || track == null || points == 0 || pantheon() == null) return false;
+        call("awardEventPoints", new Class<?>[] {UUID.class, String.class, int.class}, id, track, points);
+        return true;
+    }
 }

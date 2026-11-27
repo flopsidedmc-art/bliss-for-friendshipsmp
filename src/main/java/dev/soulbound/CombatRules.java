@@ -217,7 +217,7 @@ final class CombatRules implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRiptide(PlayerRiptideEvent e) {
         Player p = e.getPlayer();
-        if (core.on("riptide", p.getWorld()) && core.inFight(p) && !core.fightExempt(p))
+        if (core.on("riptide", p.getWorld()) && core.inFight(p) && !core.fightExempt(p) && !GamesKits.isKitItem(e.getItem())) // a Heretic's Games kit trident: no fight cooldown
             cooldown(p, Material.TRIDENT, core.num("riptide", "fight-cooldown-seconds", 8));
     }
 

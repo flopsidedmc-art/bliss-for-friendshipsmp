@@ -5,6 +5,13 @@ api-version: '1.21.11'
 author: Amon
 description: Original Bliss-inspired gem system with Mythics Auratus and Heretic. Not affiliated with Bliss SMP.
 commands:
+  halo:
+    description: The Lost Halo, how the Auratus enters a season.
+    usage: /halo <give <1-5>|reliquary <1-5>|reliquary remove <1-5>|start [force]|status|stop>
+    permission: soulbound.halo.admin
+  hgames:
+    description: The Heretic's Games, how the Heretic enters a season.
+    usage: /hgames <join|leave|status|pos1|pos2|arena|spawn|lobby|kits|open|start|stop>
   bliss:
     description: Bliss-like gem commands
     usage: /bliss <info|withdraw|track <player>|trust <add|remove|list> [player]|give <player> <gem> [tier] [energy]|setenergy <player> <0-10>|giveitem <player> <item>|menu|config|pedestal <activate|deactivate>|build ...>
@@ -66,6 +73,12 @@ commands:
     permission: soulbound.rules.admin
     permission-message: You lack permission.
 permissions:
+  soulbound.halo.admin:
+    default: op
+  soulbound.hgames.admin:
+    default: op
+  soulbound.hgames.play:
+    default: true
   soulbound.gold.admin:
     default: op
   soulbound.admin:

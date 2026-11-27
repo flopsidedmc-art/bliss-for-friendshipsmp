@@ -41,6 +41,8 @@ final class CameraOverlay implements Listener {
         int frames, frameTicks, fadeIn, steps, tick;
         final int[] state = new int[2];
         boolean throughDeath;
+        int fadeOutTicks; // above 0: only a fade out, from the strongest step to nothing (the Lost Halo's golden sky)
+        int shownLevel = -1;
     }
 
     private final Map<UUID, Anim> anims = new HashMap<>();
@@ -79,6 +81,19 @@ final class CameraOverlay implements Listener {
 
     boolean playing(Player p) { return p != null && anims.containsKey(p.getUniqueId()); }
 
+    /** A fade out only: &lt;style&gt;_fade_steps down to _fade_1 over {@code ticks}, then their real helmet. */
+    void fadeOut(Player p, String style, int steps, int ticks) {
+        if (p == null || !p.isOnline() || p.isDead() || style == null || steps <= 0 || ticks <= 0 || !plugin.isEnabled()) return;
+        if (anims.containsKey(p.getUniqueId())) return; // their own animation has the screen
+        Anim a = new Anim();
+        a.style = style;
+        a.steps = steps;
+        a.fadeOutTicks = ticks;
+        anims.put(p.getUniqueId(), a);
+        advance(p, a);
+        if (animTask == null) animTask = Bukkit.getScheduler().runTaskTimer(plugin, this::animTick, 1L, 1L);
+    }
+
     private void animTick() {
         for (UUID id : new ArrayList<>(anims.keySet())) {
             Player p = Bukkit.getPlayer(id);
@@ -91,6 +106,12 @@ final class CameraOverlay implements Listener {
 
     private void advance(Player p, Anim a) {
         a.tick++;
+        if (a.fadeOutTicks > 0) {
+            int level = FinaleMath.fadeOutLevel(a.tick - 1, a.fadeOutTicks, a.steps);
+            if (level <= 0) { clear(p); return; } // faded: their real helmet, and the animation is over
+            if (level != a.shownLevel) { a.shownLevel = level; send(p, OverlayAnim.fadeTexture(a.style, level)); }
+            return;
+        }
         String texture = OverlayAnim.step(a.tick, a.style, a.frames, a.frameTicks, a.fadeIn, a.steps, true, a.state);
         if (texture != null) send(p, texture);
     }

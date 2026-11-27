@@ -117,6 +117,7 @@ final class MaceRules implements Listener {
         boolean changed = false;
         for (ItemStack it : p.getInventory().getContents()) {
             if (!isMace(it)) continue;
+            if (GamesKits.isKitItem(it)) { capEnchants(it); continue; } // a Heretic's Games kit mace: capped, never counted or tracked
             String id = idOf(it);
             if (id == null) tag(it, "found", p); else seen(id, p);
             capEnchants(it);

@@ -107,6 +107,9 @@ final class SporeFountain {
         return f;
     }
 
+    /** Stopped early (the Heretic's Games' finish cut short). */
+    void stop() { if (task != null) task.cancel(); }
+
     /** The ground under the centre (the field can start in the air, where a saw hit someone). */
     private double ground(Location at) {
         int bx = at.getBlockX(), bz = at.getBlockZ(), y = at.getBlockY();

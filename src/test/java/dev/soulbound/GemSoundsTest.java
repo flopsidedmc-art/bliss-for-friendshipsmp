@@ -79,7 +79,7 @@ class GemSoundsTest {
     @Test void noSoundIsSharedBetweenGemsUnlessTheSpecSaysSo() {
         Map<String, Set<String>> families = new HashMap<>();
         for (Map.Entry<String, List<ConfigurationSection>> e : parts().entrySet()) {
-            if (e.getKey().equals("other") || e.getKey().equals("capture") || e.getKey().equals("prophet")) continue; // not gems
+            if (java.util.Set.of("other", "capture", "prophet", "halo", "heretic-games").contains(e.getKey())) continue; // not gems (the events' bells and heartbeat are the mythics' own)
             for (ConfigurationSection s : e.getValue()) families.computeIfAbsent(s.getString("event"), k -> new TreeSet<>()).add(e.getKey());
         }
         for (Map.Entry<String, Set<String>> e : families.entrySet()) {

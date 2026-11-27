@@ -74,6 +74,10 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     PantheonLink pantheon() { return pantheon; }
     private EventBlock eventBlock;
     EventBlock eventBlock() { return eventBlock; }
+    private HaloHunt halo;
+    HaloHunt halo() { return halo; }
+    private HereticGames games;
+    HereticGames games() { return games; }
 
     /** In a Pantheon event where this power is blocked: says so (at most every 2 s) and returns true. */
     boolean eventRefuses(Player p, String power) { return eventBlock != null && eventBlock.refuse(p, power); }
@@ -81,8 +85,11 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     /** The same without a message (passives, and players a power would move). */
     boolean eventBlocks(Player p, String power) { return eventBlock != null && eventBlock.blockedFor(p, power); }
 
-    /** In any running Pantheon event. */
-    boolean inPantheonEvent(Player p) { return pantheon != null && pantheon.inEvent(p); }
+    /**
+     * In any running Pantheon event, or playing in the Heretic's Games: the same rules either way (no Soulbound death
+     * effects, never pulled in or out by a power).
+     */
+    boolean inPantheonEvent(Player p) { return pantheon != null && pantheon.inEvent(p) || games != null && games.playing(p); }
     private final ActionBarHold actionBarHold = new ActionBarHold();
 
     // ------------------------------------------------------------------ public API (Pantheon reads it by reflection)
@@ -92,10 +99,13 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         if (p != null) actionBarHold.hold(p.getUniqueId(), ms, System.currentTimeMillis());
     }
 
-    /** In a Soulbound event: the Finale battle (inside its area) or the Revenant boss fight. Capture points don't count. */
+    /**
+     * In a Soulbound event: the Finale battle (inside its area), the Revenant boss fight, or the Heretic's Games.
+     * Capture points don't count.
+     */
     public boolean isInSoulboundEvent(Player p) {
         if (p == null) return false;
-        return finale != null && finale.inBattle(p) || revenant != null && revenant.inBossFight(p);
+        return finale != null && finale.inBattle(p) || revenant != null && revenant.inBossFight(p) || games != null && games.playing(p);
     }
 
     /** Our HUDs skip a draw: a one-off message holds the bar, or the player's Pantheon event draws its own HUD. */
@@ -173,6 +183,16 @@ public class SoulboundGemsPlugin extends JavaPlugin {
             getCommand("goldgem").setExecutor(goldCommand);
             getCommand("goldgem").setTabCompleter(goldCommand);
         }
+        if (getConfig().getBoolean("events.halo.enabled", true)) { // the Lost Halo: how the Auratus enters a season
+            halo = new HaloHunt(this);
+            Bukkit.getPluginManager().registerEvents(halo, this);
+            halo.start(); // a restart: the hunt goes on, the reliquaries come back
+        }
+        HaloCommand haloCommand = new HaloCommand(this);
+        if (getCommand("halo") != null) {
+            getCommand("halo").setExecutor(haloCommand);
+            getCommand("halo").setTabCompleter(haloCommand);
+        }
         flux = new FluxPower(this); // Flux: the charged beam, Ground, Overcharge, Overdrive's meter, Shocking Chance
         Bukkit.getPluginManager().registerEvents(flux, this);
         flux.start();
@@ -194,6 +214,17 @@ public class SoulboundGemsPlugin extends JavaPlugin {
         land = new LandWorks(this); // shared by Crisp and Vitality Vortex
         Bukkit.getPluginManager().registerEvents(land, this);
         land.start(); // land a restart left changed goes back now
+        if (getConfig().getBoolean("events.heretic-games.enabled", true)) { // the Heretic's Games: how the Heretic enters a season
+            games = new HereticGames(this); // after the land: a crash's rising lava is already back
+            Bukkit.getPluginManager().registerEvents(games, this);
+            Bukkit.getPluginManager().registerEvents(games.kits, this);
+            games.start(); // a tournament a restart cut off is cancelled cleanly
+        }
+        GamesCommand gamesCommand = new GamesCommand(this);
+        if (getCommand("hgames") != null) {
+            getCommand("hgames").setExecutor(gamesCommand);
+            getCommand("hgames").setTabCompleter(gamesCommand);
+        }
         crisp = new CrispLand(this, land);
         vortex = new VortexDrain(this, land);
         blessing = new LifeBlessing(this);
@@ -292,6 +323,8 @@ public class SoulboundGemsPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (astral != null) astral.shutdown(); // first: anyone projected or Unbounded is back in their body and game mode
+        if (games != null) games.shutdown(); // every player's things, game mode and gem back, the rising lava gone
+        if (halo != null) halo.shutdown(); // a claim in progress is given; the reliquary displays go (rebuilt on enable)
         if (land != null) land.shutdown(); // every Crisp and Vitality Vortex change goes back at once
         if (blessing != null) blessing.shutdown(); // no blessed hearts outlive the plugin
         if (captures != null) captures.shutdown(); // removes every capture display and boss bar

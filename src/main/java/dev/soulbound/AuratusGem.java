@@ -258,6 +258,43 @@ final class AuratusGem implements Listener {
         });
     }
 
+    /**
+     * A chain hanging straight down from {@code from} to {@code to}, hook first at {@code to}, made of the Auratus' own
+     * pack models and layout (the Lost Halo's claim lowers the Auratus on four of these). Moved by the caller with
+     * teleports; the caller removes them.
+     */
+    static List<ItemDisplay> hangingChain(Location from, Location to, float scale) {
+        List<ItemDisplay> out = new ArrayList<>();
+        Vector delta = to.toVector().subtract(from.toVector());
+        double len = delta.length();
+        if (len < 0.5) return out;
+        Vector dir = delta.multiply(1 / len);
+        double[] at = AuratusMath.chainLayout(len, STRAND * scale, STRAND_STEP * scale, LINK_STEP * scale, 60);
+        for (int i = 0; i < at.length; i++) {
+            Location c = to.clone().subtract(dir.clone().multiply(at[i]));
+            ItemDisplay d = c.getWorld().spawn(unturned(c), ItemDisplay.class, x -> {
+                ItemStack it = new ItemStack(Material.ECHO_SHARD);
+                ItemMeta m = it.getItemMeta();
+                m.setCustomModelData(CMD_LINK);
+                it.setItemMeta(m);
+                x.setItemStack(it);
+                x.setPersistent(false);
+                x.setBrightness(new Display.Brightness(15, 15));
+                x.setTeleportDuration(2);
+            });
+            if (i == 0) {
+                ItemStack hook = d.getItemStack();
+                ItemMeta m = hook.getItemMeta();
+                m.setCustomModelData(CMD_HOOK);
+                hook.setItemMeta(m);
+                d.setItemStack(hook);
+                place(d, c, hookPose(dir, scale, at.length == 1 ? (float) (len / (STRAND * scale)) : 1f, new Vector3f()));
+            } else place(d, c, strandPose(dir, scale));
+            out.add(d);
+        }
+        return out;
+    }
+
     private static Location unturned(Location at) {
         Location l = at.clone();
         l.setYaw(0);

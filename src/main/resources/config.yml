@@ -188,6 +188,20 @@ sounds:
     win: {event: UI_TOAST_CHALLENGE_COMPLETE, volume: 1.0, pitch: 1.0, enabled: true}  # the winner only
   prophet: # The Prophet (prophet: below), not a gem
     refuse: {event: BLOCK_BELL_RESONATE, volume: 1.0, pitch: 0.5, enabled: true}  # you only, with each of his lines
+  halo: # The Lost Halo (events.halo): bells and gold
+    bell: {event: BLOCK_BELL_USE, volume: 1.6, pitch: 0.5, enabled: true, layer: {event: BLOCK_BELL_RESONATE, volume: 1.0, pitch: 0.5}}  # everyone, three tolls: the hunt starts, and the claim
+    found: {event: BLOCK_VAULT_OPEN_SHUTTER, volume: 1.0, pitch: 1.2, enabled: true, layer: {event: BLOCK_AMETHYST_CLUSTER_HIT, volume: 0.6, pitch: 1.6}}  # everyone: a fragment has been found
+    chime: {event: ENTITY_ALLAY_ITEM_GIVEN, volume: 1.0, pitch: 1.2, enabled: true, layer: {event: BLOCK_SMALL_AMETHYST_BUD_PLACE, volume: 0.7, pitch: 1.4}}  # a fragment flies into your hand; the Auratus reaches the haloed
+    crumble: {event: BLOCK_CALCITE_BREAK, volume: 1.0, pitch: 0.8, enabled: true, layer: {event: BLOCK_GILDED_BLACKSTONE_BREAK, volume: 0.8, pitch: 1.0}}  # a reliquary crumbles once its fragment is taken
+  heretic-games: # The Heretic's Games (events.heretic-games): horns, sculk and blood
+    open: {event: ENTITY_EVOKER_PREPARE_WOLOLO, volume: 0.8, pitch: 0.6, enabled: true}  # signups open; you join
+    round: {event: ITEM_GOAT_HORN_SOUND_2, volume: 0.9, pitch: 0.8, enabled: true}  # each round's title
+    fall: {event: ENTITY_WITHER_SKELETON_DEATH, volume: 0.8, pitch: 0.8, enabled: true}  # you only: you're out for the round
+    heartbeat: {event: ENTITY_WARDEN_HEARTBEAT, volume: 1.0, pitch: 1.0, enabled: true}  # the Blind curse (louder closer), and everyone at the finish
+    lava: {event: BLOCK_LAVA_POP, volume: 1.0, pitch: 0.6, enabled: true}  # the lava rises a layer
+    swap: {event: ENTITY_SHULKER_TELEPORT, volume: 0.9, pitch: 0.8, enabled: true}  # the Swap curse moves you
+    roulette: {event: BLOCK_NOTE_BLOCK_COW_BELL, volume: 0.9, pitch: 1.2, enabled: true}  # you only: Gem Roulette changes your gem
+    duel: {event: BLOCK_SCULK_SHRIEKER_SHRIEK, volume: 0.8, pitch: 0.8, enabled: true}  # the Blood Duel's title
 
 mythics:
   # Auratus and Heretic can be dropped (Q) and handed to other players; they still drop on death. On the ground they
@@ -1060,6 +1074,10 @@ event-blocked-powers:
   teams: []
   command: []
   motion: [movement]
+  # The Heretic's Games use their own two lists ('all' doesn't apply): while fighting, and between fights (the lobby,
+  # round titles, intermissions, the finish). pockets is Wealth's Pockets, which would reach past the stashed inventory.
+  heretic-games: [astral, repurpose, pockets]
+  heretic-games-rest: [teleport, astral, repurpose, movement, pockets]
 
 # Where Crisp and Vitality Vortex never change a block (capture points keep their own protection while running).
 land:
@@ -1086,3 +1104,62 @@ pedestal:
     C: {open: CHISELED_QUARTZ_BLOCK, closed: CHISELED_POLISHED_BLACKSTONE}
     Q: {open: QUARTZ_BLOCK, closed: POLISHED_BLACKSTONE}
     R: {open: QUARTZ_SLAB, closed: POLISHED_BLACKSTONE_SLAB}
+
+# Mythic events: how the Auratus and the Heretic enter a season. Both are run by admins, one of each at a time, and
+# saved to disk. Neither starts while its mythic already exists (online, in an ender chest, lying loose, or given out by
+# an earlier event); add 'force' to the start command to start anyway.
+events:
+  # The Lost Halo (/halo, soulbound.halo.admin): hide the five Halo Fragments (/halo give <1-5> to hide in a chest, or
+  # /halo reliquary <1-5> to set one on a shrine on the block you look at), then /halo start. Finds are announced
+  # without a name; holders are never shown. Fragments can't be stored, dropped, traded, crafted or put in Pockets,
+  # bundles or frames (admins can hide them before the hunt, or in creative), and drop where their holder dies or logs
+  # out. On the ground they never despawn, float on lava, never burn, and the void sends them to the world's spawn.
+  # The first to hold fragments-needed distinct fragments is haloed where they stand and gets the Auratus; every other
+  # fragment vanishes. halo.yml keeps it all: a restart resumes the hunt. /halo status, /halo stop (deletes them all).
+  halo:
+    enabled: true
+    fragments-needed: 3
+    beam-after-seconds: 60 # a dropped fragment shows a faint gold beam after lying this long
+    sparkle-range: 8 # a reliquary's sparkles show to players this close
+    claim-seconds: 3 # the haloed player is held (and can't be hit) while the Auratus is lowered on its chains
+    chain-drop: 12 # how high above them it starts
+    flash-ticks: 20 # the gold flash everyone sees
+    sky-style: gold # the golden sky as the hunt starts (overlay textures <style>_fade_1..4)
+    sky-ticks: 60
+    title: The Halo has fallen
+    subtitle: Find its pieces
+    found-message: A Halo fragment has been found
+    claim-title: has been haloed
+  # The Heretic's Games (/hgames): a free-for-all tournament. Build it with /hgames pos1, pos2, arena set <name> (the
+  # box's bottom is where Rising Lava starts), spawn add (8 or more), lobby set; set the kits with /hgames kits. Then
+  # /hgames open, players /hgames join (soulbound.hgames.play), /hgames start. Joining stashes the whole inventory to
+  # disk (mythics too; the standard gem and the Gold Gem stay) until leave, the end, logout, stop or a crash. Players
+  # count as in a Soulbound event: no kill points, no energy lost, no gem drops. A restart cancels it cleanly.
+  heretic-games:
+    enabled: true
+    min-players: 4
+    rounds: 5
+    title-seconds: 5 # the round's title shows this long first, everyone held at their spawn
+    round-seconds: 180 # a round ends with one player left, or after this long (the standing players are placed by health)
+    intermission-seconds: 15 # between rounds: nothing hurts, everyone is healed, fed and cleansed
+    round-points: [5, 3, 2] # the top three of each round
+    kill-points: 1
+    duel-kit: sword # the Blood Duel (the top two; ties for second by kills, then a coin flip)
+    duel-seconds: 180 # then more health left wins
+    season-points: [10, 6, 4] # Solstice event points (Pantheon) for the top three; every other finisher gets the next
+    season-points-finisher: 1
+    season-track: heretic-games
+    finish-lift: 3 # the winner rises this many blocks in the Heretic's blood fountain
+    finish-seconds: 6
+    lobby-radius: 16 # signed-up players stay this close to the lobby until it starts
+    curses: # one a round, never the same twice in a row
+      low-gravity: {enabled: true, gravity: 0.35, safe-fall-blocks: 10}
+      swap: {enabled: true, every-seconds: 25}
+      gem-roulette: {enabled: true, every-seconds: 30} # never the Gold Gem; your own gem and its cooldowns come back after the round
+      no-sprint: {enabled: true}
+      bloodthirst: {enabled: true, drain-every-seconds: 3, drain: 1.0, grace-seconds: 6, heal-on-hit: 2.0} # no natural healing; never below half a heart
+      rising-lava: {enabled: true, every-seconds: 20, rise-height: 6} # air only, from the box's bottom; all of it back after the round (a crash too)
+      blind: {enabled: true, heartbeat-range: 24}
+      fists-only: {enabled: true, strength: 2}
+      reverse-knockback: {enabled: true}
+      one-shot: {enabled: true, arrows: 64} # one heart, a bow and arrows, whatever the kit

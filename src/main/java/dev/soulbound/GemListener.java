@@ -388,6 +388,18 @@ public class GemListener implements Listener {
     /** Nothing on the Gold Gem cools down longer than gold.max-cooldown-seconds (GoldGem); every other gem as before. */
     private long capped(Player p, long ms) { return plugin.gold() == null ? ms : plugin.gold().cap(p, ms); }
 
+    /** The Heretic's Games' Gem Roulette: this player's cooldowns as they are now (until-times), to put back later. */
+    Map<String, Long> cooldownSnapshot(UUID id) {
+        Map<String, Long> mine = cooldowns.get(id);
+        return mine == null ? new HashMap<>() : new HashMap<>(mine);
+    }
+
+    /** ...and back: exactly those cooldowns, nothing the roulette gems started. */
+    void restoreCooldowns(UUID id, Map<String, Long> snapshot) {
+        if (snapshot == null || snapshot.isEmpty()) cooldowns.remove(id);
+        else cooldowns.put(id, new HashMap<>(snapshot));
+    }
+
     private void cdClear(Player p, String ability) {
         Map<String, Long> mine = cooldowns.get(p.getUniqueId());
         if (mine != null) mine.remove(ability);
@@ -1238,6 +1250,7 @@ public class GemListener implements Listener {
         if (type == GemType.WEALTH) {
             long rem = cdRemain(p, "pockets");
             if (rem > 0) { /* Silenced */ return; }
+            if (plugin.eventRefuses(p, "pockets")) return; // the Heretic's Games: Pockets would reach past the stashed inventory
             cdStart(p, "pockets", cooldownMs("pockets", energy));
             openPockets(p);
             return;
@@ -3818,10 +3831,13 @@ public class GemListener implements Listener {
         if (plugin.getConfig().getBoolean("protection.prevent-chest-store", true) && bound(e.getPlayerItem())) e.setCancelled(true);
     }
 
-    /** A decorated pot takes the item from your hand without a menu. */
+    /** Blocks that take the item from your hand without a menu: a decorated pot, and the shelves (1.21.9). */
+    static boolean handInBlock(Material m) { return m == Material.DECORATED_POT || m.name().endsWith("_SHELF"); }
+
+    /** A decorated pot (or a shelf) takes the item from your hand without a menu. */
     @EventHandler(priority = EventPriority.LOW)
     public void onGemToPot(PlayerInteractEvent e) {
-        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null || e.getClickedBlock().getType() != Material.DECORATED_POT) return;
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null || !handInBlock(e.getClickedBlock().getType())) return;
         if (plugin.getConfig().getBoolean("protection.prevent-chest-store", true) && bound(e.getItem())) e.setCancelled(true);
     }
 }
